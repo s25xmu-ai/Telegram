@@ -292,6 +292,15 @@ public class Browser {
         if (context == null || uri == null) {
             return;
         }
+
+        // The Premium payment callback is the only app.chat-t.me URL that
+        // must always be opened outside Telegram in the system browser.
+        // Keep all other app.chat-t.me links (including usernames) internal.
+        if (isPremiumCallbackUrl(uri)) {
+            openInExternalBrowser(context, uri.toString(), false, null);
+            return;
+        }
+
         final int currentAccount = UserConfig.selectedAccount;
         boolean[] forceBrowser = new boolean[]{false};
         boolean internalUri = isInternalUri(uri, forceBrowser);
@@ -661,6 +670,13 @@ public class Browser {
 
         }
         return false;
+    }
+
+    private static boolean isPremiumCallbackUrl(Uri uri) {
+        return uri != null
+                && "https".equalsIgnoreCase(uri.getScheme())
+                && "app.chat-t.me".equalsIgnoreCase(uri.getHost())
+                && "/premium/callback".equals(uri.getPath());
     }
 
     public static boolean isTMe(String url) {
