@@ -45,6 +45,7 @@ public class FragmentUsernameBottomSheet {
 
     public static final int TYPE_USERNAME = 0;
     public static final int TYPE_PHONE = 1;
+    private static final boolean ENABLE_USERNAME_BUTTON = false;
     private static final boolean ENABLE_USERNAME_DESCRIPTION = false;
 
     public static void open(
@@ -169,12 +170,14 @@ public class FragmentUsernameBottomSheet {
     );
 }
 
-        ButtonWithCounterView button = new ButtonWithCounterView(context, resourcesProvider).setRound();
-        button.setText(getString(R.string.FragmentUsernameOpen), false);
-        button.setOnClickListener(v -> {
-            Browser.openUrl(context, info.url);
-        });
-        layout.addView(button, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, 48, 6, 0, 6, 0));
+        if (ENABLE_USERNAME_BUTTON) {
+    ButtonWithCounterView button = new ButtonWithCounterView(context, resourcesProvider).setRound();
+    button.setText(getString(R.string.FragmentUsernameOpen), false);
+    button.setOnClickListener(v -> {
+        Browser.openUrl(context, info.url);
+    });
+    layout.addView(button, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, 48, 6, 0, 6, 0));
+}
 
         if (copy != null) {
             ButtonWithCounterView button2 = new ButtonWithCounterView(context, resourcesProvider).setRound().setNeutral();
