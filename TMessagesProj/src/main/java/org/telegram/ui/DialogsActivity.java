@@ -13739,29 +13739,29 @@ private static final String OFFICIAL_SUPPORT_URL = "https://app.chat-t.me/suppor
             Bundle args = new Bundle();
             presentFragment(new GroupCreateActivity(args));
         });
-        if (ENABLE_OFFICIAL_CHANNEL) {
-    io.add(R.drawable.verified_profile, "اطلاع رسانی", () -> {
-        Browser.openUrl(getContext(), OFFICIAL_CHANNEL_URL);
-    });
-}
-
-        if (ENABLE_OFFICIAL_STICKERS) {
-    io.add(R.drawable.stickers_favorites, "استیکرها", () -> {
-        Browser.openUrl(getContext(), OFFICIAL_STICKERS_URL);
-    });
-}
-
-        if (ENABLE_OFFICIAL_SUPPORT) {
-    io.add(R.drawable.calls_headphones, "پشتیبانی", () -> {
-        Browser.openUrl(getContext(), OFFICIAL_SUPPORT_URL);
-    });
-}
         
 if (ENABLE_NEW_CHANNEL) {
     io.add(R.drawable.msg_channel, "کانال جدید", () -> {
         Bundle args = new Bundle();
         args.putInt("step", 0);
         presentFragment(new ChannelCreateActivity(args));
+    });
+}
+        if (ENABLE_OFFICIAL_CHANNEL) {
+    io.add(R.drawable.msg_policy, "اطلاع رسانی", () -> {
+        Browser.openUrl(getContext(), OFFICIAL_CHANNEL_URL);
+    });
+}
+
+        if (ENABLE_OFFICIAL_STICKERS) {
+    io.add(R.drawable.msg2_sticker, "استیکرها", () -> {
+        Browser.openUrl(getContext(), OFFICIAL_STICKERS_URL);
+    });
+}
+
+        if (ENABLE_OFFICIAL_SUPPORT) {
+    io.add(R.drawable.msg_help, "پشتیبانی", () -> {
+        Browser.openUrl(getContext(), OFFICIAL_SUPPORT_URL);
     });
 }
 
