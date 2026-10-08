@@ -376,7 +376,7 @@ public class ChatActivity extends BaseFragment implements
     private final static boolean DISABLE_PROGRESS_VIEW = true;
     private final static int SKELETON_DISAPPEAR_MS = 200;
     public static final int ACTION_BAR_BLUR_ALPHA = 178;
-
+    private static final boolean ENABLE_QUOTE = false;
     private static int SKELETON_LIGHT_OVERLAY_ALPHA = 22;
     private static float SKELETON_SATURATION = 1.4f;
 
@@ -3488,26 +3488,49 @@ public class ChatActivity extends BaseFragment implements
 
         @Override
         protected boolean canShowQuote() {
-            if (chatActivity != null && chatActivity.getDialogId() == UserObject.VERIFY) {
-                return false;
-            }
-            final boolean noforwards = (
-                chatActivity != null && chatActivity.isPeerNoForwards() ||
-                selectedView != null && selectedView.getMessageObject() != null && selectedView.getMessageObject().messageOwner != null && selectedView.getMessageObject().messageOwner.noforwards
-            );
-            return !isFactCheck && (
-                chatActivity != null && chatActivity.getCurrentEncryptedChat() == null &&
-                (selectedView == null ||
-                    selectedView.getMessageObject() != null && selectedView.getMessageObject().type != MessageObject.TYPE_STORY &&
-                    !selectedView.getMessageObject().isVoiceTranscriptionOpen() && !selectedView.getMessageObject().isInvoice() &&
-                    selectedView.getMessageObject().richLayout == null &&
-                    !chatActivity.textSelectionHelper.isDescription
-                ) &&
-                !chatActivity.getMessagesController().getTranslateController().isTranslatingDialog(chatActivity.dialog_id) &&
-                !UserObject.isService(chatActivity.dialog_id) &&
-                (!noforwards || (chatActivity.getCurrentChat() == null || ChatObject.canWriteToChat(chatActivity.getCurrentChat())))
-            );
-        }
+    // true = نمایش گزینه «نقل قول»
+    // false = مخفی کردن گزینه «نقل قول»
+    if (!ENABLE_QUOTE) {
+        return false;
+    }
+
+    if (chatActivity != null && chatActivity.getDialogId() == UserObject.VERIFY) {
+        return false;
+    }
+
+    final boolean noforwards = (
+        chatActivity != null && chatActivity.isPeerNoForwards() ||
+        selectedView != null &&
+        selectedView.getMessageObject() != null &&
+        selectedView.getMessageObject().messageOwner != null &&
+        selectedView.getMessageObject().messageOwner.noforwards
+    );
+
+    return !isFactCheck && (
+        chatActivity != null &&
+        chatActivity.getCurrentEncryptedChat() == null &&
+        (
+            selectedView == null ||
+            selectedView.getMessageObject() != null &&
+            selectedView.getMessageObject().type != MessageObject.TYPE_STORY &&
+            !selectedView.getMessageObject().isVoiceTranscriptionOpen() &&
+            !selectedView.getMessageObject().isInvoice() &&
+            selectedView.getMessageObject().richLayout == null &&
+            !chatActivity.textSelectionHelper.isDescription
+        ) &&
+        !chatActivity.getMessagesController()
+            .getTranslateController()
+            .isTranslatingDialog(chatActivity.dialog_id) &&
+        !UserObject.isService(chatActivity.dialog_id) &&
+        (
+            !noforwards ||
+            (
+                chatActivity.getCurrentChat() == null ||
+                ChatObject.canWriteToChat(chatActivity.getCurrentChat())
+            )
+        )
+    );
+}
 
         @Override
         protected boolean canCopy() {
