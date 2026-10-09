@@ -18907,6 +18907,10 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
             if (currentNameBotVerificationId != 0) {
                 nameWidth -= dp(4 + 12 + 4);
             }
+            // Reserve space for the account/channel verification badge in the message bubble.
+            if ((currentUser != null && currentUser.verified) || (currentChat != null && currentChat.verified)) {
+                nameWidth -= dp(20);
+            }
             if (adminString != null) {
                 nameWidth -= dp(8);
             }
@@ -18990,6 +18994,9 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
                 }
                 if (currentNameBotVerificationId != 0) {
                     nameWidth += dp(4 + 12 + 4);
+                }
+                if ((currentUser != null && currentUser.verified) || (currentChat != null && currentChat.verified)) {
+                    nameWidth += dp(20);
                 }
                 nameWidth -= additionalWidth;
                 if (adminString != null) {
@@ -22190,6 +22197,29 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
             oldAlpha = Theme.chat_namePaint.getAlpha();
             Theme.chat_namePaint.setAlpha((int) (oldAlpha * nameAlpha));
             nameLayout.draw(canvas);
+
+            // Draw the same verified state supplied by the server, next to the sender name.
+            if ((currentUser != null && currentUser.verified) || (currentChat != null && currentChat.verified)) {
+                final boolean rtlName = nameLayout.getParagraphDirection(0) == -1;
+                final float badgeCenterX = rtlName
+                    ? nameLayout.getLineLeft(0) - dp(9)
+                    : nameLayout.getLineRight(0) + dp(9);
+                final float badgeCenterY = nameLayout.getLineBaseline(0) - (nameLayout.getLineAscent(0) + nameLayout.getLineDescent(0)) / 2f;
+                Paint badgePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+                badgePaint.setColor(0xFF3390EC);
+                canvas.drawCircle(badgeCenterX, badgeCenterY, dp(7), badgePaint);
+                badgePaint.setColor(Color.WHITE);
+                badgePaint.setStyle(Paint.Style.STROKE);
+                badgePaint.setStrokeWidth(dp(1.7f));
+                badgePaint.setStrokeCap(Paint.Cap.ROUND);
+                badgePaint.setStrokeJoin(Paint.Join.ROUND);
+                Path badgeCheck = new Path();
+                badgeCheck.moveTo(badgeCenterX - dp(3.2f), badgeCenterY);
+                badgeCheck.lineTo(badgeCenterX - dp(0.8f), badgeCenterY + dp(2.4f));
+                badgeCheck.lineTo(badgeCenterX + dp(3.5f), badgeCenterY - dp(2.7f));
+                canvas.drawPath(badgeCheck, badgePaint);
+            }
+
             Theme.chat_namePaint.setAlpha(oldAlpha);
             canvas.restore();
 
