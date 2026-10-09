@@ -21341,7 +21341,7 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
                     (int) (Math.abs(nx) - dp(verifiedOffset - 16)),
                     (int) (ny + nameLayout.getHeight() / 2 + dp(8))
                 );
-                currentNameVerifiedDrawable.setAlpha((int) (255 * nameAlpha));
+                currentNameVerifiedDrawable.setAlpha(255);
                 currentNameVerifiedDrawable.draw(canvas);
                 currentNameVerifiedDrawable.setAlpha(255);
             }
