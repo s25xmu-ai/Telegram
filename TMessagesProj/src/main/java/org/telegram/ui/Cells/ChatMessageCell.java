@@ -1778,6 +1778,8 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
     private String currentNameString;
     private Object currentNameStatus;
     private long currentNameBotVerificationId;
+    private boolean currentNameVerified;
+    private Drawable currentNameVerifiedDrawable;
     private String nameStatusSlug;
     public AnimatedEmojiDrawable.SwapAnimatedEmojiDrawable currentNameStatusDrawable;
     public AnimatedEmojiDrawable.SwapAnimatedEmojiDrawable currentNameEmojiStatusDrawable;
@@ -18887,12 +18889,14 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
             currentNameStatus = null;
             nameStatusSlug = null;
             currentNameBotVerificationId = 0;
+            currentNameVerified = false;
             if (messageObject.customName != null) {
                 currentNameString = messageObject.customName;
             } else if (needAuthorName) {
                 currentNameString = getAuthorName();
                 currentNameStatus = getAuthorStatus();
                 currentNameBotVerificationId = getAuthorBotVerificationId();
+                currentNameVerified = (currentUser != null && currentUser.verified) || (currentChat != null && currentChat.verified);
             } else {
                 currentNameString = "";
             }
@@ -18907,9 +18911,8 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
             if (currentNameBotVerificationId != 0) {
                 nameWidth -= dp(4 + 12 + 4);
             }
-            // Reserve space for the account/channel verification badge in the message bubble.
-            if ((currentUser != null && currentUser.verified) || (currentChat != null && currentChat.verified)) {
-                nameWidth -= dp(20);
+            if (currentNameVerified) {
+                nameWidth -= dp(4 + 12 + 4);
             }
             if (adminString != null) {
                 nameWidth -= dp(8);
@@ -18995,8 +18998,8 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
                 if (currentNameBotVerificationId != 0) {
                     nameWidth += dp(4 + 12 + 4);
                 }
-                if ((currentUser != null && currentUser.verified) || (currentChat != null && currentChat.verified)) {
-                    nameWidth += dp(20);
+                if (currentNameVerified) {
+                    nameWidth += dp(4 + 12 + 4);
                 }
                 nameWidth -= additionalWidth;
                 if (adminString != null) {
@@ -21240,6 +21243,9 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
                 if (currentNameBotVerificationId != 0) {
                     nameX += dp(20);
                 }
+                if (currentNameVerified) {
+                    nameX += dp(20);
+                }
                 nameY = layoutHeight - dp(38);
                 nameX -= nameOffsetX;
             } else {
@@ -21249,6 +21255,9 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
                     nameX = backgroundDrawableLeft + transitionParams.deltaLeft + dp(!mediaBackground && drawPinnedBottom ? 11 : 17) + getExtraTextX();
                 }
                 if (currentNameBotVerificationId != 0) {
+                    nameX += dp(20);
+                }
+                if (currentNameVerified) {
                     nameX += dp(20);
                 }
                 if (currentMessageObject.isOutOwner() && ChatObject.isChannel(currentChat)) {
@@ -21317,15 +21326,22 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
             } else {
                 ny -= dp(2.33f) * avatarAlpha;
             }
-            if (currentNameEmojiStatusDrawable != null) {
-                currentNameEmojiStatusDrawable.setBounds(
-                    (int) (Math.abs(nx) - dp(20)),
-                    (int) (ny + nameLayout.getHeight() / 2 - dp(9)),
-                    (int) (Math.abs(nx) - dp(2)),
-                    (int) (ny + nameLayout.getHeight() / 2 + dp(9))
+            // Draw the same verified badge asset used by the profile header, beside the sender name.
+            if (currentNameVerified) {
+                if (currentNameVerifiedDrawable == null) {
+                    currentNameVerifiedDrawable = getResources().getDrawable(R.drawable.verified_profile).mutate();
+                    currentNameVerifiedDrawable.setCallback(this);
+                }
+                int verifiedOffset = currentNameBotVerificationId != 0 ? 40 : 20;
+                currentNameVerifiedDrawable.setBounds(
+                    (int) (nx - dp(verifiedOffset)),
+                    (int) (ny + nameLayout.getHeight() / 2 - dp(8)),
+                    (int) (nx - dp(verifiedOffset - 16)),
+                    (int) (ny + nameLayout.getHeight() / 2 + dp(8))
                 );
-                currentNameEmojiStatusDrawable.setColor(ColorUtils.setAlphaComponent(color, 115));
-                currentNameEmojiStatusDrawable.draw(canvas);
+                currentNameVerifiedDrawable.setAlpha((int) (255 * nameAlpha));
+                currentNameVerifiedDrawable.draw(canvas);
+                currentNameVerifiedDrawable.setAlpha(255);
             }
             if (currentNameStatusDrawable != null) {
                 currentNameStatusDrawable.setBounds(
@@ -22197,29 +22213,6 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
             oldAlpha = Theme.chat_namePaint.getAlpha();
             Theme.chat_namePaint.setAlpha((int) (oldAlpha * nameAlpha));
             nameLayout.draw(canvas);
-
-            // Draw the same verified state supplied by the server, next to the sender name.
-            if ((currentUser != null && currentUser.verified) || (currentChat != null && currentChat.verified)) {
-                final boolean rtlName = nameLayout.getParagraphDirection(0) == -1;
-                final float badgeCenterX = rtlName
-                    ? nameLayout.getLineLeft(0) - dp(9)
-                    : nameLayout.getLineRight(0) + dp(9);
-                final float badgeCenterY = nameLayout.getLineBaseline(0) - (nameLayout.getLineAscent(0) + nameLayout.getLineDescent(0)) / 2f;
-                Paint badgePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-                badgePaint.setColor(0xFF3390EC);
-                canvas.drawCircle(badgeCenterX, badgeCenterY, dp(7), badgePaint);
-                badgePaint.setColor(Color.WHITE);
-                badgePaint.setStyle(Paint.Style.STROKE);
-                badgePaint.setStrokeWidth(dp(1.7f));
-                badgePaint.setStrokeCap(Paint.Cap.ROUND);
-                badgePaint.setStrokeJoin(Paint.Join.ROUND);
-                Path badgeCheck = new Path();
-                badgeCheck.moveTo(badgeCenterX - dp(3.2f), badgeCenterY);
-                badgeCheck.lineTo(badgeCenterX - dp(0.8f), badgeCenterY + dp(2.4f));
-                badgeCheck.lineTo(badgeCenterX + dp(3.5f), badgeCenterY - dp(2.7f));
-                canvas.drawPath(badgeCheck, badgePaint);
-            }
-
             Theme.chat_namePaint.setAlpha(oldAlpha);
             canvas.restore();
 
