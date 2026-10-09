@@ -22219,8 +22219,15 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
                 currentNameVerifiedDrawable.setTint(Theme.chat_namePaint.getColor());
                 final int badgeSize = dp(16);
                 final int badgeGap = dp(3);
-                final float nameRight = nx + nameOffsetX + nameLayout.getLineRight(0);
-                final int badgeLeft = (int) (nameRight + badgeGap);
+                // Use the visual position of the logical end of the name.
+                // getLineRight() can return the full layout edge for RTL/Persian
+                // names, leaving a large empty gap before the badge.
+                final int lineEnd = nameLayout.getLineEnd(0);
+                final float nameEndX = nx + nameOffsetX + nameLayout.getPrimaryHorizontal(lineEnd);
+                final boolean rtlName = nameLayout.getParagraphDirection(0) == Layout.DIR_RIGHT_TO_LEFT;
+                final int badgeLeft = (int) (rtlName
+                        ? nameEndX - badgeSize - badgeGap
+                        : nameEndX + badgeGap);
                 final int badgeTop = (int) (ny + (nameLayout.getHeight() - badgeSize) / 2f);
                 currentNameVerifiedDrawable.setBounds(badgeLeft, badgeTop, badgeLeft + badgeSize, badgeTop + badgeSize);
                 currentNameVerifiedDrawable.setAlpha((int) (255 * nameAlpha));
