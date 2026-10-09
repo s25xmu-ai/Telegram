@@ -21230,7 +21230,7 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
             Choreographer60FpsContent.getInstance().removeFrameCallback(invalidateOutboundsRunnable);
         }
 
-        if ((currentNameStatusDrawable != null || currentNameEmojiStatusDrawable != null || topicButton != null && (drawTopic || transitionParams.animateDrawTopic)) && drawNameLayout && nameLayout != null && (currentPosition == null || currentPosition.minX == 0 && currentPosition.minY == 0) && !(currentMessageObject.deleted && !drawingToBitmap && currentMessagesGroup != null && currentMessagesGroup.messages.size() >= 1)) {
+        if ((currentNameStatusDrawable != null || currentNameEmojiStatusDrawable != null || currentNameVerified || topicButton != null && (drawTopic || transitionParams.animateDrawTopic)) && drawNameLayout && nameLayout != null && (currentPosition == null || currentPosition.minX == 0 && currentPosition.minY == 0) && !(currentMessageObject.deleted && !drawingToBitmap && currentMessagesGroup != null && currentMessagesGroup.messages.size() >= 1)) {
             int color;
             float nameX, nameY;
             if (currentMessageObject.shouldDrawWithoutBackground()) {
@@ -21326,7 +21326,9 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
             } else {
                 ny -= dp(2.33f) * avatarAlpha;
             }
-            // Draw the same verified badge asset used by the profile header, beside the sender name.
+            // Draw the server-provided verified badge beside the sender name.
+            // Keep this separate from currentNameEmojiStatusDrawable: that drawable
+            // represents the existing bot/custom emoji status and must still render.
             if (currentNameVerified) {
                 if (currentNameVerifiedDrawable == null) {
                     currentNameVerifiedDrawable = getResources().getDrawable(R.drawable.verified_profile).mutate();
@@ -21334,14 +21336,24 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
                 }
                 int verifiedOffset = currentNameBotVerificationId != 0 ? 40 : 20;
                 currentNameVerifiedDrawable.setBounds(
-                    (int) (nx - dp(verifiedOffset)),
+                    (int) (Math.abs(nx) - dp(verifiedOffset)),
                     (int) (ny + nameLayout.getHeight() / 2 - dp(8)),
-                    (int) (nx - dp(verifiedOffset - 16)),
+                    (int) (Math.abs(nx) - dp(verifiedOffset - 16)),
                     (int) (ny + nameLayout.getHeight() / 2 + dp(8))
                 );
                 currentNameVerifiedDrawable.setAlpha((int) (255 * nameAlpha));
                 currentNameVerifiedDrawable.draw(canvas);
                 currentNameVerifiedDrawable.setAlpha(255);
+            }
+            if (currentNameEmojiStatusDrawable != null) {
+                currentNameEmojiStatusDrawable.setBounds(
+                    (int) (Math.abs(nx) - dp(20)),
+                    (int) (ny + nameLayout.getHeight() / 2 - dp(9)),
+                    (int) (Math.abs(nx) - dp(2)),
+                    (int) (ny + nameLayout.getHeight() / 2 + dp(9))
+                );
+                currentNameEmojiStatusDrawable.setColor(ColorUtils.setAlphaComponent(color, 115));
+                currentNameEmojiStatusDrawable.draw(canvas);
             }
             if (currentNameStatusDrawable != null) {
                 currentNameStatusDrawable.setBounds(
