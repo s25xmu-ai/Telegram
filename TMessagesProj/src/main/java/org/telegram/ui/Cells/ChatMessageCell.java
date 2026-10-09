@@ -21326,25 +21326,6 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
             } else {
                 ny -= dp(2.33f) * avatarAlpha;
             }
-            // Draw the server-provided verified badge beside the sender name.
-            // Keep this separate from currentNameEmojiStatusDrawable: that drawable
-            // represents the existing bot/custom emoji status and must still render.
-            if (currentNameVerified) {
-                if (currentNameVerifiedDrawable == null) {
-                    currentNameVerifiedDrawable = getResources().getDrawable(R.drawable.verified_profile).mutate();
-                    currentNameVerifiedDrawable.setCallback(this);
-                }
-                int verifiedOffset = currentNameBotVerificationId != 0 ? 40 : 20;
-                currentNameVerifiedDrawable.setBounds(
-                    (int) (Math.abs(nx) - dp(verifiedOffset)),
-                    (int) (ny + nameLayout.getHeight() / 2 - dp(8)),
-                    (int) (Math.abs(nx) - dp(verifiedOffset - 16)),
-                    (int) (ny + nameLayout.getHeight() / 2 + dp(8))
-                );
-                currentNameVerifiedDrawable.setAlpha(255);
-                currentNameVerifiedDrawable.draw(canvas);
-                currentNameVerifiedDrawable.setAlpha(255);
-            }
             if (currentNameEmojiStatusDrawable != null) {
                 currentNameEmojiStatusDrawable.setBounds(
                     (int) (Math.abs(nx) - dp(20)),
@@ -22227,6 +22208,25 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
             nameLayout.draw(canvas);
             Theme.chat_namePaint.setAlpha(oldAlpha);
             canvas.restore();
+
+            // Draw the server-provided verified badge after the name so it never
+            // overlaps the text. Tint it with the current theme's sender-name color.
+            if (currentNameVerified) {
+                if (currentNameVerifiedDrawable == null) {
+                    currentNameVerifiedDrawable = getResources().getDrawable(R.drawable.verified_profile).mutate();
+                    currentNameVerifiedDrawable.setCallback(this);
+                }
+                currentNameVerifiedDrawable.setTint(Theme.chat_namePaint.getColor());
+                final int badgeSize = dp(16);
+                final int badgeGap = dp(3);
+                final float nameRight = nx + nameOffsetX + nameLayout.getLineRight(0);
+                final int badgeLeft = (int) (nameRight + badgeGap);
+                final int badgeTop = (int) (ny + (nameLayout.getHeight() - badgeSize) / 2f);
+                currentNameVerifiedDrawable.setBounds(badgeLeft, badgeTop, badgeLeft + badgeSize, badgeTop + badgeSize);
+                currentNameVerifiedDrawable.setAlpha((int) (255 * nameAlpha));
+                currentNameVerifiedDrawable.draw(canvas);
+                currentNameVerifiedDrawable.setAlpha(255);
+            }
 
             float end;
             if (currentMessagesGroup != null && !currentMessagesGroup.isDocuments) {
