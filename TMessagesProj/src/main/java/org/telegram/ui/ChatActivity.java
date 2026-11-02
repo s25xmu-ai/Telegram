@@ -31415,9 +31415,10 @@ public class ChatActivity extends BaseFragment implements
 
             updateScrimSourceBitmap();
 
+            final boolean iosMessageMenu = XGramConfig.isIOSMessageMenu();
             popupLayout.setBackground(scrimBlur3Factory.create(popupLayout, true)
                 .setColorProvider(BlurredBackgroundProviderImpl.messageMenuBackground(resourceProvider))
-                .setRadius(dp(12))
+                .setRadius(dp(iosMessageMenu ? 14 : 12))
                 .setPadding(dp(8)));
 
             boolean addGap = false;
@@ -32169,8 +32170,15 @@ public class ChatActivity extends BaseFragment implements
                     }
 
                     ActionBarMenuSubItem cell = new ActionBarMenuSubItem(getParentActivity(), a == 0, a == N - 1, themeDelegate);
-                    cell.setMinimumWidth(AndroidUtilities.dp(200));
+                    cell.setMinimumWidth(AndroidUtilities.dp(iosMessageMenu ? 230 : 200));
                     cell.setTextAndIcon(items.get(a), icons.get(a));
+                    if (iosMessageMenu) {
+                        cell.setIOSStyle();
+                        if (option == OPTION_DELETE) {
+                            cell.setColors(getThemedColor(Theme.key_text_RedRegular), getThemedColor(Theme.key_text_RedRegular));
+                            cell.setSelectorColor(Theme.multAlpha(getThemedColor(Theme.key_text_RedRegular), .12f));
+                        }
+                    }
 
 
                     if (option == OPTION_WELCOME_REVERT) {
@@ -32201,6 +32209,12 @@ public class ChatActivity extends BaseFragment implements
                     scrimPopupWindowItems[a] = cell;
                     if (option == OPTION_REMOVE_ADS) {
                         popupLayout.addView(new ActionBarPopupWindow.GapView(contentView.getContext(), themeDelegate), LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, 8));
+                    }
+                    if (iosMessageMenu && a > 0 && option != OPTION_REMOVE_ADS) {
+                        View iosDivider = new View(contentView.getContext());
+                        iosDivider.setBackgroundColor(Theme.multAlpha(getThemedColor(Theme.key_actionBarDefaultSubmenuItem), 0.1f));
+                        popupLayout.addView(iosDivider, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, 1, 0, 0, 0, 0));
+                        iosDivider.getLayoutParams().height = Math.max(1, AndroidUtilities.dp(0.66f));
                     }
                     popupLayout.addView(cell);
                     final int i = a;
@@ -32780,7 +32794,7 @@ public class ChatActivity extends BaseFragment implements
             }
             chatListView.stopScroll();
             chatLayoutManager.setCanScrollVertically(false);
-            dimBehindView(v, true);
+            dimBehindView(v, iosMessageMenu, true);
             hideHints(false);
             if (topUndoView != null) {
                 topUndoView.hide(true, 1);

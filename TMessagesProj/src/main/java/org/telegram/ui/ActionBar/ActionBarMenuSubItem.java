@@ -182,6 +182,30 @@ public class ActionBarMenuSubItem extends FrameLayout {
         }
     }
 
+    /** XGram: iOS-style item (text first, icon at the end) */
+    private boolean iosStyle;
+
+    public void setIOSStyle() {
+        iosStyle = true;
+        final boolean rtl = LocaleController.isRTL;
+        FrameLayout.LayoutParams lp = (FrameLayout.LayoutParams) imageView.getLayoutParams();
+        lp.gravity = Gravity.CENTER_VERTICAL | (rtl ? Gravity.LEFT : Gravity.RIGHT);
+        imageView.setLayoutParams(lp);
+        setPadding(dp(16), 0, dp(14), 0);
+        setItemHeight(44);
+        applyIOSTextPadding();
+    }
+
+    public boolean isIOSStyle() {
+        return iosStyle;
+    }
+
+    private void applyIOSTextPadding() {
+        final boolean hasIcon = imageView.getVisibility() == VISIBLE;
+        final int end = hasIcon ? dp(38) : 0;
+        textView.setPadding(LocaleController.isRTL ? end : 0, 0, LocaleController.isRTL ? 0 : end, 0);
+    }
+
     public void setTextAndIcon(CharSequence text, int icon) {
         setTextAndIcon(text, icon, null);
     }
@@ -219,6 +243,9 @@ public class ActionBarMenuSubItem extends FrameLayout {
             iconResId = 0;
             imageView.setVisibility(INVISIBLE);
             textView.setPadding(0, 0, 0, 0);
+        }
+        if (iosStyle && checkView == null) {
+            applyIOSTextPadding();
         }
     }
 
