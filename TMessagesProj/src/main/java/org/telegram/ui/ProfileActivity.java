@@ -3915,6 +3915,13 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
 
             actionsView.setOnActionClickListener((key, x, y) -> {
                 switch (key) {
+                    case ProfileActionsView.KEY_QR_BUTTON: { // XGram (from Cherrygram)
+                        Bundle qrArgs = new Bundle();
+                        qrArgs.putLong("chat_id", chatId);
+                        qrArgs.putLong("user_id", userId);
+                        presentFragment(new QrShareActivity(qrArgs));
+                        break;
+                    }
                     case ProfileActionsView.KEY_GIFT:
                         onGiftPermiumClicked();
                         break;
@@ -3939,6 +3946,7 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
                         }
                         break;
                     case ProfileActionsView.KEY_DISCUSS:
+                    case ProfileActionsView.KEY_OPEN_CHANNEL: // XGram (from Cherrygram)
                         openDiscussion();
                         break;
                     case ProfileActionsView.KEY_LEAVE:
@@ -5748,6 +5756,7 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
                 if (actionsView != null) {
                     actionsView.beginApplyingActions();
                     actionsView.addCameraAction();
+                    actionsView.addQRButton(); // XGram (from Cherrygram)
                     actionsView.addEditInfo();
                     actionsView.addSettings();
                     actionsView.commitActions();
@@ -8437,8 +8446,10 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
         if (avatarContainer != null) {
             if (actionsView != null) {
                 if (chatId != 0) {
-                    boolean discuss = ChatObject.isChannel(currentChat) && !currentChat.megagroup && chatInfo != null && chatInfo.linked_chat_id != 0;
+                    // XGram (from Cherrygram): discussion button for channels, "open channel" for linked groups
+                    boolean discuss = chatInfo != null && chatInfo.linked_chat_id != 0 && channelRow == -1;
                     actionsView.set(ProfileActionsView.KEY_DISCUSS, discuss);
+                    actionsView.set(ProfileActionsView.KEY_OPEN_CHANNEL, discuss);
                 }
             }
 
@@ -12142,7 +12153,7 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
         boolean selfUser = false;
 
         boolean shareAction = false;
-        boolean discussAction = false;
+        boolean discussAction = chatInfo != null && chatInfo.linked_chat_id != 0 && channelRow == -1; // XGram (from Cherrygram)
         boolean giftAction = false;
         boolean streamAction = false;
         boolean voiceChatAction = false;
@@ -12415,6 +12426,7 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
             actionsView.set(ProfileActionsView.KEY_CALL, callItemVisible);
             actionsView.set(ProfileActionsView.KEY_VIDEO, videoCallItemVisible);
             actionsView.set(ProfileActionsView.KEY_DISCUSS, discussAction);
+            actionsView.set(ProfileActionsView.KEY_OPEN_CHANNEL, discussAction); // XGram (from Cherrygram)
             actionsView.set(ProfileActionsView.KEY_LEAVE, leaveAction);
             actionsView.set(ProfileActionsView.KEY_STORY, addStoryAction);
             actionsView.set(ProfileActionsView.KEY_VOICE_CHAT, voiceChatAction);
