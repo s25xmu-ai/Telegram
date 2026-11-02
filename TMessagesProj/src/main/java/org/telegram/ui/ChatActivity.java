@@ -188,6 +188,7 @@ import org.telegram.messenger.SvgHelper;
 import org.telegram.messenger.Timer;
 import org.telegram.messenger.TranslateController;
 import org.telegram.messenger.UserConfig;
+import org.telegram.messenger.XGramConfig;
 import org.telegram.messenger.UserObject;
 import org.telegram.messenger.Utilities;
 import org.telegram.messenger.VideoEditedInfo;
@@ -414,7 +415,7 @@ public class ChatActivity extends BaseFragment implements
         }
     };
 
-    private BlurredBackgroundColorProviderThemed blurredBackgroundColorProvider;
+    public BlurredBackgroundColorProviderThemed blurredBackgroundColorProvider;
     private BlurredBackgroundColorProviderThemed blurredBackgroundColorProviderWhite;
 
     private final ReferenceList<View> glassAttachedViews = new ReferenceList<>();
@@ -424,7 +425,7 @@ public class ChatActivity extends BaseFragment implements
 
     private final @Nullable BlurredBackgroundSourceRenderNode glassBackgroundSourceRenderNode;
     private final @Nullable BlurredBackgroundSourceRenderNode glassBackgroundSourceFrostedRenderNode;
-    private final @NonNull BlurredBackgroundDrawableViewFactory glassBackgroundDrawableFactory;
+    public final @NonNull BlurredBackgroundDrawableViewFactory glassBackgroundDrawableFactory;
     private final @NonNull BlurredBackgroundDrawableViewFactory glassBackgroundDrawableFactoryFrosted;
 
     private final @NonNull BlurredBackgroundSourceWrapped navbarContentSourceWallpaper;
@@ -4670,6 +4671,14 @@ public class ChatActivity extends BaseFragment implements
         chatInputViewsContainer.setUnderKeyboardBackgroundDrawable(
             glassBackgroundDrawableFactoryFrosted.create(chatInputViewsContainer, blurredBackgroundColorProvider));
 
+        if (XGramConfig.isIOSMessageInputField()) {
+            chatInputViewsContainer.setLeftBubbleDrawable(
+                    glassBackgroundDrawableFactory.create(chatInputViewsContainer, blurredBackgroundColorProvider)
+            );
+            chatInputViewsContainer.setRightBubbleDrawable(
+                    glassBackgroundDrawableFactory.create(chatInputViewsContainer, blurredBackgroundColorProvider)
+            );
+        }
 
         chatInputBubbleContainer = chatInputViewsContainer.getInputIslandBubbleContainer();
         chatInputBubbleContainer.setClipChildren(false);
@@ -8041,6 +8050,7 @@ public class ChatActivity extends BaseFragment implements
                 }
             }
         };
+        chatActivityEnterView.setChatInputViewsContainer(chatInputViewsContainer);
         chatActivityEnterView.setVisibility(View.VISIBLE);
         chatActivityEnterView.getEditField().adaptiveCreateLinkDialog = true;
         if (chatMode == MODE_EDIT_BUSINESS_LINK) {
@@ -8118,7 +8128,7 @@ public class ChatActivity extends BaseFragment implements
         } else {
             chatActivityEnterView.setDelegate(new ChatActivityEnterViewDelegate());
         }
-        if (chatMode == MODE_SCHEDULED || isComments) {
+        if (!XGramConfig.isIOSMessageInputField() || chatMode == MODE_SCHEDULED || isComments) {
             chatActivityEnterView.setSideButtonsForAttach(sideControlsButtonsLayout);
         }
         chatActivityEnterView.setInAppInsetsController(windowInsetsStateHolder);
@@ -8299,12 +8309,23 @@ public class ChatActivity extends BaseFragment implements
         });
 
         replyCloseImageView = new ImageView(context);
-        replyCloseImageView.setColorFilter(new PorterDuffColorFilter(getThemedColor(Theme.key_glass_defaultIcon), PorterDuff.Mode.MULTIPLY));
         replyCloseImageView.setImageResource(R.drawable.input_clear);
         replyCloseImageView.setScaleType(ImageView.ScaleType.CENTER);
-        replyCloseImageView.setBackgroundDrawable(Theme.createSelectorDrawable(getThemedColor(Theme.key_listSelector), 1, AndroidUtilities.dp(19)));
-        chatActivityEnterTopView.addView(replyCloseImageView, LayoutHelper.createFrame(52, 46, Gravity.RIGHT | Gravity.TOP, 0, 0.5f, 0, 0));
+        if (chatActivityEnterView != null && chatActivityEnterView.iOSMessageInputFieldAvailable()) {
+            replyCloseImageView.setColorFilter(new PorterDuffColorFilter(getThemedColor(Theme.key_actionBarActionModeDefaultIcon), PorterDuff.Mode.MULTIPLY));
+
+            BlurredBackgroundDrawable replyBackground = glassBackgroundDrawableFactory.create(replyCloseImageView, blurredBackgroundColorProvider);
+            replyBackground.setRadius(dp(18));
+            replyCloseImageView.setBackground(replyBackground);
+
+            chatActivityEnterTopView.addView(replyCloseImageView, LayoutHelper.createFrame(33, 33, Gravity.RIGHT | Gravity.TOP, 0, 10, 4.66F, 0));
+        } else {
+            replyCloseImageView.setColorFilter(new PorterDuffColorFilter(getThemedColor(Theme.key_glass_defaultIcon), PorterDuff.Mode.MULTIPLY));
+            replyCloseImageView.setBackgroundDrawable(Theme.createSelectorDrawable(getThemedColor(Theme.key_listSelector), 1, AndroidUtilities.dp(19)));
+            chatActivityEnterTopView.addView(replyCloseImageView, LayoutHelper.createFrame(52, 46, Gravity.RIGHT | Gravity.TOP, 0, 0.5f, 0, 0));
+        }
         replyCloseImageView.setOnClickListener(v -> {
+            if (chatActivityEnterView != null) chatActivityEnterView.disableAttachButton(false);
             messageSuggestionParams = null;
             if (fieldPanelShown == 2) {
                 replyingQuote = null;
@@ -8499,7 +8520,11 @@ public class ChatActivity extends BaseFragment implements
                 }, 400);
             }
         });
+
         bottomChannelButtonsLayout.setOnButtonsTotalWidthChanged((l, r) -> {
+            if (chatActivityEnterView != null && chatActivityEnterView.iOSMessageInputFieldAvailable()) {
+                return;
+            }
             chatInputViewsContainer.setInputBubbleOffsets(l, r);
         });
 
@@ -8532,8 +8557,12 @@ public class ChatActivity extends BaseFragment implements
         bottomOverlayStartButton.setOnClickListener(v -> bottomOverlayChatText.callOnClick());
         bottomOverlayStartButton.setPadding(dp(31), 0, dp(31), 0);
         ScaleStateListAnimator.apply(bottomOverlayStartButton, 0.02f, 1.2f);
-        bottomChannelButtonsLayout.getContainer().addView(bottomOverlayStartButton, LayoutHelper.createFrame(LayoutHelper.WRAP_CONTENT, 38, Gravity.CENTER, 3, 3, 3, 3));
-        bottomChannelButtonsLayout.makeViewWrapContent(bottomOverlayStartButton);
+        if (XGramConfig.isIOSMessageInputField()) {
+            bottomChannelButtonsLayout.getContainer().addView(bottomOverlayStartButton, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, 38, Gravity.CENTER, 3, 3, 3, 3));
+        } else {
+            bottomChannelButtonsLayout.getContainer().addView(bottomOverlayStartButton, LayoutHelper.createFrame(LayoutHelper.WRAP_CONTENT, 38, Gravity.CENTER, 3, 3, 3, 3));
+            bottomChannelButtonsLayout.makeViewWrapContent(bottomOverlayStartButton);
+        }
 
         if (currentUser != null && currentUser.bot && currentUser.id != UserObject.VERIFY && !UserObject.isDeleted(currentUser) && !UserObject.isReplyUser(currentUser) && !isInScheduleMode() && chatMode != MODE_PINNED && chatMode != MODE_SAVED && !isReport()) {
             bottomOverlayStartButton.setVisibility(View.VISIBLE);
@@ -47107,6 +47136,10 @@ public class ChatActivity extends BaseFragment implements
             final float alpha = bottomViewsVisibilityController.getVisibility(containerId)
                 * (1f - animatorPullingDownContainerVisibility.getFloatValue())
                 * (1f - animatorPollAddAnswerVisibility.getFloatValue());
+
+            if (containerId == MESSAGE_INPUT_CONTAINER && chatActivityEnterView != null) {
+                chatActivityEnterView.updateBubblesProgress(alpha);
+            }
 
             view.setAlpha(alpha);
             if (allowVisibilityChange) {

@@ -11,6 +11,8 @@ import org.telegram.messenger.R;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.telegram.messenger.XGramConfig;
+
 public class ChatActivityEnterViewAnimatedIconView extends RLottieImageView {
     private State currentState;
     private TransitState animatingState;
@@ -23,7 +25,7 @@ public class ChatActivityEnterViewAnimatedIconView extends RLottieImageView {
             RLottieDrawable obj = super.get(key);
             if (obj == null) {
                 TransitState state = (TransitState) key;
-                int res = state.resource;
+                int res = state.getResource();
                 RLottieDrawable rLottieDrawable = new RLottieDrawable(res, AndroidUtilities.dp(sizeDp), AndroidUtilities.dp(sizeDp));
                 put(state, rLottieDrawable);
                 return rLottieDrawable;
@@ -51,7 +53,7 @@ public class ChatActivityEnterViewAnimatedIconView extends RLottieImageView {
             RLottieDrawable drawable = stateMap.get(getAnyState(currentState));
             drawable.stop();
 
-            drawable.setProgress(state == State.VOICE ? 0.5f : 0, false);
+            drawable.setProgress(state == State.VOICE && !XGramConfig.isIOSMessageInputField() ? 0.5f : 0, false);
             setAnimation(drawable);
         } else {
             TransitState transitState = getState(fromState, currentState);
@@ -62,10 +64,10 @@ public class ChatActivityEnterViewAnimatedIconView extends RLottieImageView {
             animatingState = transitState;
             RLottieDrawable drawable = stateMap.get(transitState);
             drawable.stop();
-            if (transitState == TransitState.VIDEO_TO_VOICE) {
+            if (transitState == TransitState.VIDEO_TO_VOICE && !XGramConfig.isIOSMessageInputField()) {
                 drawable.setCustomEndFrame(30);
                 drawable.setProgress(0, false);
-            } else if (transitState == TransitState.VOICE_TO_VIDEO) {
+            } else if (transitState == TransitState.VOICE_TO_VIDEO && !XGramConfig.isIOSMessageInputField()) {
                 drawable.setCustomEndFrame(60);
                 drawable.setProgress(0.5f, false);
             } else {
@@ -110,10 +112,10 @@ public class ChatActivityEnterViewAnimatedIconView extends RLottieImageView {
     }
 
     private enum TransitState {
-        VOICE_TO_VIDEO(State.VOICE, State.VIDEO, R.raw.voice_and_video),
+        VOICE_TO_VIDEO(State.VOICE, State.VIDEO),
         STICKER_TO_KEYBOARD(State.STICKER, State.KEYBOARD, R.raw.sticker_to_keyboard),
         SMILE_TO_KEYBOARD(State.SMILE, State.KEYBOARD, R.raw.smile_to_keyboard),
-        VIDEO_TO_VOICE(State.VIDEO, State.VOICE, R.raw.voice_and_video),
+        VIDEO_TO_VOICE(State.VIDEO, State.VOICE),
         KEYBOARD_TO_STICKER(State.KEYBOARD, State.STICKER, R.raw.keyboard_to_sticker),
         KEYBOARD_TO_GIF(State.KEYBOARD, State.GIF, R.raw.keyboard_to_gif),
         KEYBOARD_TO_SMILE(State.KEYBOARD, State.SMILE, R.raw.keyboard_to_smile),
@@ -123,14 +125,39 @@ public class ChatActivityEnterViewAnimatedIconView extends RLottieImageView {
         SMILE_TO_STICKER(State.SMILE, State.STICKER, R.raw.smile_to_sticker),
         STICKER_TO_SMILE(State.STICKER, State.SMILE, R.raw.sticker_to_smile);
 
-        final State firstState, secondState;
+        final State firstState;
+        final State secondState;
         final int resource;
+
+
 
         TransitState(State firstState, State secondState, int resource) {
             this.firstState = firstState;
             this.secondState = secondState;
             this.resource = resource;
         }
+
+        /** Cherrygram start */
+        TransitState(State firstState, State secondState) {
+            this(firstState, secondState, 0);
+        }
+
+        int getResource() {
+            if (this == VOICE_TO_VIDEO) {
+                return XGramConfig.isIOSMessageInputField()
+                        ? R.raw.voice_and_video_cg
+                        : R.raw.voice_and_video;
+            }
+
+            if (this == VIDEO_TO_VOICE) {
+                return XGramConfig.isIOSMessageInputField()
+                        ? R.raw.voice_and_video_cg_2
+                        : R.raw.voice_and_video;
+            }
+
+            return resource;
+        }
+        /** Cherrygram finish */
     }
 
     public enum State {
@@ -141,4 +168,16 @@ public class ChatActivityEnterViewAnimatedIconView extends RLottieImageView {
         SMILE,
         GIF
     }
+
+    /** Cherrygram start */
+    public void reloadState() {
+        stateMap.clear();
+        animatingState = null;
+
+        if (currentState != null) {
+            setState(currentState, false);
+        }
+    }
+    /** Cherrygram finish */
+
 }
