@@ -108,7 +108,7 @@ import org.telegram.messenger.BotForumHelper;
 import org.telegram.messenger.BotInlineKeyboard;
 import org.telegram.messenger.ChatMessageSharedResources;
 import org.telegram.messenger.ChatObject;
-import org.telegram.messenger.CodeHighlighting;
+import org.telegram.utils.code.highlight.CodeHighlighting;
 import org.telegram.messenger.ContactsController;
 import org.telegram.messenger.DialogObject;
 import org.telegram.messenger.DocumentObject;
@@ -129,6 +129,7 @@ import org.telegram.messenger.MessagesController;
 import org.telegram.messenger.NotificationCenter;
 import org.telegram.messenger.R;
 import org.telegram.messenger.RichMessageLayout;
+import org.telegram.messenger.RichQuote;
 import org.telegram.messenger.SendMessagesHelper;
 import org.telegram.messenger.SharedConfig;
 import org.telegram.messenger.SvgHelper;
@@ -6364,11 +6365,10 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
     protected void onDetachedFromWindow() {
         super.onDetachedFromWindow();
 
-        NotificationCenter.getGlobalInstance().removeObserver(this, NotificationCenter.startSpoilers);
-        NotificationCenter.getGlobalInstance().removeObserver(this, NotificationCenter.stopSpoilers);
-        NotificationCenter.getGlobalInstance().removeObserver(this, NotificationCenter.emojiLoaded);
-        NotificationCenter.getGlobalInstance().removeObserver(this, NotificationCenter.didUpdatePremiumGiftStickers);
-        NotificationCenter.getInstance(currentAccount).removeObserver(this, NotificationCenter.userInfoDidLoad);
+        if (observersGroup != null) {
+            observersGroup.removeAllObservers();
+            observersGroup = null;
+        }
 
         cancelShakeAnimation();
         if (checkBox != null) {
@@ -6467,15 +6467,24 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
         Choreographer60FpsContent.getInstance().removeFrameCallback(invalidateOutboundsRunnable);
     }
 
+    private NotificationCenter.ObserversGroup observersGroup;
+
     @Override
     protected void onAttachedToWindow() {
         super.onAttachedToWindow();
 
-        NotificationCenter.getGlobalInstance().addObserver(this, NotificationCenter.startSpoilers);
-        NotificationCenter.getGlobalInstance().addObserver(this, NotificationCenter.stopSpoilers);
-        NotificationCenter.getGlobalInstance().addObserver(this, NotificationCenter.emojiLoaded);
-        NotificationCenter.getGlobalInstance().addObserver(this, NotificationCenter.didUpdatePremiumGiftStickers);
-        NotificationCenter.getInstance(currentAccount).addObserver(this, NotificationCenter.userInfoDidLoad);
+        if (observersGroup != null) {
+            observersGroup.removeAllObservers();
+            observersGroup = null;
+        }
+
+        observersGroup = NotificationCenter.getInstance(currentAccount)
+            .createObserversGroup(this)
+            .add(NotificationCenter.userInfoDidLoad)
+            .addGlobal(NotificationCenter.startSpoilers)
+            .addGlobal(NotificationCenter.stopSpoilers)
+            .addGlobal(NotificationCenter.emojiLoaded)
+            .addGlobal(NotificationCenter.didUpdatePremiumGiftStickers);
 
         if (currentMessageObject != null) {
             currentMessageObject.animateComments = false;
@@ -12939,6 +12948,27 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
         if (!quote) {
             quoteHighlight = null;
         }
+        if (quote && messageObject.richLayout != null) {
+            if (byClick) {
+                messageObject.richLayout.openDetails(RichQuote.findCollapsedDetails(messageObject, text, quote_offset));
+            }
+            final int[] range = RichQuote.findQuote(messageObject, text, quote_offset);
+            if (range == null) {
+                if (quoteHighlight != null) {
+                    quoteHighlight = null;
+                    invalidate();
+                }
+                return false;
+            }
+            highlightedQuote = true;
+            if (quoteHighlight == null || quoteHighlight.todo || quoteHighlight.poll || quoteHighlight.id != messageObject.getId() || quoteHighlight.start != range[0] || quoteHighlight.end != range[1]) {
+                final QuoteHighlight prev = quoteHighlight;
+                quoteHighlight = new QuoteHighlight(this, getParent(), messageObject.getId(), messageObject.richLayout, range[0], range[1]);
+                quoteHighlight.continueFrom(prev);
+            }
+            invalidate();
+            return true;
+        }
         String message;
         if (currentCaption != null) {
             message = currentCaption.toString();
@@ -14343,10 +14373,19 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
                     canvas.save();
                 }
                 canvas.translate(textX, textY);
+                layout.draw(canvas, padLeft, padRight, transitionParams);
+                // drawn on top, so block backgrounds (table headers, code) don't cover them
                 if (delegate != null && delegate.getTextSelectionHelper() != null) {
                     delegate.getTextSelectionHelper().drawRich(currentMessageObject, layout, canvas);
                 }
-                layout.draw(canvas, padLeft, padRight, transitionParams);
+                canvas.translate(-textX, -textY);
+                if (quoteHighlight != null && !quoteHighlight.todo && !quoteHighlight.poll && currentBackgroundDrawable != null) {
+                    canvas.save();
+                    canvas.clipPath(currentBackgroundDrawable.makePath());
+                    quoteHighlight.paint.setColor(Theme.multAlpha(getThemedColor(currentMessageObject.isOutOwner() && !currentMessageObject.preview ? Theme.key_chat_outReplyLine : Theme.key_chat_inReplyLine), .2f));
+                    quoteHighlight.draw(canvas, textX, textY, currentBackgroundDrawable.getBounds(), getHighlightAlpha(true));
+                    canvas.restore();
+                }
                 canvas.restore();
 
                 if (botDraftTypingAnimator != null && botDraftTypingAnimator.isRunning()) {
@@ -18432,9 +18471,15 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
         } else if (currentMessageObject.isRepostPreview) {
             timeString = LocaleController.formatSmallDateChat(messageObject.messageOwner.date) + ", " + LocaleController.getInstance().getFormatterDay().format((long) (messageObject.messageOwner.date) * 1000);
         } else if (edited) {
-            timeString = AppGlobalConfig.getInstance(currentAccount).messagePrimaryEditedDate.get() ?
-                LocaleController.formatPmEditedDate(currentMessagesGroup != null ? currentMessagesGroup.getMaxEditDate() : messageObject.messageOwner.edit_date) :
-                (getString(R.string.EditedMessage) + " " + LocaleController.getInstance().getFormatterDay().format((long) (messageObject.messageOwner.date) * 1000));
+            if (AppGlobalConfig.getInstance(currentAccount).messagePrimaryEditedDate.get()) {
+                int editDate = currentMessagesGroup != null ? currentMessagesGroup.getMaxEditDate() : messageObject.messageOwner.edit_date;
+                if (editDate == 0 && currentMessageObject.isEditing()) {
+                    editDate = ConnectionsManager.getInstance(currentAccount).getCurrentTime();
+                }
+                timeString = LocaleController.formatPmEditedDate(editDate);
+            } else {
+                timeString = (getString(R.string.EditedMessage) + " " + LocaleController.getInstance().getFormatterDay().format((long) (messageObject.messageOwner.date) * 1000));
+            }
         } else if (currentMessageObject.isSaved && currentMessageObject.messageOwner.fwd_from != null && (currentMessageObject.messageOwner.fwd_from.date != 0 || currentMessageObject.messageOwner.fwd_from.saved_date != 0)) {
             int date = currentMessageObject.messageOwner.fwd_from.saved_date;
             if (date == 0) {
