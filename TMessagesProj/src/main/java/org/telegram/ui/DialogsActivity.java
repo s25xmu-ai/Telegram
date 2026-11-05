@@ -13716,6 +13716,8 @@ private static final String OFFICIAL_SUPPORT_URL = "https://app.chat-t.me/suppor
             args.putBoolean("my_profile", true);
             presentFragment(new ProfileActivity(args));
         });
+        // These core actions mirror the v11 drawer, while using the current app's screens.
+        addClassicDrawerItem(items, dialog, R.drawable.msg_groups, getString(R.string.NewGroup), () -> presentFragment(new GroupCreateActivity(new Bundle())));
         addClassicDrawerItem(items, dialog, R.drawable.outline_saved_24, getString(R.string.SavedMessages), () -> {
             Bundle args = new Bundle();
             args.putLong("user_id", getUserConfig().getClientUserId());
@@ -13731,6 +13733,8 @@ private static final String OFFICIAL_SUPPORT_URL = "https://app.chat-t.me/suppor
             addClassicDrawerItem(items, dialog, R.drawable.xgram_wallet_icon, getString(R.string.XGramWalletLabel), () -> presentFragment(new WalletActivity()));
         }
         addClassicDrawerItem(items, dialog, R.drawable.msg_settings_old, getString(R.string.Settings), () -> presentFragment(new SettingsActivity()));
+        addClassicDrawerItem(items, dialog, R.drawable.settings_invite, getString(R.string.InviteFriends), () -> presentFragment(new InviteContactsActivity()));
+        addClassicDrawerItem(items, dialog, R.drawable.msg_help, getString(R.string.TelegramFeatures), () -> Browser.openUrl(activity, getString(R.string.TelegramFeaturesUrl)));
         addClassicDrawerItem(items, dialog, R.drawable.ic_ab_other, getString(R.string.AccDescrMoreOptions), () -> AndroidUtilities.runOnUIThread(this::showItemOptions, 100));
         dialog.setContentView(scroll);
         dialog.show();

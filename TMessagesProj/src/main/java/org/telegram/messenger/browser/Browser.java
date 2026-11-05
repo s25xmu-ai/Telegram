@@ -20,6 +20,7 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.text.TextUtils;
+import android.widget.Toast;
 
 import org.telegram.messenger.AccountInstance;
 import org.telegram.messenger.AndroidUtilities;
@@ -297,9 +298,11 @@ public class Browser {
             return;
         }
 
-        // The Premium payment callback is the only app.chat-t.me URL that
-        // must always be opened outside Telegram in the system browser.
-        // Keep all other app.chat-t.me links (including usernames) internal.
+        if (isXGramWebUrl(uri)) {
+            openXGramWebUrl(context, uri);
+            return;
+        }
+        // Keep the payment callback outside Telegram as before.
         if (isPremiumCallbackUrl(uri)) {
             openInExternalBrowser(context, uri.toString(), false, null);
             return;
@@ -666,6 +669,36 @@ public class Browser {
         return false;
     }
 
+    public static boolean isXGramWebUrl(Uri uri) {
+        if (uri == null || !("https".equalsIgnoreCase(uri.getScheme()) || "http".equalsIgnoreCase(uri.getScheme()))
+                || !"app.chat-t.me".equalsIgnoreCase(uri.getHost())) return false;
+        String path = uri.getPath();
+        return "/wallet".equals(path) || "/wallet/".equals(path) || "/shard".equals(path) || "/shard/".equals(path);
+    }
+
+    public static boolean openXGramWebUrl(Context context, Uri uri) {
+        // Resolve an actual browser using an unrelated ordinary URL, then target
+        // it explicitly so Android app-link handling cannot reopen this app.
+        Intent probe = new Intent(Intent.ACTION_VIEW, Uri.parse("https://www.example.com/"));
+        probe.addCategory(Intent.CATEGORY_BROWSABLE);
+        List<ResolveInfo> browsers = context.getPackageManager().queryIntentActivities(probe, 0);
+        ResolveInfo preferred = context.getPackageManager().resolveActivity(probe, android.content.pm.PackageManager.MATCH_DEFAULT_ONLY);
+        if (preferred != null && preferred.activityInfo != null) {
+            String preferredPackage = preferred.activityInfo.packageName;
+            for (ResolveInfo info : browsers) {
+                if (info.activityInfo != null && preferredPackage.equals(info.activityInfo.packageName)
+                        && !context.getPackageName().equals(preferredPackage)
+                        && openInExternalBrowser(context, uri.toString(), false, preferredPackage)) return true;
+            }
+        }
+        for (ResolveInfo info : browsers) {
+            if (info.activityInfo != null && !context.getPackageName().equals(info.activityInfo.packageName)
+                    && openInExternalBrowser(context, uri.toString(), false, info.activityInfo.packageName)) return true;
+        }
+        Toast.makeText(context, LocaleController.getString(R.string.XGramBrowserUnavailable), Toast.LENGTH_LONG).show();
+        return false;
+    }
+
     private static boolean isPremiumCallbackUrl(Uri uri) {
         return uri != null
                 && "https".equalsIgnoreCase(uri.getScheme())
@@ -688,6 +721,10 @@ public class Browser {
     }
 
     public static boolean isInternalUri(Uri uri, boolean all, boolean[] forceBrowser) {
+        if (isXGramWebUrl(uri)) {
+            if (forceBrowser != null) forceBrowser[0] = true;
+            return false;
+        }
         String host = AndroidUtilities.getHostAuthority(uri);
         host = host != null ? host.toLowerCase() : "";
 

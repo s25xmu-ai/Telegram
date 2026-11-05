@@ -265,7 +265,8 @@ public class AndroidUtilities {
             if (SharedConfig.useSystemBoldFont && Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
                 mediumTypeface = Typeface.create(null, 500, false);
             } else {
-                mediumTypeface = getTypeface(TYPEFACE_ROBOTO_MEDIUM);
+                Typeface vazirmatn = getVazirmatnTypeface();
+                mediumTypeface = vazirmatn != null ? Typeface.create(vazirmatn, Typeface.BOLD) : getTypeface(TYPEFACE_ROBOTO_MEDIUM);
             }
         }
         return mediumTypeface;

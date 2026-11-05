@@ -1558,6 +1558,15 @@ public class GramWallet implements GramWalletStreaming.IGramWalletStreamingSubsc
     private void send(TLRPC.User user, String address, long amount, String comment, byte[] comment_recipient_public_key,
                       TL_wallet.nftItem collectible, String domain, Utilities.Callback<String> whenSent,
                       Utilities.Callback<TL_wallet.walletTransaction> whenQueued, GramWalletTonConnect.Transaction raw) {
+        // Suspend ordinary money transfers at the shared entry point, including
+        // deep links and profile shortcuts. NFT flows are not money transfers.
+        if (collectible == null && raw == null) {
+            AndroidUtilities.runOnUIThread(() -> {
+                if (whenSent != null) whenSent.run("XGRAM_WALLET_SEND_DISABLED");
+                else BulletinFactory.global().createErrorBulletin(LocaleController.getString(R.string.XGramWalletSendUnavailable)).show();
+            });
+            return;
+        }
         final String sourceAddress = getAddress();
         log("send to " + address + ", amount " + amount + ", when ready...");
         whenReady(() -> {

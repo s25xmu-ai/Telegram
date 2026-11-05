@@ -29,9 +29,9 @@ public final class XGramConfig {
         return SHOW_MONEY_ENTRY || MessagesController.getInstance(currentAccount).config.walletAvailable.get();
     }
 
-    /** The home navigation bar is hidden by default; other tabs retain their bar. */
+    /** The home navigation bar is visible by default; an explicit choice is preserved. */
     public static boolean isHomeBottomBarVisible() {
-        return prefs().getBoolean(KEY_HOME_BOTTOM_BAR, false);
+        return prefs().getBoolean(KEY_HOME_BOTTOM_BAR, true);
     }
 
     public static void setHomeBottomBarVisible(boolean value) {

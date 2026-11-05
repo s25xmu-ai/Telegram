@@ -88,6 +88,12 @@
 
     <queries>
         <package android:name="com.google.android.apps.maps"/>
+        <!-- Discover browsers when opening the wallet and shard websites. -->
+        <intent>
+            <action android:name="android.intent.action.VIEW"/>
+            <category android:name="android.intent.category.BROWSABLE"/>
+            <data android:scheme="https"/>
+        </intent>
         <intent>
             <action android:name="android.intent.action.VIEW"/>
             <data android:scheme="ton"/>

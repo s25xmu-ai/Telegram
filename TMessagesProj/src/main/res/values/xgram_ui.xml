@@ -5,4 +5,6 @@
     <string name="XGramHomeBottomBar">Show bottom bar on home</string>
     <string name="XGramHomeBottomBarInfo">Restart the app to fully apply this setting.</string>
     <string name="XGramClassicDrawer">Classic navigation drawer</string>
+    <string name="XGramWalletSendUnavailable">Temporarily unavailable due to a service disruption.</string>
+    <string name="XGramBrowserUnavailable">No browser is available to open this link.</string>
 </resources>

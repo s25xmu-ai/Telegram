@@ -120,6 +120,10 @@ public class LinkManager {
     }
 
     private boolean handleHttp(Uri uri) {
+        if (Browser.isXGramWebUrl(uri)) {
+            Browser.openXGramWebUrl(activity, uri);
+            return true;
+        }
         final String host = uri.getHost();
         if (host == null) return false;
         final Matcher prefixMatcher = LaunchActivity.PREFIX_T_ME_PATTERN.matcher(host.toLowerCase());
