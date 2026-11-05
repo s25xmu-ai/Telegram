@@ -1648,7 +1648,7 @@ public class Theme {
             }
             if ("Dark Blue".equals(name) || "Night".equals(name)) {
                 isDark = DARK;
-            } else if ("Blue".equals(name) || "Arctic Blue".equals(name) || "Day".equals(name)) {
+            } else if ("Blue".equals(name) || "Arctic Blue".equals(name) || "Day".equals(name) || "Windows 11".equals(name)) {
                 isDark = LIGHT;
             }
             if (isDark == UNKNOWN) {
@@ -4015,6 +4015,17 @@ public class Theme {
         sortAccents(themeInfo);
         themes.add(themeInfo);
         themesDict.put("Night", themeInfo);
+
+        // Optional Windows-inspired light palette. It is never applied automatically.
+        themeInfo = new ThemeInfo();
+        themeInfo.name = "Windows 11";
+        themeInfo.assetName = "xgram_windows11.attheme";
+        themeInfo.previewBackgroundColor = 0xffeef2f8;
+        themeInfo.previewInColor = 0xffffffff;
+        themeInfo.previewOutColor = 0xff0067c0;
+        themeInfo.sortIndex = 6;
+        themes.add(themeInfo);
+        themesDict.put("Windows 11", themeInfo);
 
         String themesString = themeConfig.getString("themes2", null);
 

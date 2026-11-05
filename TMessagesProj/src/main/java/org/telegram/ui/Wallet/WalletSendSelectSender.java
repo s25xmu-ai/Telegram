@@ -807,7 +807,7 @@ public class WalletSendSelectSender extends UniversalFragment {
         final ImageView avatar = new ImageView(getContext());
         avatar.setImageDrawable(new CombinedDrawable(
                 Theme.createCircleDrawable(dp(46), getThemedColor(Theme.key_featuredStickers_addButton)),
-                getContext().getResources().getDrawable(R.drawable.menu_gram_24).mutate()
+                getContext().getResources().getDrawable(R.drawable.xgram_wallet_icon).mutate()
         ));
         row.addView(avatar, LayoutHelper.createFrame(46, 46, start | Gravity.CENTER_VERTICAL, rtl ? 0 : 11, 0, rtl ? 11 : 0, 0));
         final TextView title = addressResultTitle = new TextView(getContext());

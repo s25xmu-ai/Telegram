@@ -221,7 +221,7 @@ public class WalletRecipientView extends FrameLayout {
             setVisibility(View.VISIBLE);
             addressInfoImage.setImageDrawable(new CombinedDrawable(
                 Theme.createCircleDrawable(dp(34), Theme.getColor(Theme.key_featuredStickers_addButton, resourcesProvider)),
-                getContext().getResources().getDrawable(R.drawable.menu_gram_24).mutate()
+                getContext().getResources().getDrawable(R.drawable.xgram_wallet_icon).mutate()
             ));
             addressInfoName.setText(getString(R.string.WalletGramWalletAddress));
             addressInfoAddress.setAddress(address, recipientChanged);

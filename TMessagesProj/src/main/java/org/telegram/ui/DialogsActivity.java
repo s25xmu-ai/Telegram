@@ -2994,8 +2994,8 @@ private static final String OFFICIAL_SUPPORT_URL = "https://app.chat-t.me/suppor
         }
 
         BirthdayController.getInstance(currentAccount).check();
-        additionNavigationBarHeight = hasMainTabs ? dp(MAIN_TABS_HEIGHT_WITH_MARGINS) : 0;
-        additionFloatingButtonOffset = hasMainTabs ? dp(DialogsActivity.MAIN_TABS_HEIGHT + DialogsActivity.MAIN_TABS_MARGIN) : 0;
+        additionNavigationBarHeight = hasMainTabs && XGramConfig.isHomeBottomBarVisible() ? dp(MAIN_TABS_HEIGHT_WITH_MARGINS) : 0;
+        additionFloatingButtonOffset = hasMainTabs && XGramConfig.isHomeBottomBarVisible() ? dp(DialogsActivity.MAIN_TABS_HEIGHT + DialogsActivity.MAIN_TABS_MARGIN) : 0;
 
         return true;
     }
@@ -3454,11 +3454,15 @@ private static final String OFFICIAL_SUPPORT_URL = "https://app.chat-t.me/suppor
         fragmentSearchFieldWatcher.setDoNotCloseAfterFieldEmpty();
 
         if (initialDialogsType == DIALOGS_TYPE_DEFAULT) {
-            optionsItem = menu.addItem(4, R.drawable.ic_ab_other);
+            optionsItem = menu.addItem(4, XGramConfig.isClassicDrawerEnabled() && folderId == 0 && communityId == 0 && !onlySelect ? R.drawable.xgram_menu_classic : R.drawable.ic_ab_other);
             optionsItem.setContentDescription(LocaleController.getString(R.string.AccDescrMoreOptions));
             optionsItem.setOnClickListener(v -> {
                 getContactsController().loadGlobalPrivacySetting();
-                showItemOptions();
+                if (XGramConfig.isClassicDrawerEnabled() && folderId == 0 && communityId == 0 && !onlySelect) {
+                    showClassicDrawer();
+                } else {
+                    showItemOptions();
+                }
             });
             optionsItem.setOnLongClickListener(v -> {
                 getContactsController().loadGlobalPrivacySetting();
@@ -7032,6 +7036,9 @@ private static final String OFFICIAL_SUPPORT_URL = "https://app.chat-t.me/suppor
     @Override
     public void onResume() {
         super.onResume();
+        if (optionsItem != null && folderId == 0 && communityId == 0 && !onlySelect) {
+            optionsItem.setIcon(XGramConfig.isClassicDrawerEnabled() ? R.drawable.xgram_menu_classic : R.drawable.ic_ab_other);
+        }
         if (dialogStoriesCell != null) {
             dialogStoriesCell.onResume();
         }
@@ -13684,6 +13691,76 @@ private static final String OFFICIAL_SUPPORT_URL = "https://app.chat-t.me/suppor
         }
     }
 
+    /** A lightweight, opt-in drawer; the existing menu remains available under More. */
+    private void showClassicDrawer() {
+        final Activity activity = getParentActivity();
+        if (activity == null || activity.isFinishing()) return;
+        final Dialog dialog = new Dialog(activity);
+        dialog.requestWindowFeature(android.view.Window.FEATURE_NO_TITLE);
+        final ScrollView scroll = new ScrollView(activity);
+        final LinearLayout items = new LinearLayout(activity);
+        items.setOrientation(LinearLayout.VERTICAL);
+        items.setPadding(0, dp(24), 0, dp(16));
+        items.setBackgroundColor(getThemedColor(Theme.key_windowBackgroundWhite));
+        scroll.addView(items);
+        final TextView account = new TextView(activity);
+        account.setText(UserObject.getUserName(getUserConfig().getCurrentUser()));
+        account.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 18);
+        account.setTypeface(AndroidUtilities.bold());
+        account.setTextColor(getThemedColor(Theme.key_windowBackgroundWhiteBlackText));
+        account.setPadding(dp(24), dp(16), dp(24), dp(16));
+        items.addView(account, new LinearLayout.LayoutParams(-1, -2));
+        addClassicDrawerItem(items, dialog, R.drawable.msg_openprofile, getString(R.string.MainTabsProfile), () -> {
+            Bundle args = new Bundle();
+            args.putLong("user_id", getUserConfig().getClientUserId());
+            args.putBoolean("my_profile", true);
+            presentFragment(new ProfileActivity(args));
+        });
+        addClassicDrawerItem(items, dialog, R.drawable.outline_saved_24, getString(R.string.SavedMessages), () -> {
+            Bundle args = new Bundle();
+            args.putLong("user_id", getUserConfig().getClientUserId());
+            presentFragment(new ChatActivity(args));
+        });
+        addClassicDrawerItem(items, dialog, R.drawable.msg_contacts, getString(R.string.MainTabsContacts), () -> {
+            Bundle args = new Bundle();
+            args.putBoolean("destroyAfterSelect", true);
+            presentFragment(new ContactsActivity(args));
+        });
+        addClassicDrawerItem(items, dialog, R.drawable.msg_calls, getString(R.string.MainTabsCalls), () -> presentFragment(new CallLogActivity()));
+        if (XGramConfig.showMoneyEntry(currentAccount)) {
+            addClassicDrawerItem(items, dialog, R.drawable.xgram_wallet_icon, getString(R.string.XGramWalletLabel), () -> presentFragment(new WalletActivity()));
+        }
+        addClassicDrawerItem(items, dialog, R.drawable.msg_settings_old, getString(R.string.Settings), () -> presentFragment(new SettingsActivity()));
+        addClassicDrawerItem(items, dialog, R.drawable.ic_ab_other, getString(R.string.AccDescrMoreOptions), () -> AndroidUtilities.runOnUIThread(this::showItemOptions, 100));
+        dialog.setContentView(scroll);
+        dialog.show();
+        if (dialog.getWindow() != null) {
+            dialog.getWindow().setBackgroundDrawable(new ColorDrawable(getThemedColor(Theme.key_windowBackgroundWhite)));
+            dialog.getWindow().setGravity(Gravity.START | Gravity.TOP);
+            dialog.getWindow().setLayout(Math.min(dp(320), AndroidUtilities.displaySize.x - dp(48)), ViewGroup.LayoutParams.MATCH_PARENT);
+        }
+    }
+
+    private void addClassicDrawerItem(LinearLayout parent, Dialog dialog, int icon, CharSequence title, Runnable action) {
+        LinearLayout row = new LinearLayout(parent.getContext());
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        row.setGravity(Gravity.CENTER_VERTICAL);
+        row.setPadding(dp(20), 0, dp(20), 0);
+        row.setBackground(Theme.createSelectorDrawable(getThemedColor(Theme.key_listSelector)));
+        ImageView image = new ImageView(parent.getContext());
+        image.setImageResource(icon);
+        image.setColorFilter(new PorterDuffColorFilter(getThemedColor(Theme.key_windowBackgroundWhiteGrayIcon), PorterDuff.Mode.SRC_IN));
+        row.addView(image, new LinearLayout.LayoutParams(dp(24), dp(24)));
+        TextView text = new TextView(parent.getContext());
+        text.setText(title);
+        text.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 16);
+        text.setTextColor(getThemedColor(Theme.key_windowBackgroundWhiteBlackText));
+        text.setPadding(dp(24), 0, 0, 0);
+        row.addView(text, new LinearLayout.LayoutParams(0, -2, 1));
+        row.setOnClickListener(v -> { dialog.dismiss(); action.run(); });
+        parent.addView(row, new LinearLayout.LayoutParams(-1, dp(52)));
+    }
+
     private void showItemOptions() {
         ItemOptions io = ItemOptions.makeOptions(this, optionsItem);
         io.setColors(getThemedColor(Theme.key_actionBarDefaultTitle), getThemedColor(Theme.key_actionBarDefaultTitle));
@@ -13808,7 +13885,7 @@ if (ENABLE_NEW_CHANNEL) {
     });
 }
 
-if (ENABLE_CONTACTS) {
+if (ENABLE_CONTACTS || !XGramConfig.isHomeBottomBarVisible()) {
     io.add(R.drawable.msg_contacts, "مخاطبین", () -> {
         Bundle args = new Bundle();
         args.putBoolean("destroyAfterSelect", true);
@@ -13853,7 +13930,16 @@ if (ENABLE_CONTACTS) {
                 }
             }
         }
-        if (getUserConfig().showCallsTab) {
+        if (!XGramConfig.isHomeBottomBarVisible()) {
+            io.add(R.drawable.msg_calls, getString(R.string.MainTabsCalls), () -> presentFragment(new CallLogActivity()));
+            io.add(R.drawable.msg_openprofile, getString(R.string.MainTabsProfile), () -> {
+                Bundle args = new Bundle();
+                args.putLong("user_id", getUserConfig().getClientUserId());
+                args.putBoolean("my_profile", true);
+                presentFragment(new ProfileActivity(args));
+            });
+        }
+        if (getUserConfig().showCallsTab || !XGramConfig.isHomeBottomBarVisible()) {
             io.add(R.drawable.msg_settings_old, getString(R.string.Settings), () -> {
                 presentFragment(new SettingsActivity());
             });

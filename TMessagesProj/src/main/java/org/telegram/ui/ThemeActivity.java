@@ -160,7 +160,7 @@ public class ThemeActivity extends BaseFragment implements NotificationCenter.No
     private int raiseToListenRow;
     private int nextMediaTapRow;
     private int sendByEnterRow;
-    private int xgramUIHeaderRow, xgramUISectionRow;
+    private int xgramUIHeaderRow, xgramUISectionRow, xgramHomeBarRow, xgramClassicDrawerRow;
     private int xgramIOSInputRow;
     private int xgramIOSMenuRow;
     private int saveToGalleryOption1Row;
@@ -599,6 +599,8 @@ public class ThemeActivity extends BaseFragment implements NotificationCenter.No
         sendByEnterRow = -1;
         xgramUIHeaderRow = -1;
         xgramUISectionRow = -1;
+        xgramHomeBarRow = -1;
+        xgramClassicDrawerRow = -1;
         xgramIOSInputRow = -1;
         xgramIOSMenuRow = -1;
         saveToGalleryOption1Row = -1;
@@ -723,6 +725,8 @@ public class ThemeActivity extends BaseFragment implements NotificationCenter.No
             otherSectionRow = rowCount++;
 
             xgramUIHeaderRow = rowCount++;
+            xgramHomeBarRow = rowCount++;
+            xgramClassicDrawerRow = rowCount++;
             xgramIOSInputRow = rowCount++;
             xgramIOSMenuRow = rowCount++;
             xgramUISectionRow = rowCount++;
@@ -1146,6 +1150,18 @@ public class ThemeActivity extends BaseFragment implements NotificationCenter.No
                 editor.commit();
                 if (view instanceof TextCheckCell) {
                     ((TextCheckCell) view).setChecked(!send);
+                }
+            } else if (position == xgramClassicDrawerRow) {
+                boolean value = !XGramConfig.isClassicDrawerEnabled();
+                XGramConfig.setClassicDrawerEnabled(value);
+                if (view instanceof TextCheckCell) {
+                    ((TextCheckCell) view).setChecked(value);
+                }
+            } else if (position == xgramHomeBarRow) {
+                boolean value = !XGramConfig.isHomeBottomBarVisible();
+                XGramConfig.setHomeBottomBarVisible(value);
+                if (view instanceof TextCheckCell) {
+                    ((TextCheckCell) view).setChecked(value);
                 }
             } else if (position == xgramIOSInputRow) {
                 boolean value = !XGramConfig.isIOSMessageInputField();
@@ -2641,6 +2657,10 @@ public class ThemeActivity extends BaseFragment implements NotificationCenter.No
                     } else if (position == sendByEnterRow) {
                         SharedPreferences preferences = MessagesController.getGlobalMainSettings();
                         textCheckCell.setTextAndCheck(getString("SendByEnter", R.string.SendByEnter), preferences.getBoolean("send_by_enter", false), true);
+                    } else if (position == xgramClassicDrawerRow) {
+                        textCheckCell.setTextAndCheck(getString(R.string.XGramClassicDrawer), XGramConfig.isClassicDrawerEnabled(), true);
+                    } else if (position == xgramHomeBarRow) {
+                        textCheckCell.setTextAndValueAndCheck(getString(R.string.XGramHomeBottomBar), getString(R.string.XGramHomeBottomBarInfo), XGramConfig.isHomeBottomBarVisible(), true, true);
                     } else if (position == xgramIOSInputRow) {
                         textCheckCell.setTextAndCheck(getString(R.string.XGramIOSInputField), XGramConfig.isIOSMessageInputField(), true);
                     } else if (position == xgramIOSMenuRow) {
@@ -2792,7 +2812,7 @@ public class ThemeActivity extends BaseFragment implements NotificationCenter.No
                 return TYPE_HEADER;
             } else if (position == automaticBrightnessRow) {
                 return TYPE_BRIGHTNESS;
-            } else if (position == scheduleLocationRow || position == sendByEnterRow || position == xgramIOSInputRow || position == xgramIOSMenuRow ||
+            } else if (position == scheduleLocationRow || position == sendByEnterRow || position == xgramHomeBarRow || position == xgramClassicDrawerRow || position == xgramIOSInputRow || position == xgramIOSMenuRow ||
                     position == raiseToSpeakRow || position == raiseToListenRow || position == pauseOnRecordRow ||
                     position == directShareRow || position == chatBlurRow || position == pauseOnMediaRow || position == nextMediaTapRow || position == sensitiveContentRow) {
                 return TYPE_TEXT_CHECK;

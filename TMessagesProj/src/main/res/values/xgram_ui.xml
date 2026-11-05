@@ -2,4 +2,7 @@
 <resources>
     <string name="XGramWalletLabel">Wallet</string>
     <string name="XGramUISettings">Interface settings</string>
+    <string name="XGramHomeBottomBar">Show bottom bar on home</string>
+    <string name="XGramHomeBottomBarInfo">Restart the app to fully apply this setting.</string>
+    <string name="XGramClassicDrawer">Classic navigation drawer</string>
 </resources>

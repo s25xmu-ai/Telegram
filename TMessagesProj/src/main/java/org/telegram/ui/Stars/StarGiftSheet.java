@@ -7278,7 +7278,7 @@ public class StarGiftSheet extends BottomSheetWithRecyclerListView implements No
         pathView.setGravity(Gravity.CENTER_VERTICAL);
         final int grayColor = Theme.getColor(Theme.key_dialogTextGray3, resourcesProvider);
         addPathCrumb(pathView, R.drawable.msg_settings, 14, grayColor, getString(R.string.Settings), true);
-        addPathCrumb(pathView, R.drawable.mini_gram_14, 15, Theme.getColor(Theme.key_featuredStickers_addButton, resourcesProvider), getString(R.string.WalletAttachMoney), true);
+        addPathCrumb(pathView, R.drawable.xgram_wallet_icon, 15, Theme.getColor(Theme.key_featuredStickers_addButton, resourcesProvider), getString(R.string.XGramWalletLabel), true);
         addPathCrumb(pathView, R.drawable.menu_gift, 14, grayColor, getString(R.string.WalletCollectibles), false);
         layout.addView(pathView, LayoutHelper.createLinear(LayoutHelper.WRAP_CONTENT, LayoutHelper.WRAP_CONTENT, Gravity.CENTER_HORIZONTAL, 0, 7, 0, 3));
 

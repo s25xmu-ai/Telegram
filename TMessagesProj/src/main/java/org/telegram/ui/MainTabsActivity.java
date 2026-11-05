@@ -53,6 +53,7 @@ import org.telegram.messenger.R;
 import org.telegram.messenger.SharedConfig;
 import org.telegram.messenger.UserConfig;
 import org.telegram.messenger.UserObject;
+import org.telegram.messenger.XGramConfig;
 import org.telegram.tgnet.TLRPC;
 import org.telegram.ui.ActionBar.ActionBarMenuSubItem;
 import org.telegram.ui.ActionBar.BaseFragment;
@@ -275,6 +276,10 @@ public class MainTabsActivity extends ViewPagerActivity implements NotificationC
         blur3_updateColors();
         checkContactsTabBadge();
         checkUnreadCount(true);
+        if (tabsView != null && updateLayoutWrapper != null) {
+            checkUi_tabsPosition();
+            checkUi_fadeView();
+        }
 
         showAccountChangeHint();
     }
@@ -760,6 +765,7 @@ public class MainTabsActivity extends ViewPagerActivity implements NotificationC
             }
         }
 
+        checkUi_tabsPosition();
         checkUi_fadeView();
         blur3_invalidateBlur();
         contentView.invalidate();
@@ -1061,6 +1067,9 @@ public class MainTabsActivity extends ViewPagerActivity implements NotificationC
         final float isProfile = 1f - MathUtils.clamp(Math.abs(POSITION_PROFILE - animatedPosition), 0, 1);
         final float hide = 1f - AndroidUtilities.getNavigationBarThirdButtonsFactor(0, 1f, navigationBarHeight);
         float alpha = (1f - isProfile * hide) * animatorTabsVisible.getFloatValue();
+        if (!XGramConfig.isHomeBottomBarVisible()) {
+            alpha *= MathUtils.clamp(animatedPosition, 0f, 1f);
+        }
         if (tabletLayout) {
             alpha = 0.0f;
         }
@@ -1071,12 +1080,16 @@ public class MainTabsActivity extends ViewPagerActivity implements NotificationC
     }
 
     private void checkUi_tabsPosition() {
+        if (updateLayoutWrapper == null || tabsViewWrapper == null || tabsView == null) return;
         final boolean isUpdateLayoutVisible = updateLayoutWrapper.isUpdateLayoutVisible();
         final int updateLayoutHeight = isUpdateLayoutVisible ? dp(UpdateLayoutWrapper.HEIGHT) : 0;
         final int normalY = -(updateLayoutHeight);
         final int hiddenY = normalY + dp(40);
 
-        final float factor = animatorTabsVisible.getFloatValue();
+        float factor = animatorTabsVisible.getFloatValue();
+        if (!XGramConfig.isHomeBottomBarVisible() && viewPager != null) {
+            factor *= MathUtils.clamp(viewPager.getPositionAnimated(), 0f, 1f);
+        }
         final float scale = lerp(0.85f, 1f, factor);
 
         tabsViewWrapper.setTranslationY(lerp(hiddenY, normalY, factor));
@@ -1084,6 +1097,7 @@ public class MainTabsActivity extends ViewPagerActivity implements NotificationC
         tabsView.setEnabled(factor > 1);
         tabsView.setAlpha(factor);
         tabsView.setVisibility(factor > 0 ? View.VISIBLE : View.GONE);
+        tabsViewWrapper.setVisibility(factor > 0 ? View.VISIBLE : View.GONE);
     }
 
     private void checkUi_callTabVisible(boolean callTabsVisible, boolean animated) {
@@ -1158,11 +1172,11 @@ public class MainTabsActivity extends ViewPagerActivity implements NotificationC
     private boolean accountSwitchHintShown;
 
     private void showAccountChangeHint() {
-        if (accountSwitchHintShown) return;
+        if (accountSwitchHintShown || !XGramConfig.isHomeBottomBarVisible() && viewPager != null && viewPager.getCurrentPosition() == POSITION_CHATS) return;
 
         if (accountSwitchHint == null && HintsController.Hint.AccountSwitchHint.show()) {
             AndroidUtilities.runOnUIThread(() -> {
-                if (getContext() == null || tabs == null) return;
+                if (getContext() == null || tabs == null || tabsViewWrapper == null || tabsViewWrapper.getVisibility() != View.VISIBLE) return;
 
                 final View v = tabs[INDEX_PROFILE];
                 final float translate = (contentView.getWidth() - ((tabsView.getX() + v.getX()) + v.getWidth()) + v.getWidth() / 2f) / AndroidUtilities.density;
