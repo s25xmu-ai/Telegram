@@ -13824,7 +13824,7 @@ if (ENABLE_CONTACTS) {
             ApplicationLoader.applicationLoaderInstance.addItemOptions(io);
         }
         if (XGramConfig.showMoneyEntry(currentAccount)) {
-            io.add(R.drawable.ic_gram, LocaleController.getString(R.string.WalletAttachMoney), () -> {
+            io.add(R.drawable.xgram_wallet_icon, LocaleController.getString(R.string.XGramWalletLabel), () -> {
                 presentFragment(new WalletActivity());
             });
         } else {

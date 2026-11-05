@@ -6639,7 +6639,7 @@ public class ChatAttachAlert extends BottomSheet implements NotificationCenter.N
                         attachButton.setTag(1);
                         err = !checkPhotoAndCameraPermission(mContext);
                     } else if (position == moneyButton) {
-                        attachButton.setTextAndIcon(LAYOUT_TYPE_MONEY, getString(R.string.WalletAttachMoney), GlassTabView.TabAnimation.GRAM);
+                        attachButton.setTextAndIcon(LAYOUT_TYPE_MONEY, getString(R.string.XGramWalletLabel), GlassTabView.TabAnimation.WALLET);
                         attachButton.setTag(LAYOUT_TYPE_MONEY);
                     } else if (position == documentButton) {
                         attachButton.setTextAndIcon(4, getString(R.string.ChatDocument), GlassTabView.TabAnimation.FILES);

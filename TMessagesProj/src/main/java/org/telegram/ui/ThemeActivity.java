@@ -160,6 +160,7 @@ public class ThemeActivity extends BaseFragment implements NotificationCenter.No
     private int raiseToListenRow;
     private int nextMediaTapRow;
     private int sendByEnterRow;
+    private int xgramUIHeaderRow, xgramUISectionRow;
     private int xgramIOSInputRow;
     private int xgramIOSMenuRow;
     private int saveToGalleryOption1Row;
@@ -596,6 +597,8 @@ public class ThemeActivity extends BaseFragment implements NotificationCenter.No
         raiseToListenRow = -1;
         nextMediaTapRow = -1;
         sendByEnterRow = -1;
+        xgramUIHeaderRow = -1;
+        xgramUISectionRow = -1;
         xgramIOSInputRow = -1;
         xgramIOSMenuRow = -1;
         saveToGalleryOption1Row = -1;
@@ -716,10 +719,13 @@ public class ThemeActivity extends BaseFragment implements NotificationCenter.No
                 }
             }
             sendByEnterRow = rowCount++;
-            xgramIOSInputRow = rowCount++;
-            xgramIOSMenuRow = rowCount++;
             distanceRow = rowCount++;
             otherSectionRow = rowCount++;
+
+            xgramUIHeaderRow = rowCount++;
+            xgramIOSInputRow = rowCount++;
+            xgramIOSMenuRow = rowCount++;
+            xgramUISectionRow = rowCount++;
         } else {
             nightDisabledRow = rowCount++;  // TYPE_THEME_TYPE
             nightScheduledRow = rowCount++; // TYPE_THEME_TYPE
@@ -2613,6 +2619,8 @@ public class ThemeActivity extends BaseFragment implements NotificationCenter.No
                         headerCell.setText(getString(R.string.AppIcon));
                     } else if (position == otherHeaderRow) {
                         headerCell.setText(getString("OtherSettings", R.string.OtherSettings));
+                    } else if (position == xgramUIHeaderRow) {
+                        headerCell.setText(getString(R.string.XGramUISettings));
                     } else if (position == mediaSoundHeaderRow) {
                         headerCell.setText(getString("MediaAndSoundSettings", R.string.MediaAndSoundSettings));
                     }
@@ -2772,7 +2780,7 @@ public class ThemeActivity extends BaseFragment implements NotificationCenter.No
             } else if (position == themeInfoRow || position == nightTypeInfoRow || position == scheduleFromToInfoRow ||
                     position == settings2Row || position == newThemeInfoRow || position == chatListInfoRow || position == bubbleRadiusInfoRow ||
                     position == saveToGallerySectionRow || position == appIconShadowRow || position == lastShadowRow || position == stickersSectionRow ||
-                    position == mediaSoundSectionRow || position == otherSectionRow) {
+                    position == mediaSoundSectionRow || position == otherSectionRow || position == xgramUISectionRow) {
                 return TYPE_SHADOW;
             } else if (position == nightDisabledRow || position == nightScheduledRow || position == nightAutomaticRow || position == nightSystemDefaultRow) {
                 return TYPE_THEME_TYPE;
@@ -2780,7 +2788,7 @@ public class ThemeActivity extends BaseFragment implements NotificationCenter.No
                     position == settingsRow || position == themeHeaderRow || position == textSizeHeaderRow ||
                     position == chatListHeaderRow || position == bubbleRadiusHeaderRow || position == swipeGestureHeaderRow ||
                     position == selectThemeHeaderRow || position == appIconHeaderRow || position == mediaSoundHeaderRow ||
-                    position == otherHeaderRow) {
+                    position == otherHeaderRow || position == xgramUIHeaderRow) {
                 return TYPE_HEADER;
             } else if (position == automaticBrightnessRow) {
                 return TYPE_BRIGHTNESS;

@@ -4521,6 +4521,7 @@ public class LocaleController {
                         localizationInternal = new Localization.Builder()
                             .addLocalization(localizationInternalDefault)
                             .addJsonLocalization(ApplicationLoader.applicationContext, "fa.json")
+                            .addJsonLocalization(ApplicationLoader.applicationContext, "fa-xgram-ui.json")
                             .build();
                     } else if (assetPath == null || TextUtils.equals(assetPath, LocalizationUtils.DEFAULT_LOCALIZATION)) {
                         localizationInternal = localizationInternalDefault;
