@@ -5256,36 +5256,6 @@ public class ChatActivityEnterView extends FrameLayout implements
             }
         }
 
-        if (parentFragment != null && delegate != null && ChatObject.isMonoForum(parentFragment.getCurrentChat())) {
-            options.add(R.drawable.input_suggest_paid_24, getString(R.string.PostSuggestionsSendWithOffer), () -> {
-                if (messageSendPreview != null) {
-                    messageSendPreview.dismiss(false);
-                    messageSendPreview = null;
-                }
-                AndroidUtilities.runOnUIThread(() -> {
-                    if (delegate != null) {
-                        delegate.didPressSuggestionButton();
-                    }
-                }, 600);
-            });
-            /*
-            options.add(R.drawable.input_suggest_paid_24, getString(R.string.PostSuggestionsSendWithOffer), () -> {
-                new StarsSuggestionSheet(getContext(), currentAccount, parentFragment.getDialogId(),
-                        parentFragment.messageSuggestionParams != null ? parentFragment.messageSuggestionParams: MessageSuggestionParams.empty(),
-                        parentFragment, resourcesProvider, StarsSuggestionSheet.MODE_INPUT, (params) -> {
-
-                    parentFragment.messageSuggestionParams = params;
-                    sendMessageInternal(true, 0, 0, true);
-
-                    if (messageSendPreview != null) {
-                        messageSendPreview.dismiss(true);
-                        messageSendPreview = null;
-                    }
-                }).show();
-            })
-            ;*/
-        }
-
         if (sendWithoutSoundButtonValue) {
             options.add(R.drawable.input_notify_off, getString(R.string.SendWithoutSound), () -> {
                 sentFromPreview = System.currentTimeMillis();

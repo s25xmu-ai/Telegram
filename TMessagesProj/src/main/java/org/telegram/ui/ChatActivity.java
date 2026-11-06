@@ -1701,6 +1701,7 @@ public class ChatActivity extends BaseFragment implements
 
     private final static int share = 69;
     private final static int open_direct = 70;
+    private final static int view_linked_chat = 75;
     private final static int remove_fee = 71;
     private final static int charge_fee = 72;
 
@@ -1886,18 +1887,7 @@ public class ChatActivity extends BaseFragment implements
                     return;
                 }
             }
-            if (view instanceof ChatActionCell && ((ChatActionCell) view).getMessageObject().isDateObject) {
-                if (isInsideContainer) {
-                    return;
-                }
-                Bundle bundle = new Bundle();
-                int date = ((ChatActionCell) view).getMessageObject().messageOwner.date;
-                bundle.putLong("dialog_id", dialog_id);
-                bundle.putLong("topic_id", getTopicId());
-                bundle.putInt("type", CalendarActivity.TYPE_CHAT_ACTIVITY);
-                CalendarActivity calendarActivity = new CalendarActivity(bundle, SharedMediaLayout.FILTER_PHOTOS_AND_VIDEOS, date);
-                calendarActivity.setChatActivity(ChatActivity.this);
-                presentFragment(calendarActivity);
+            if (view instanceof ChatActionCell && ((ChatActionCell) view).getMessageObject() != null && ((ChatActionCell) view).getMessageObject().isDateObject) {
                 return;
             }
             if (view instanceof ChatActionCell && ((ChatActionCell) view).getMessageObject() != null && ((ChatActionCell) view).getMessageObject().messageOwner.action instanceof TLRPC.TL_messageActionBoostApply) {
@@ -3829,6 +3819,11 @@ public class ChatActivity extends BaseFragment implements
                     openForward(true);
                 } else if (id == share) {
                     share();
+                } else if (id == view_linked_chat) {
+                    if (chatInfo == null || chatInfo.linked_chat_id == 0) return;
+                    Bundle args = new Bundle();
+                    args.putLong("chat_id", chatInfo.linked_chat_id);
+                    if (getMessagesController().checkCanOpenChat(args, ChatActivity.this)) presentFragment(new ChatActivity(args));
                 } else if (id == open_direct) {
                     if (currentChat == null) return;
                     presentFragment(ChatActivity.of(-currentChat.linked_monoforum_id));
@@ -4373,6 +4368,7 @@ public class ChatActivity extends BaseFragment implements
             headerItem.setSubMenuDelegate(new ActionBarMenuItem.ActionBarSubMenuItemDelegate() {
                 @Override
                 public void onShowSubMenu() {
+                    if (currentChat != null) headerItem.setSubItemShown(view_linked_chat, chatInfo != null && chatInfo.linked_chat_id != 0);
                     updateScrimSourceBitmap();
                 }
 
@@ -4468,6 +4464,8 @@ public class ChatActivity extends BaseFragment implements
                 muteItemGap = headerItem.lazilyAddColoredGap();
             }
             if (currentChat != null) {
+                headerItem.lazilyAddSubItem(view_linked_chat, R.drawable.msg_discussion, getString(currentChat.megagroup ? R.string.ViewChannel : R.string.ViewDiscussion));
+                headerItem.setSubItemShown(view_linked_chat, chatInfo != null && chatInfo.linked_chat_id != 0);
                 headerItem.lazilyAddSubItem(open_direct, R.drawable.msg_markunread, getString(R.string.ChannelOpenDirect));
                 headerItem.setSubItemShown(open_direct, ChatObject.isChannel(currentChat) && !ChatObject.isMonoForum(currentChat) && currentChat.linked_monoforum_id != 0 && ChatObject.canManageMonoForum(currentAccount, -currentChat.linked_monoforum_id));
             }
@@ -8199,7 +8197,7 @@ public class ChatActivity extends BaseFragment implements
         actionsButtonsLayout.setPadding(0, dp(56), 0, 0);
         actionsButtonsLayout.setClipToPadding(false);
         chatInputBubbleContainer.addView(actionsButtonsLayout, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, 106, Gravity.BOTTOM));
-        chatActivityEnterView.setSuggestionButtonVisible(ChatObject.isMonoForum(currentChat), false);
+        chatActivityEnterView.setSuggestionButtonVisible(false, false);
 
         chatActivityEnterTopView = new ChatActivityEnterTopView(context) {
             @Override
@@ -14975,7 +14973,7 @@ public class ChatActivity extends BaseFragment implements
             return;
         }
 
-        chatActivityEnterView.setSuggestionButtonVisible(!show && ChatObject.isMonoForum(currentChat), animated);
+        chatActivityEnterView.setSuggestionButtonVisible(false, animated);
 
         if (mentionContainer != null) {
             mentionContainer.getAdapter().setAllowStickers(!show || messageObjectToEdit == null);
@@ -46310,11 +46308,6 @@ public class ChatActivity extends BaseFragment implements
                     options.add(OPTION_EDIT);
                     icons.add(R.drawable.msg_edit);
                 }
-                if (ChatObject.isMonoForum(currentChat) && selectedObject.getGroupId() == 0 && selectedObjectGroup == null && message != null && message.messageOwner != null && message.messageOwner.suggested_post == null && message.messageOwner.action == null) {
-                    items.add(LocaleController.getString(R.string.EditOfferAdd));
-                    options.add(OPTION_SUGGESTION_ADD_OFFER);
-                    icons.add(R.drawable.menu_edit_price);
-                }
 //                        if (message.scheduled && message.type == MessageObject.TYPE_PAID_MEDIA && message.canEditMessage(currentChat)) {
 //                            items.add(LocaleController.getString(R.string.PaidMediaPriceButton));
 //                            options.add(OPTION_EDIT_PRICE);
@@ -46656,11 +46649,6 @@ public class ChatActivity extends BaseFragment implements
                     items.add(LocaleController.getString(R.string.Edit));
                     options.add(OPTION_EDIT);
                     icons.add(R.drawable.msg_edit);
-                }
-                if (ChatObject.isMonoForum(currentChat) && selectedObject.getGroupId() == 0 && selectedObjectGroup == null && message != null && message.messageOwner != null && message.messageOwner.suggested_post == null && message.messageOwner.action == null) {
-                    items.add(LocaleController.getString(R.string.EditOfferAdd));
-                    options.add(OPTION_SUGGESTION_ADD_OFFER);
-                    icons.add(R.drawable.menu_edit_price);
                 }
                 if (!selectedObject.isPaidSuggestedPostProtected() && chatMode == MODE_SCHEDULED && selectedObject.canEditMessageScheduleTime(currentChat)) {
                     items.add(LocaleController.getString(R.string.MessageScheduleEditTime));

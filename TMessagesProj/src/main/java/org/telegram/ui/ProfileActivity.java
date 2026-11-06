@@ -724,6 +724,7 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
     private int channelBalanceSectionRow;
     private int balanceDividerRow;
     private int blockedUsersRow;
+    private int recentActionsRow;
     private int membersSectionRow;
     private boolean hasMusic;
     private boolean hasBalance;
@@ -4553,7 +4554,9 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
                 fragment.setInfo(chatInfo);
                 presentFragment(fragment);
             } else if (position == settingsRow) {
-                editItem.performClick();
+                if (editItem != null) editItem.performClick();
+            } else if (position == recentActionsRow) {
+                if (currentChat != null && ChatObject.hasAdminRights(currentChat)) presentFragment(new ChannelAdminLogActivity(currentChat));
             } else if (position == botStarsBalanceRow) {
                 presentFragment(new BotStarsActivity(BotStarsActivity.TYPE_STARS, userId));
             } else if (position == botTonBalanceRow) {
@@ -4566,7 +4569,7 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
             } else if (position == blockedUsersRow) {
                 Bundle args = new Bundle();
                 args.putLong("chat_id", chatId);
-                args.putInt("type", ChatUsersActivity.TYPE_BANNED);
+                args.putInt("type", currentChat != null && currentChat.megagroup && !currentChat.gigagroup ? ChatUsersActivity.TYPE_KICKED : ChatUsersActivity.TYPE_BANNED);
                 ChatUsersActivity fragment = new ChatUsersActivity(args);
                 fragment.setInfo(chatInfo);
                 presentFragment(fragment);
@@ -10607,6 +10610,7 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
         subscribersRequestsRow = -1;
         administratorsRow = -1;
         blockedUsersRow = -1;
+        recentActionsRow = -1;
         membersSectionRow = -1;
         channelBalanceSectionRow = -1;
         sharedMediaRow = -1;
@@ -10967,9 +10971,6 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
                         subscribersRequestsRow = rowCount++;
                     }
                     administratorsRow = rowCount++;
-                    if (chatInfo != null && (chatInfo.banned_count != 0 || chatInfo.kicked_count != 0)) {
-                        blockedUsersRow = rowCount++;
-                    }
                     if (
                         chatInfo != null && chatInfo.can_view_stars_revenue && (
                             BotStarsController.getInstance(currentAccount).getBotStarsBalance(-chatId).amount > 0 ||
@@ -10982,9 +10983,17 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
                         channelBalanceRow = rowCount++;
                     }
                     settingsRow = rowCount++;
+                    if (ChatObject.hasAdminRights(currentChat)) recentActionsRow = rowCount++;
+                    if (ChatObject.canBlockUsers(currentChat)) blockedUsersRow = rowCount++;
                     channelBalanceSectionRow = rowCount++;
                 }
             } else {
+                if (!isTopic && currentChat != null && ChatObject.isChannel(currentChat) && currentChat.megagroup && chatInfo != null && ChatObject.hasAdminRights(currentChat)) {
+                    settingsRow = rowCount++;
+                    recentActionsRow = rowCount++;
+                    if (ChatObject.canBlockUsers(currentChat)) blockedUsersRow = rowCount++;
+                    channelBalanceSectionRow = rowCount++;
+                }
                 if (
                         chatInfo != null &&
                                 chatInfo.can_view_stars_revenue && (
@@ -10996,7 +11005,7 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
                                         BotStarsController.getInstance(currentAccount).getTONBalance(-chatId) > 0
                 ) {
                     channelBalanceRow = rowCount++;
-                    channelBalanceSectionRow = rowCount++;
+                    if (channelBalanceSectionRow == -1) channelBalanceSectionRow = rowCount++;
                 }
             }
 
@@ -12287,7 +12296,7 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
                     }
                 }
                 if (chatInfo != null) {
-                    if (ChatObject.canManageCalls(chat) && chatInfo.call == null) {
+                    if (chat.megagroup && !chat.gigagroup && ChatObject.canManageCalls(chat) && chatInfo.call == null) {
                         otherItem.addSubItem(call_item, R.drawable.msg_voicechat, chat.megagroup && !chat.gigagroup ? LocaleController.getString(R.string.StartVoipChat) : LocaleController.getString(R.string.StartVoipChannel));
                         hasVoiceChatItem = true;
                         if (chat.megagroup && !chat.gigagroup) {
@@ -12310,6 +12319,9 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
                     otherItem.addSubItem(channel_stories, R.drawable.msg_archive, LocaleController.getString(R.string.OpenChannelArchiveStories));
                 }
                 if (chat.megagroup) {
+                    if (chatInfo != null && chatInfo.linked_chat_id != 0) {
+                        otherItem.addSubItem(view_discussion, R.drawable.msg_discussion, LocaleController.getString(R.string.ViewChannel));
+                    }
                     if (chatInfo == null || !chatInfo.participants_hidden || ChatObject.hasAdminRights(chat)) {
                         canSearchMembers = true;
                         otherItem.addSubItem(search_members, R.drawable.msg_search, LocaleController.getString(R.string.SearchMembers));
@@ -13824,6 +13836,8 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
                         } else {
                             textCell.setTextAndIcon(LocaleController.getString(R.string.ChannelAdministrators), R.drawable.msg_admins, position != membersSectionRow - 1);
                         }
+                    } else if (position == recentActionsRow) {
+                        textCell.setTextAndIcon(LocaleController.getString(R.string.EventLog), R.drawable.msg_log, true);
                     } else if (position == settingsRow) {
                         textCell.setTextAndIcon(LocaleController.getString(R.string.ChannelAdminSettings), R.drawable.msg_customize, position != membersSectionRow - 1);
                     } else if (position == channelBalanceRow) {
@@ -14364,7 +14378,7 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
             } else if (position == userInfoRow || position == channelInfoRow || position == bioRow) {
                 return VIEW_TYPE_ABOUT_LINK;
             } else if (position == settingsTimerRow || position == settingsKeyRow || position == reportRow || position == reportReactionRow || position == deleteReactionRow ||
-                    position == subscribersRow || position == subscribersRequestsRow || position == administratorsRow || position == settingsRow || position == blockedUsersRow ||
+                    position == subscribersRow || position == subscribersRequestsRow || position == administratorsRow || position == settingsRow || position == recentActionsRow || position == blockedUsersRow ||
                     position == addMemberRow || position == joinRow || position == unblockRow ||
                     position == sendMessageRow || position == notificationRow || position == privacyRow ||
                     position == languageRow || position == dataRow || position == chatRow ||
@@ -15780,6 +15794,7 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
             put(++pointer, subscribersRequestsRow, sparseIntArray);
             put(++pointer, administratorsRow, sparseIntArray);
             put(++pointer, settingsRow, sparseIntArray);
+            put(++pointer, recentActionsRow, sparseIntArray);
             put(++pointer, blockedUsersRow, sparseIntArray);
             put(++pointer, membersSectionRow, sparseIntArray);
             put(++pointer, channelBalanceSectionRow, sparseIntArray);

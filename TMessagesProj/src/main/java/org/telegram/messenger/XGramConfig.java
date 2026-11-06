@@ -19,7 +19,6 @@ public final class XGramConfig {
     private static final String KEY_IOS_INPUT_FIELD = "ios_message_input_field";
     private static final String KEY_IOS_MESSAGE_MENU = "ios_message_menu";
     private static final String KEY_HOME_BOTTOM_BAR = "home_bottom_bar";
-    private static final String KEY_CLASSIC_DRAWER = "classic_drawer";
 
     private static SharedPreferences prefs() {
         return ApplicationLoader.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
@@ -36,14 +35,6 @@ public final class XGramConfig {
 
     public static void setHomeBottomBarVisible(boolean value) {
         prefs().edit().putBoolean(KEY_HOME_BOTTOM_BAR, value).apply();
-    }
-
-    public static boolean isClassicDrawerEnabled() {
-        return prefs().getBoolean(KEY_CLASSIC_DRAWER, false);
-    }
-
-    public static void setClassicDrawerEnabled(boolean value) {
-        prefs().edit().putBoolean(KEY_CLASSIC_DRAWER, value).apply();
     }
 
     /** iOS-style chat bottom bar (message input field). Enabled by default. */

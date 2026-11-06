@@ -3454,15 +3454,11 @@ private static final String OFFICIAL_SUPPORT_URL = "https://app.chat-t.me/suppor
         fragmentSearchFieldWatcher.setDoNotCloseAfterFieldEmpty();
 
         if (initialDialogsType == DIALOGS_TYPE_DEFAULT) {
-            optionsItem = menu.addItem(4, XGramConfig.isClassicDrawerEnabled() && folderId == 0 && communityId == 0 && !onlySelect ? R.drawable.xgram_menu_classic : R.drawable.ic_ab_other);
+            optionsItem = menu.addItem(4, R.drawable.ic_ab_other);
             optionsItem.setContentDescription(LocaleController.getString(R.string.AccDescrMoreOptions));
             optionsItem.setOnClickListener(v -> {
                 getContactsController().loadGlobalPrivacySetting();
-                if (XGramConfig.isClassicDrawerEnabled() && folderId == 0 && communityId == 0 && !onlySelect) {
-                    showClassicDrawer();
-                } else {
-                    showItemOptions();
-                }
+                showItemOptions();
             });
             optionsItem.setOnLongClickListener(v -> {
                 getContactsController().loadGlobalPrivacySetting();
@@ -7036,9 +7032,6 @@ private static final String OFFICIAL_SUPPORT_URL = "https://app.chat-t.me/suppor
     @Override
     public void onResume() {
         super.onResume();
-        if (optionsItem != null && folderId == 0 && communityId == 0 && !onlySelect) {
-            optionsItem.setIcon(XGramConfig.isClassicDrawerEnabled() ? R.drawable.xgram_menu_classic : R.drawable.ic_ab_other);
-        }
         if (dialogStoriesCell != null) {
             dialogStoriesCell.onResume();
         }
@@ -13689,176 +13682,6 @@ private static final String OFFICIAL_SUPPORT_URL = "https://app.chat-t.me/suppor
         } else {
             return isFirstTab;
         }
-    }
-
-    /**
-     * Adapted from Mercurygram v10.6.1.3's DrawerLayoutAdapter,
-     * DrawerProfileCell and DrawerActionCell (GPL-2.0-or-later):
-     * https://github.com/Mercurygram/Mercurygram/tree/v10.6.1.3
-     * The current app no longer has the old drawer container, so the panel is
-     * hosted in a dialog; actions use the current navigation and account APIs.
-     */
-    private void showClassicDrawer() {
-        final Activity activity = getParentActivity();
-        if (activity == null || activity.isFinishing()) return;
-        final Dialog dialog = new Dialog(activity);
-        dialog.requestWindowFeature(android.view.Window.FEATURE_NO_TITLE);
-        final ScrollView scroll = new ScrollView(activity);
-        final LinearLayout items = new LinearLayout(activity);
-        items.setOrientation(LinearLayout.VERTICAL);
-        items.setPadding(0, 0, 0, dp(16));
-        items.setBackgroundColor(getThemedColor(Theme.key_chats_menuBackground));
-        scroll.addView(items);
-
-        // Mercurygram's profile header: avatar opens the profile; the rest
-        // expands the list of accounts.
-        TLRPC.User currentUser = getUserConfig().getCurrentUser();
-        FrameLayout header = new FrameLayout(activity);
-        header.setBackgroundColor(getThemedColor(Theme.key_chats_menuTopBackground));
-        items.addView(header, new LinearLayout.LayoutParams(-1, dp(148)));
-        BackupImageView avatar = new BackupImageView(activity);
-        avatar.getImageReceiver().setRoundRadius(dp(32));
-        if (currentUser != null) avatar.setForUserOrChat(currentUser, new AvatarDrawable(currentUser));
-        header.addView(avatar, LayoutHelper.createFrame(64, 64, Gravity.LEFT | Gravity.TOP, 16, 12, 0, 0));
-        avatar.setContentDescription(getString(R.string.MyProfile));
-        avatar.setOnClickListener(v -> {
-            dialog.dismiss();
-            Bundle args = new Bundle();
-            args.putLong("user_id", getUserConfig().getClientUserId());
-            args.putBoolean("my_profile", true);
-            presentFragment(new ProfileActivity(args));
-        });
-        TextView name = new TextView(activity);
-        name.setText(currentUser == null ? "" : UserObject.getUserName(currentUser));
-        name.setTextColor(getThemedColor(Theme.key_chats_menuName));
-        name.setTypeface(AndroidUtilities.bold());
-        name.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 15);
-        name.setSingleLine(true);
-        header.addView(name, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, 24, Gravity.LEFT | Gravity.BOTTOM, 16, 0, 52, 29));
-        TextView phone = new TextView(activity);
-        phone.setText(currentUser == null || TextUtils.isEmpty(currentUser.phone) ? "" : "+" + currentUser.phone);
-        phone.setTextColor(getThemedColor(Theme.key_chats_menuPhone));
-        phone.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 13);
-        phone.setSingleLine(true);
-        header.addView(phone, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, 20, Gravity.LEFT | Gravity.BOTTOM, 16, 0, 52, 8));
-        ImageView arrow = new ImageView(activity);
-        arrow.setImageResource(R.drawable.msg_expand);
-        arrow.setColorFilter(new PorterDuffColorFilter(getThemedColor(Theme.key_chats_menuName), PorterDuff.Mode.SRC_IN));
-        header.addView(arrow, LayoutHelper.createFrame(48, 48, Gravity.RIGHT | Gravity.BOTTOM));
-        header.setContentDescription(getString(R.string.AddAccount));
-        header.setClickable(true);
-        final LinearLayout accounts = new LinearLayout(activity);
-        accounts.setOrientation(LinearLayout.VERTICAL);
-        items.addView(accounts, new LinearLayout.LayoutParams(-1, -2));
-        ArrayList<Integer> accountNumbers = new ArrayList<>();
-        for (int a = 0; a < UserConfig.MAX_ACCOUNT_COUNT; a++) {
-            if (UserConfig.getInstance(a).isClientActivated()) accountNumbers.add(a);
-        }
-        Collections.sort(accountNumbers, (a, b) -> Integer.compare(UserConfig.getInstance(a).loginTime, UserConfig.getInstance(b).loginTime));
-        for (int account : accountNumbers) {
-            TLRPC.User user = UserConfig.getInstance(account).getCurrentUser();
-            if (user == null) continue;
-            LinearLayout row = new LinearLayout(activity);
-            row.setGravity(Gravity.CENTER_VERTICAL);
-            row.setPadding(dp(19), 0, dp(16), 0);
-            row.setBackground(Theme.createSelectorDrawable(getThemedColor(Theme.key_listSelector)));
-            BackupImageView accountAvatar = new BackupImageView(activity);
-            accountAvatar.getImageReceiver().setRoundRadius(dp(16));
-            accountAvatar.setForUserOrChat(user, new AvatarDrawable(user));
-            row.addView(accountAvatar, new LinearLayout.LayoutParams(dp(32), dp(32)));
-            TextView accountName = new TextView(activity);
-            accountName.setText(UserObject.getUserName(user));
-            accountName.setSingleLine(true);
-            accountName.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 15);
-            accountName.setTextColor(getThemedColor(Theme.key_chats_menuItemText));
-            accountName.setPadding(dp(21), 0, 0, 0);
-            row.addView(accountName, new LinearLayout.LayoutParams(0, -2, 1));
-            if (account == currentAccount) {
-                ImageView check = new ImageView(activity);
-                check.setImageResource(R.drawable.msg_check_s);
-                row.addView(check, new LinearLayout.LayoutParams(dp(24), dp(24)));
-            }
-            row.setOnClickListener(v -> {
-                dialog.dismiss();
-                if (account != currentAccount && activity instanceof LaunchActivity) ((LaunchActivity) activity).switchToAccount(account, true);
-            });
-            accounts.addView(row, new LinearLayout.LayoutParams(-1, dp(48)));
-        }
-        if (accountNumbers.size() < UserConfig.MAX_ACCOUNT_COUNT) {
-            addClassicDrawerItem(accounts, dialog, R.drawable.msg_addbot, getString(R.string.AddAccount), () -> {
-                int freeAccounts = 0;
-                Integer availableAccount = null;
-                for (int a = UserConfig.MAX_ACCOUNT_COUNT - 1; a >= 0; a--) {
-                    if (!UserConfig.getInstance(a).isClientActivated()) {
-                        freeAccounts++;
-                        if (availableAccount == null) availableAccount = a;
-                    }
-                }
-                if (!UserConfig.hasPremiumOnAccounts()) freeAccounts -= UserConfig.MAX_ACCOUNT_COUNT - UserConfig.MAX_ACCOUNT_DEFAULT_COUNT;
-                if (freeAccounts > 0 && availableAccount != null) presentFragment(new LoginActivity(availableAccount));
-                else if (!UserConfig.hasPremiumOnAccounts()) showDialog(new LimitReachedBottomSheet(this, getContext(), LimitReachedBottomSheet.TYPE_ACCOUNTS, currentAccount, null));
-            });
-        }
-        boolean accountsShown = accountNumbers.size() > 1 && MessagesController.getGlobalMainSettings().getBoolean("accountsShown", true);
-        accounts.setVisibility(accountsShown ? View.VISIBLE : View.GONE);
-        arrow.setRotation(accountsShown ? 180 : 0);
-        header.setOnClickListener(v -> {
-            boolean shown = accounts.getVisibility() != View.VISIBLE;
-            accounts.setVisibility(shown ? View.VISIBLE : View.GONE);
-            arrow.animate().rotation(shown ? 180 : 0).setDuration(180).start();
-            MessagesController.getGlobalMainSettings().edit().putBoolean("accountsShown", shown).apply();
-        });
-        items.addView(new org.telegram.ui.Cells.DividerCell(activity, resourceProvider));
-        // Mercurygram's core ordering, using available current-version icons.
-        addClassicDrawerItem(items, dialog, R.drawable.msg_groups, getString(R.string.NewGroup), () -> presentFragment(new GroupCreateActivity(new Bundle())));
-        addClassicDrawerItem(items, dialog, R.drawable.msg_contacts, getString(R.string.Contacts), () -> {
-            Bundle args = new Bundle();
-            args.putBoolean("needFinishFragment", false);
-            presentFragment(new ContactsActivity(args));
-        });
-        addClassicDrawerItem(items, dialog, R.drawable.msg_calls, getString(R.string.Calls), () -> presentFragment(new CallLogActivity()));
-        addClassicDrawerItem(items, dialog, R.drawable.outline_saved_24, getString(R.string.SavedMessages), () -> {
-            Bundle args = new Bundle();
-            args.putLong("user_id", getUserConfig().getClientUserId());
-            presentFragment(new ChatActivity(args));
-        });
-        if (XGramConfig.showMoneyEntry(currentAccount)) addClassicDrawerItem(items, dialog, R.drawable.xgram_wallet_icon, getString(R.string.XGramWalletLabel), () -> presentFragment(new WalletActivity()));
-        addClassicDrawerItem(items, dialog, R.drawable.msg_settings_old, getString(R.string.Settings), () -> presentFragment(new SettingsActivity()));
-        items.addView(new org.telegram.ui.Cells.DividerCell(activity, resourceProvider));
-        addClassicDrawerItem(items, dialog, R.drawable.settings_invite, getString(R.string.InviteFriends), () -> presentFragment(new InviteContactsActivity()));
-        addClassicDrawerItem(items, dialog, R.drawable.msg_help, getString(R.string.TelegramFeatures), () -> Browser.openUrl(activity, getString(R.string.TelegramFeaturesUrl)));
-        addClassicDrawerItem(items, dialog, R.drawable.ic_ab_other, getString(R.string.AccDescrMoreOptions), () -> AndroidUtilities.runOnUIThread(this::showItemOptions, 100));
-        dialog.setContentView(scroll);
-        if (dialog.getWindow() != null) {
-            boolean rtl = activity.getWindow().getDecorView().getLayoutDirection() == View.LAYOUT_DIRECTION_RTL;
-            dialog.getWindow().setWindowAnimations(rtl ? R.style.XGramClassicDrawerAnimationRight : R.style.XGramClassicDrawerAnimationLeft);
-        }
-        dialog.show();
-        if (dialog.getWindow() != null) {
-            dialog.getWindow().setBackgroundDrawable(new ColorDrawable(getThemedColor(Theme.key_chats_menuBackground)));
-            dialog.getWindow().setGravity(Gravity.START | Gravity.TOP);
-            dialog.getWindow().setLayout(Math.max(dp(200), Math.min(dp(320), AndroidUtilities.displaySize.x - dp(56))), ViewGroup.LayoutParams.MATCH_PARENT);
-        }
-    }
-
-    /** Row dimensions adapted from Mercurygram's DrawerActionCell. */
-    private void addClassicDrawerItem(LinearLayout parent, Dialog dialog, int icon, CharSequence title, Runnable action) {
-        FrameLayout row = new FrameLayout(parent.getContext());
-        row.setBackground(Theme.createSelectorDrawable(getThemedColor(Theme.key_listSelector)));
-        ImageView image = new ImageView(parent.getContext());
-        image.setImageResource(icon);
-        image.setColorFilter(new PorterDuffColorFilter(getThemedColor(Theme.key_chats_menuItemIcon), PorterDuff.Mode.SRC_IN));
-        row.addView(image, LayoutHelper.createFrame(24, 24, Gravity.LEFT | Gravity.TOP, 19, 12, 0, 0));
-        TextView text = new TextView(parent.getContext());
-        text.setText(title);
-        text.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 15);
-        text.setTypeface(AndroidUtilities.bold());
-        text.setGravity(Gravity.CENTER_VERTICAL | Gravity.LEFT);
-        text.setTextColor(getThemedColor(Theme.key_chats_menuItemText));
-        row.addView(text, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.MATCH_PARENT, Gravity.LEFT | Gravity.TOP, 72, 0, 16, 0));
-        row.setContentDescription(title);
-        row.setOnClickListener(v -> { dialog.dismiss(); action.run(); });
-        parent.addView(row, new LinearLayout.LayoutParams(-1, dp(48)));
     }
 
     private void showItemOptions() {

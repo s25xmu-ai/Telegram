@@ -313,92 +313,6 @@ public class WalletActivity extends UniversalFragment implements NotificationCen
             o.setDimAlpha(0);
             o.setGravity(Gravity.RIGHT);
 
-            final ItemOptions oc = o.makeSwipeback();
-
-            oc.add(R.drawable.ic_ab_back, LocaleController.getString(R.string.WalletBack), o::closeSwipeback);
-            oc.addGap();
-
-            final ScrollView scrollView = new ScrollView(context);
-            final LinearLayout currenciesLayout = new LinearLayout(context);
-            currenciesLayout.setOrientation(LinearLayout.VERTICAL);
-            scrollView.addView(currenciesLayout);
-            final Runnable layoutCurrencies = () -> {
-                currenciesLayout.removeAllViews();
-                final String currency = wallet.currencies.getCurrency();
-                final TL_wallet.currencyRates rates = wallet.currencies.getCurrencies();
-                if (rates == null) {
-                    for (int i = 0; i < 3; ++i) {
-                        final FlickerLoadingView flickerView = new FlickerLoadingView(getContext(), getResourceProvider());
-                        flickerView.setIsSingleCell(true);
-                        flickerView.setViewType(FlickerLoadingView.STAR_TIER);
-                        currenciesLayout.addView(flickerView, LayoutHelper.createLinear(200, LayoutHelper.WRAP_CONTENT));
-                    }
-                    return;
-                }
-
-                final Utilities.Callback<TL_wallet.currencyRate> addCurrency = rate -> {
-                    if (rate == null) return;
-                    final ActionBarMenuSubItem button = new ActionBarMenuSubItem(getContext(), 2, false, false, resourceProvider);
-                    button.setPadding(dp(18), 0, dp(18), 0);
-                    button.setText(rate.currency);
-                    button.setSubtext(!TextUtils.isEmpty(rate.translatedTitle) ? rate.translatedTitle : rate.title);
-                    final boolean checked = TextUtils.equals(currency, rate.currency);
-                    button.subtextView.setPadding(0, 0, dp(checked ? 42 : 0), 0);
-                    button.setChecked(checked);
-                    button.setOnClickListener(b -> {
-                        wallet.currencies.setCurrency(rate.currency);
-                        o.dismiss();
-                    });
-                    currenciesLayout.addView(button, LayoutHelper.createLinear(200, LayoutHelper.WRAP_CONTENT));
-                };
-
-                final ArrayList<TL_wallet.currencyRate> hintCurrencies = wallet.currencies.getHintCurrencies();
-                final HashSet<String> hintedCurrencyCodes = new HashSet<>();
-                for (int i = 0; i < hintCurrencies.size(); ++i) {
-                    final TL_wallet.currencyRate rate = hintCurrencies.get(i);
-                    if (rate != null && hintedCurrencyCodes.add(rate.currency)) {
-                        addCurrency.run(rate);
-                    }
-                }
-
-                if (!hintedCurrencyCodes.isEmpty() && !rates.rates.isEmpty()) {
-                    currenciesLayout.addView(
-                            new ActionBarPopupWindow.GapView(getContext(), resourceProvider),
-                            LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, 8)
-                    );
-                }
-
-                for (int i = 0; i < rates.rates.size(); ++i) {
-                    final TL_wallet.currencyRate rate = rates.rates.get(i);
-                    if (rate != null && !hintedCurrencyCodes.contains(rate.currency)) {
-                        addCurrency.run(rate);
-                    }
-                }
-            };
-            oc.addView(scrollView, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, 350));
-
-            final ActionBarMenuSubItem currencyItem = o.add(R.drawable.wallet_globe, LocaleController.getString(R.string.WalletCurrency), () -> {
-                layoutCurrencies.run();
-                o.openSwipeback(oc);
-            }).getLast();
-            CharSequence currencyTitle = wallet.currencies.getCurrencyTitle();
-            if (TextUtils.isEmpty(currencyTitle)) {
-                currencyItem.setSubtext("USD");
-                SpannableStringBuilder ssb = new SpannableStringBuilder(getString(R.string.Loading));
-                ssb.setSpan(new LoadingSpan(currencyItem.subtextView, dp(75)), 0, ssb.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
-                currencyTitle = ssb;
-            }
-            currencyItem.setSubtext(currencyTitle);
-            final boolean[] loaded = new boolean[] { wallet.currencies.getCurrencies() != null };
-            final Runnable currenciesLoaded = () -> {
-                final TL_wallet.currencyRates rates = wallet.currencies.getCurrencies();
-                if (rates == null || loaded[0]) return;
-                currencyItem.setSubtext(wallet.currencies.getCurrencyTitle());
-                layoutCurrencies.run();
-                loaded[0] = true;
-            };
-            updateRunnables.add(currenciesLoaded);
-            layoutCurrencies.run();
             o.add(R.drawable.wallet_lock, getString(R.string.Passcode), () -> {
                 o.dismiss();
                 presentFragment(PasscodeActivity.determineOpenFragment());
@@ -417,9 +331,6 @@ public class WalletActivity extends UniversalFragment implements NotificationCen
                 openWalletHowItWorksAlert(getContext(), getResourceProvider());
             });
 
-            o.setOnDismiss(() -> {
-                updateRunnables.remove(currenciesLoaded);
-            });
             o.show();
         });
 
@@ -2078,32 +1989,6 @@ public class WalletActivity extends UniversalFragment implements NotificationCen
                 0, 0, 0, 0
         ));
 
-        final LearnCell feesCell = new LearnCell(context, resourceProvider);
-        feesCell.setPadding(dp(0), dp(8), dp(0), dp(8));
-        feesCell.set(
-                R.drawable.wallet_learn_fees,
-                LocaleController.getString(R.string.WalletNoFees),
-                LocaleController.getString(R.string.WalletNoFeesInfo)
-        );
-        layout.addView(feesCell, LayoutHelper.createLinear(
-                LayoutHelper.MATCH_PARENT,
-                LayoutHelper.WRAP_CONTENT,
-                0, 0, 0, 0
-        ));
-
-        final LearnCell verifiedCell = new LearnCell(context, resourceProvider);
-        verifiedCell.setPadding(dp(0), dp(8), dp(0), dp(8));
-        verifiedCell.set(
-                R.drawable.wallet_learn_verified,
-                LocaleController.getString(R.string.WalletBlockchainVerified),
-                LocaleController.getString(R.string.WalletBlockchainVerifiedInfo)
-        );
-        layout.addView(verifiedCell, LayoutHelper.createLinear(
-                LayoutHelper.MATCH_PARENT,
-                LayoutHelper.WRAP_CONTENT,
-                0, 0, 0, 14
-        ));
-
         final ButtonWithCounterView gotIt = new ButtonWithCounterView(context, resourceProvider).setRound();
         gotIt.setText(LocaleController.getString(R.string.WalletGotIt));
         layout.addView(gotIt, LayoutHelper.createLinear(
@@ -3608,8 +3493,6 @@ public class WalletActivity extends UniversalFragment implements NotificationCen
         showingLearnCells = shouldShowLearnCells();
         if (showingLearnCells) {
             items.add(LearnCell.Factory.of(R.drawable.wallet_learn_instant, LocaleController.getString(R.string.WalletSendInstantly), LocaleController.getString(R.string.WalletSendInstantlyInfo)));
-            items.add(LearnCell.Factory.of(R.drawable.wallet_learn_fees, LocaleController.getString(R.string.WalletNoFees), LocaleController.getString(R.string.WalletNoFeesInfo)));
-            items.add(LearnCell.Factory.of(R.drawable.wallet_learn_verified, LocaleController.getString(R.string.WalletBlockchainVerified), LocaleController.getString(R.string.WalletBlockchainVerifiedInfo)));
             items.add(UItem.asCustomShadow(tosSpacer));
         } else if (historyLayout != null) {
             if (loadedPassword && !hasPassword && wallet.getBalance() > 500_000_000) {

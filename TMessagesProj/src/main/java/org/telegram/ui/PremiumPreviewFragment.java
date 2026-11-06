@@ -1604,6 +1604,7 @@ public class PremiumPreviewFragment extends BaseFragment implements Notification
         public void onBindViewHolder(@NonNull RecyclerView.ViewHolder holder, int position) {
             if (position >= featuresStartRow && position < featuresEndRow) {
                 ((PremiumFeatureCell) holder.itemView).setData(premiumFeatures.get(position - featuresStartRow), position != featuresEndRow - 1);
+                if (type == FEATURES_PREMIUM) ((PremiumFeatureCell) holder.itemView).nextIcon.setVisibility(View.GONE);
             } else if (position >= moreFeaturesStartRow && position < moreFeaturesEndRow) {
                 ((PremiumFeatureCell) holder.itemView).setData(morePremiumFeatures.get(position - moreFeaturesStartRow), position != moreFeaturesEndRow - 1);
             } else if (position == sectionRow) {
@@ -1719,7 +1720,7 @@ public class PremiumPreviewFragment extends BaseFragment implements Notification
 
         @Override
         public boolean isEnabled(RecyclerView.ViewHolder holder) {
-            return holder.getItemViewType() == TYPE_FEATURE || holder.getItemViewType() == TYPE_CHECK;
+            return holder.getItemViewType() == TYPE_CHECK || type != FEATURES_PREMIUM && holder.getItemViewType() == TYPE_FEATURE;
         }
     }
 
@@ -2132,6 +2133,19 @@ public class PremiumPreviewFragment extends BaseFragment implements Notification
         }
         if (LocaleController.isRTL) {
             animated = false;
+        }
+        if (type == FEATURES_PREMIUM && !getUserConfig().isPremium()) {
+            premiumButtonView.setButton(getString(R.string.XGramBuyPremium), null, animated);
+            premiumButtonView.setFlickerDisabled(false);
+            buttonContainerInternal.setOnClickListener(v -> {
+                Activity activity = getParentActivity();
+                if (activity instanceof LaunchActivity) {
+                    LaunchActivity launchActivity = (LaunchActivity) activity;
+                    launchActivity.setNavigateToPremiumBot(true);
+                    launchActivity.onNewIntent(new Intent(Intent.ACTION_VIEW, Uri.parse("https://t.me/PremiumBot")), (Browser.Progress) null);
+                }
+            });
+            return;
         }
         if (BuildVars.IS_BILLING_UNAVAILABLE && selectedTierIndex < subscriptionTiers.size()) {
             premiumButtonView.setButton(getPremiumButtonText(currentAccount, subscriptionTiers.get(selectedTierIndex)), null, animated);
