@@ -117,10 +117,6 @@ public final class BulletinFactory {
     }
     public void showForError(String errorCode, boolean top) {
         if (!LaunchActivity.isActive) return;
-        if ("XGRAM_WALLET_SEND_DISABLED".equals(errorCode)) {
-            createErrorBulletin(LocaleController.getString(R.string.XGramWalletSendUnavailable)).show(top);
-            return;
-        }
         if (TextUtils.isEmpty(errorCode)) {
             Bulletin b = createErrorBulletin(LocaleController.formatString(R.string.UnknownError));
             b.hideAfterBottomSheet = false;

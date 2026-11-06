@@ -701,11 +701,23 @@ public class WalletActivity extends UniversalFragment implements NotificationCen
         // Keep the view for existing color updates, but do not add the deposit action.
         sendButton = new ButtonWithCounterView(context, resourceProvider).setRound();
         sendButton.setText(LocaleController.getString(R.string.WalletSend));
-        // Leave the view clickable so the reason for unavailability is accessible.
-        sendButton.setAlpha(0.55f);
-        sendButton.setContentDescription(LocaleController.getString(R.string.WalletSend) + ". " + LocaleController.getString(R.string.XGramWalletSendUnavailable));
-        sendButton.setOnClickListener(v -> BulletinFactory.of(WalletActivity.this)
-                .createErrorBulletin(LocaleController.getString(R.string.XGramWalletSendUnavailable)).show());
+        sendButton.setEnabled(GramWallet.getInstance(currentAccount).canSend());
+        sendButton.setOnClickListener(v -> {
+            final GramWallet wallet = GramWallet.getInstance(currentAccount);
+            if (sendButton.isLoading()) return;
+            sendButton.setLoading(true);
+            wallet.makeSureSecretPhraseBackedUpLocally(false, false, error -> {
+                sendButton.setLoading(false);
+                if ("NO_LOCAL_BACKUP".equalsIgnoreCase(error)) {
+                    presentFragment(new WalletImportFragment().setMatchPublicKey(wallet.getPublicKey()));
+                    return;
+                } else if (error != null) {
+                    BulletinFactory.of(WalletActivity.this).showForError(error);
+                    return;
+                }
+                presentFragment(new WalletSendSelectSender());
+            });
+        });
         buttonsContainer.addView(sendButton, LayoutHelper.createLinear(0, 48, 1.0f, 0, 0, 0, 0));
         updateButtonColors(card.getStickerStyle());
 
@@ -3423,7 +3435,7 @@ public class WalletActivity extends UniversalFragment implements NotificationCen
     private void update() {
         final GramWallet wallet = GramWallet.getInstance(currentAccount);
         updateWalletTopPanel();
-        // The temporary send restriction is independent of wallet readiness.
+        sendButton.setEnabled(wallet.isReady() && wallet.canSend());
         if (!wallet.isReady()) {
             balanceView.setText(loading(0));
             usdBalanceView.setText(loading(1));
