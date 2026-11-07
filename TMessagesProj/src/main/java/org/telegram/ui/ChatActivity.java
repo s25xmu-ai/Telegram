@@ -35815,6 +35815,10 @@ public class ChatActivity extends BaseFragment implements
         return replyingMessageObject;
     }
 
+    public ReplyQuote getReplyingQuote() {
+        return replyingQuote;
+    }
+
     public MessageObject getReplyTopMessage() {
         return replyingTopMessage;
     }

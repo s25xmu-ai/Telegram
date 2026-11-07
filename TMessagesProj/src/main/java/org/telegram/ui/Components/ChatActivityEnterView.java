@@ -11145,6 +11145,7 @@ private void showAiButton(boolean show_) {
             dialog_id,
             replyingMessageObject,
             getThreadMessage(),
+            replyingQuote,
             notify,
             scheduleDate,
             scheduleRepeatPeriod,
@@ -11160,6 +11161,13 @@ private void showAiButton(boolean show_) {
             delegate.onMessageSend(null, notify, scheduleDate, scheduleRepeatPeriod, payStars);
         }
         checkSendButton(true);
+    }
+
+    // RichEditor sent a message itself: let the chat hide the reply panel, as after any other send.
+    public void onRichEditorSent(boolean notify, int scheduleDate, int scheduleRepeatPeriod) {
+        if (delegate != null) {
+            delegate.onMessageSend(null, notify, scheduleDate, scheduleRepeatPeriod, 0);
+        }
     }
 
     public void clearRichDraft() {

@@ -1998,6 +1998,7 @@ public class RichEditor extends BaseFragment implements NotificationCenter.Notif
         final long dialogId = chatActivity.getDialogId();
         final MessageObject replyToMsg = chatActivity.getReplyMessage();
         final MessageObject replyToTopMsg = chatActivity.getThreadMessage();
+        final ChatActivity.ReplyQuote replyQuote = chatActivity.getReplyingQuote();
         final long monoForumPeerId = chatActivity.getSendMonoForumPeerId();
         final SendMessageChatArguments sendMessageChatArguments = chatActivity.getMessageChatSendParams();
         final MessageObject editing = editingMessageObject;
@@ -2025,6 +2026,7 @@ public class RichEditor extends BaseFragment implements NotificationCenter.Notif
                     dialogId,
                     replyToMsg,
                     replyToTopMsg,
+                    replyQuote,
                     notify,
                     scheduleDate,
                     scheduleRepeatPeriod,
@@ -2037,6 +2039,12 @@ public class RichEditor extends BaseFragment implements NotificationCenter.Notif
         };
         if (onSentCallback != null) {
             onSentCallback.run();
+        }
+        if (editing == null) {
+            final ChatActivityEnterView enterView = chatActivity.getChatActivityEnterView();
+            if (enterView != null) {
+                enterView.onRichEditorSent(notify, scheduleDate, scheduleRepeatPeriod);
+            }
         }
         if (scheduleDate != 0 && editing == null) {
             pendingSend = doSend;
