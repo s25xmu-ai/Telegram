@@ -385,8 +385,16 @@ public class ItemOptions {
             subItem.setSubtext(subtext);
         }
 
-        subItem.setColors(textColor != null ? textColor : Theme.getColor(textColorKey, resourcesProvider), iconColor != null ? iconColor : Theme.getColor(iconColorKey, resourcesProvider));
-        subItem.setSelectorColor(selectorColor != null ? selectorColor : Theme.multAlpha(Theme.getColor(textColorKey, resourcesProvider), .12f));
+        if (textColor == null && iconColor == null) {
+            subItem.setColorKeys(textColorKey, iconColorKey);
+        } else {
+            subItem.setColors(textColor != null ? textColor : Theme.getColor(textColorKey, resourcesProvider), iconColor != null ? iconColor : Theme.getColor(iconColorKey, resourcesProvider));
+        }
+        if (selectorColor != null) {
+            subItem.setSelectorColor(selectorColor);
+        } else {
+            subItem.setSelectorColorKey(textColorKey, .12f);
+        }
 
         subItem.setOnClickListener(view1 -> {
             if (onClickListener != null) {
@@ -414,9 +422,16 @@ public class ItemOptions {
         AndroidUtilities.removeFromParent(subItem);
         subItem.setPadding(dp(18), 0, dp(18), 0);
 
-        subItem.setColors(textColor != null ? textColor : Theme.getColor(Theme.key_actionBarDefaultSubmenuItem, resourcesProvider), iconColor != null ? iconColor : Theme.getColor(Theme.key_actionBarDefaultSubmenuItemIcon, resourcesProvider));
-        subItem.setSelectorColor(Theme.getColor(Theme.key_groupcreate_sectionText, resourcesProvider));
-        subItem.setSelectorColor(selectorColor != null ? selectorColor : Theme.multAlpha(Theme.getColor(Theme.key_actionBarDefaultSubmenuItem, resourcesProvider), .12f));
+        if (textColor == null && iconColor == null) {
+            subItem.setColorKeys(Theme.key_actionBarDefaultSubmenuItem, Theme.key_actionBarDefaultSubmenuItemIcon);
+        } else {
+            subItem.setColors(textColor != null ? textColor : Theme.getColor(Theme.key_actionBarDefaultSubmenuItem, resourcesProvider), iconColor != null ? iconColor : Theme.getColor(Theme.key_actionBarDefaultSubmenuItemIcon, resourcesProvider));
+        }
+        if (selectorColor != null) {
+            subItem.setSelectorColor(selectorColor);
+        } else {
+            subItem.setSelectorColorKey(Theme.key_actionBarDefaultSubmenuItem, .12f);
+        }
 
         if (minWidthDp > 0) {
             subItem.setMinimumWidth(dp(minWidthDp));
@@ -474,8 +489,16 @@ public class ItemOptions {
         }
         subItem.setChecked(checked);
 
-        subItem.setColors(textColor != null ? textColor : Theme.getColor(textColorKey, resourcesProvider), iconColor != null ? iconColor : Theme.getColor(iconColorKey, resourcesProvider));
-        subItem.setSelectorColor(selectorColor != null ? selectorColor : Theme.multAlpha(Theme.getColor(textColorKey, resourcesProvider), .12f));
+        if (textColor == null && iconColor == null) {
+            subItem.setColorKeys(textColorKey, iconColorKey);
+        } else {
+            subItem.setColors(textColor != null ? textColor : Theme.getColor(textColorKey, resourcesProvider), iconColor != null ? iconColor : Theme.getColor(iconColorKey, resourcesProvider));
+        }
+        if (selectorColor != null) {
+            subItem.setSelectorColor(selectorColor);
+        } else {
+            subItem.setSelectorColorKey(textColorKey, .12f);
+        }
 
         subItem.setOnClickListener(view1 -> {
             if (onClickListener != null) {
@@ -510,8 +533,16 @@ public class ItemOptions {
         ActionBarMenuSubItem subItem = new ActionBarMenuSubItem(context, true, false, false, resourcesProvider);
         subItem.setPadding(dp(18), 0, dp(18), 0);
 
-        subItem.setColors(textColor != null ? textColor : Theme.getColor(textColorKey, resourcesProvider), iconColor != null ? iconColor : Theme.getColor(iconColorKey, resourcesProvider));
-        subItem.setSelectorColor(selectorColor != null ? selectorColor : Theme.multAlpha(Theme.getColor(textColorKey, resourcesProvider), .12f));
+        if (textColor == null && iconColor == null) {
+            subItem.setColorKeys(textColorKey, iconColorKey);
+        } else {
+            subItem.setColors(textColor != null ? textColor : Theme.getColor(textColorKey, resourcesProvider), iconColor != null ? iconColor : Theme.getColor(iconColorKey, resourcesProvider));
+        }
+        if (selectorColor != null) {
+            subItem.setSelectorColor(selectorColor);
+        } else {
+            subItem.setSelectorColorKey(textColorKey, .12f);
+        }
 
         if (minWidthDp > 0) {
             subItem.setMinimumWidth(dp(minWidthDp));
@@ -559,9 +590,17 @@ public class ItemOptions {
             subItem.setTextAndIcon(text, R.drawable.msg_bot);
         }
 
-        subItem.setColors(textColor != null ? textColor : Theme.getColor(textColorKey, resourcesProvider), iconColor != null ? iconColor : Theme.getColor(iconColorKey, resourcesProvider));
+        if (textColor == null && iconColor == null) {
+            subItem.setColorKeys(textColorKey, iconColorKey);
+        } else {
+            subItem.setColors(textColor != null ? textColor : Theme.getColor(textColorKey, resourcesProvider), iconColor != null ? iconColor : Theme.getColor(iconColorKey, resourcesProvider));
+        }
         subItem.setIconColorImage(iconColor != null ? iconColor : Theme.getColor(iconColorKey, resourcesProvider));
-        subItem.setSelectorColor(selectorColor != null ? selectorColor : Theme.multAlpha(Theme.getColor(textColorKey, resourcesProvider), .12f));
+        if (selectorColor != null) {
+            subItem.setSelectorColor(selectorColor);
+        } else {
+            subItem.setSelectorColorKey(textColorKey, .12f);
+        }
 
         subItem.setOnClickListener(view1 -> {
             if (onClickListener != null) {
@@ -629,8 +668,16 @@ public class ItemOptions {
             subItem.addView(checkView, LayoutHelper.createFrame(34 + strokeWidth, 34 + strokeWidth, Gravity.CENTER_VERTICAL | (LocaleController.isRTL ? Gravity.RIGHT : Gravity.LEFT), -5 - strokeWidth / 2.0f, 0, -5, 0));
         }
 
-        subItem.setColors(textColor != null ? textColor : Theme.getColor(textColorKey, resourcesProvider), iconColor != null ? iconColor : Theme.getColor(iconColorKey, resourcesProvider));
-        subItem.setSelectorColor(selectorColor != null ? selectorColor : Theme.multAlpha(Theme.getColor(textColorKey, resourcesProvider), .12f));
+        if (textColor == null && iconColor == null) {
+            subItem.setColorKeys(textColorKey, iconColorKey);
+        } else {
+            subItem.setColors(textColor != null ? textColor : Theme.getColor(textColorKey, resourcesProvider), iconColor != null ? iconColor : Theme.getColor(iconColorKey, resourcesProvider));
+        }
+        if (selectorColor != null) {
+            subItem.setSelectorColor(selectorColor);
+        } else {
+            subItem.setSelectorColorKey(textColorKey, .12f);
+        }
 
         subItem.setOnClickListener(view1 -> {
             if (onClickListener != null) {
@@ -681,8 +728,16 @@ public class ItemOptions {
             subItem.addView(checkView, LayoutHelper.createFrame(34 + strokeWidth, 34 + strokeWidth, Gravity.CENTER_VERTICAL | (LocaleController.isRTL ? Gravity.RIGHT : Gravity.LEFT), -5 - strokeWidth / 2.0f, 0, -5, 0));
         }
 
-        subItem.setColors(textColor != null ? textColor : Theme.getColor(textColorKey, resourcesProvider), iconColor != null ? iconColor : Theme.getColor(iconColorKey, resourcesProvider));
-        subItem.setSelectorColor(selectorColor != null ? selectorColor : Theme.multAlpha(Theme.getColor(textColorKey, resourcesProvider), .12f));
+        if (textColor == null && iconColor == null) {
+            subItem.setColorKeys(textColorKey, iconColorKey);
+        } else {
+            subItem.setColors(textColor != null ? textColor : Theme.getColor(textColorKey, resourcesProvider), iconColor != null ? iconColor : Theme.getColor(iconColorKey, resourcesProvider));
+        }
+        if (selectorColor != null) {
+            subItem.setSelectorColor(selectorColor);
+        } else {
+            subItem.setSelectorColorKey(textColorKey, .12f);
+        }
 
         subItem.setOnClickListener(view1 -> {
             if (onClickListener != null) {
@@ -710,8 +765,16 @@ public class ItemOptions {
         subItem.setText(text);
         subItem.setSubtext(subtext);
 
-        subItem.setColors(textColor != null ? textColor : Theme.getColor(Theme.key_actionBarDefaultSubmenuItem, resourcesProvider), iconColor != null ? iconColor : Theme.getColor(Theme.key_actionBarDefaultSubmenuItemIcon, resourcesProvider));
-        subItem.setSelectorColor(selectorColor != null ? selectorColor : Theme.multAlpha(Theme.getColor(Theme.key_actionBarDefaultSubmenuItem, resourcesProvider), .12f));
+        if (textColor == null && iconColor == null) {
+            subItem.setColorKeys(Theme.key_actionBarDefaultSubmenuItem, Theme.key_actionBarDefaultSubmenuItemIcon);
+        } else {
+            subItem.setColors(textColor != null ? textColor : Theme.getColor(Theme.key_actionBarDefaultSubmenuItem, resourcesProvider), iconColor != null ? iconColor : Theme.getColor(Theme.key_actionBarDefaultSubmenuItemIcon, resourcesProvider));
+        }
+        if (selectorColor != null) {
+            subItem.setSelectorColor(selectorColor);
+        } else {
+            subItem.setSelectorColorKey(Theme.key_actionBarDefaultSubmenuItem, .12f);
+        }
 
         subItem.setOnClickListener(view1 -> {
             if (onClickListener != null) {

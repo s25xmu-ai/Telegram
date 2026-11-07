@@ -43,6 +43,7 @@ import android.view.MenuItem;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.ViewConfiguration;
 import android.view.ViewTreeObserver;
 import android.view.WindowManager;
 import android.view.accessibility.AccessibilityNodeInfo;
@@ -100,7 +101,7 @@ public class ActionBarMenuItem extends FrameLayout {
     public static void addText(ActionBarPopupWindow.ActionBarPopupWindowLayout popupLayout, String text, Theme.ResourcesProvider resourcesProvider) {
         final TextView textView = new TextView(popupLayout.getContext());
         textView.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 13);
-        textView.setTextColor(Theme.getColor(Theme.key_dialogTextBlack, resourcesProvider));
+        ThemeBind.textColor(textView, Theme.key_dialogTextBlack, resourcesProvider);
         textView.setPadding(AndroidUtilities.dp(13), AndroidUtilities.dp(8), AndroidUtilities.dp(13), AndroidUtilities.dp(8));
         textView.setText(text);
         textView.setTag(R.id.fit_width_tag, 1);
@@ -300,73 +301,125 @@ public class ActionBarMenuItem extends FrameLayout {
         super.draw(canvas);
     }
 
+    private boolean subMenuOpenedByGesture;
+
+    private void cancelShowMenuByLongPress() {
+        if (showMenuRunnable != null) {
+            AndroidUtilities.cancelRunOnUIThread(showMenuRunnable);
+            showMenuRunnable = null;
+        }
+    }
+
+    private boolean isInside(MotionEvent event, float slop) {
+        return event.getX() >= -slop && event.getY() >= -slop && event.getX() < getWidth() + slop && event.getY() < getHeight() + slop;
+    }
+
+    private void selectMenuViewUnder(MotionEvent event) {
+        getLocationOnScreen(location);
+        final float screenX = event.getX() + location[0];
+        final float screenY = event.getY() + location[1];
+        selectedMenuView = null;
+        for (int a = 0; a < popupLayout.getItemsCount(); a++) {
+            View child = popupLayout.getItemAt(a);
+            Object tag = child.getTag();
+            if (tag instanceof Integer ? (Integer) tag >= 100 : !child.hasOnClickListeners()) {
+                continue;
+            }
+            if (!(child.getParent() instanceof View)) {
+                continue;
+            }
+            ((View) child.getParent()).getLocationOnScreen(location);
+            final float x = screenX - location[0];
+            final float y = screenY - location[1];
+            child.getHitRect(rect);
+            if (child.getVisibility() != VISIBLE || !rect.contains((int) x, (int) y)) {
+                child.setPressed(false);
+                child.setSelected(false);
+                if (Build.VERSION.SDK_INT == 21 && child.getBackground() != null) {
+                    child.getBackground().setVisible(false, false);
+                }
+            } else {
+                child.setPressed(true);
+                child.setSelected(true);
+                if (Build.VERSION.SDK_INT == 21 && child.getBackground() != null) {
+                    child.getBackground().setVisible(true, false);
+                }
+                child.drawableHotspotChanged(x - child.getLeft(), y - child.getTop());
+                selectedMenuView = child;
+            }
+        }
+    }
+
     @Override
     public boolean onTouchEvent(MotionEvent event) {
+        final boolean popupShown = popupWindow != null && popupWindow.isShowing();
         if (event.getActionMasked() == MotionEvent.ACTION_DOWN) {
-            if (longClickEnabled && hasSubMenu() && (popupWindow == null || !popupWindow.isShowing())) {
+            subMenuOpenedByGesture = false;
+            if (longClickEnabled && hasSubMenu() && !popupShown) {
+                cancelShowMenuByLongPress();
                 showMenuRunnable = () -> {
+                    showMenuRunnable = null;
                     if (getParent() != null) {
                         getParent().requestDisallowInterceptTouchEvent(true);
                     }
                     toggleSubMenu();
+                    subMenuOpenedByGesture = true;
                 };
                 AndroidUtilities.runOnUIThread(showMenuRunnable, 200);
             }
         } else if (event.getActionMasked() == MotionEvent.ACTION_MOVE) {
-            if (showSubmenuByMove && hasSubMenu() && (popupWindow == null || !popupWindow.isShowing())) {
+            if (showMenuRunnable != null && !isInside(event, ViewConfiguration.get(getContext()).getScaledTouchSlop())) {
+                cancelShowMenuByLongPress();
+            }
+            if (showSubmenuByMove && hasSubMenu() && !popupShown) {
                 if (event.getY() > getHeight()) {
                     if (getParent() != null) {
                         getParent().requestDisallowInterceptTouchEvent(true);
                     }
                     toggleSubMenu();
+                    subMenuOpenedByGesture = true;
                     return true;
                 }
-            } else if (showSubmenuByMove && popupWindow != null && popupWindow.isShowing()) {
-                getLocationOnScreen(location);
-                float x = event.getX() + location[0];
-                float y = event.getY() + location[1];
-                popupLayout.getLocationOnScreen(location);
-                x -= location[0];
-                y -= location[1];
-                selectedMenuView = null;
-                for (int a = 0; a < popupLayout.getItemsCount(); a++) {
-                    View child = popupLayout.getItemAt(a);
-                    child.getHitRect(rect);
-                    Object tag = child.getTag();
-                    if (tag instanceof Integer && (Integer) tag < 100) {
-                        if (!rect.contains((int) x, (int) y)) {
-                            child.setPressed(false);
-                            child.setSelected(false);
-                            if (Build.VERSION.SDK_INT == 21 && child.getBackground() != null) {
-                                child.getBackground().setVisible(false, false);
-                            }
-                        } else {
-                            child.setPressed(true);
-                            child.setSelected(true);
-                            if (Build.VERSION.SDK_INT == 21 && child.getBackground() != null) {
-                                child.getBackground().setVisible(true, false);
-                            }
-                            child.drawableHotspotChanged(x, y - child.getTop());
-                            selectedMenuView = child;
-                        }
-                    }
-                }
+            } else if ((showSubmenuByMove || subMenuOpenedByGesture) && popupShown) {
+                selectMenuViewUnder(event);
             }
-        } else if (popupWindow != null && popupWindow.isShowing() && event.getActionMasked() == MotionEvent.ACTION_UP) {
+        } else if (event.getActionMasked() == MotionEvent.ACTION_UP && popupShown) {
+            cancelShowMenuByLongPress();
             if (selectedMenuView != null) {
-                selectedMenuView.setSelected(false);
-                if (parentMenu != null) {
-                    parentMenu.onItemClick((Integer) selectedMenuView.getTag());
-                } else if (delegate != null) {
-                    delegate.onItemClick((Integer) selectedMenuView.getTag());
+                View selected = selectedMenuView;
+                selectedMenuView = null;
+                selected.setSelected(false);
+                selected.setPressed(false);
+                Object tag = selected.getTag();
+                if (!(tag instanceof Integer)) {
+                    selected.performClick();
+                } else {
+                    if (parentMenu != null) {
+                        parentMenu.onItemClick((Integer) tag);
+                    } else if (delegate != null) {
+                        delegate.onItemClick((Integer) tag);
+                    }
+                    popupWindow.dismiss(allowCloseAnimation);
                 }
-                popupWindow.dismiss(allowCloseAnimation);
             } else if (showSubmenuByMove) {
                 popupWindow.dismiss();
             }
+            if (subMenuOpenedByGesture) {
+                subMenuOpenedByGesture = false;
+                MotionEvent cancel = MotionEvent.obtain(event);
+                cancel.setAction(MotionEvent.ACTION_CANCEL);
+                super.onTouchEvent(cancel);
+                cancel.recycle();
+                return true;
+            }
         } else {
+            if (event.getActionMasked() == MotionEvent.ACTION_UP || event.getActionMasked() == MotionEvent.ACTION_CANCEL) {
+                cancelShowMenuByLongPress();
+                subMenuOpenedByGesture = false;
+            }
             if (selectedMenuView != null) {
                 selectedMenuView.setSelected(false);
+                selectedMenuView.setPressed(false);
                 selectedMenuView = null;
             }
         }
@@ -490,7 +543,7 @@ public class ActionBarMenuItem extends FrameLayout {
     public TextView addSubItem(int id, CharSequence text) {
         createPopupLayout();
         TextView textView = new TextView(getContext());
-        textView.setTextColor(getThemedColor(Theme.key_actionBarDefaultSubmenuItem));
+        ThemeBind.textColor(textView, Theme.key_actionBarDefaultSubmenuItem, resourcesProvider);
         textView.setBackgroundDrawable(Theme.getSelectorDrawable(false));
         if (!LocaleController.isRTL) {
             textView.setGravity(Gravity.CENTER_VERTICAL);
