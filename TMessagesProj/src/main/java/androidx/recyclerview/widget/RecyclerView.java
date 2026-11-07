@@ -2564,7 +2564,15 @@ public class RecyclerView extends ViewGroup implements ScrollingView,
     /**
      * Apply a pull to relevant overscroll glow effects
      */
+    /** A transparent glow is not drawn and cannot finish its animation. */
+    private boolean isGlowDisabled() {
+        return glowColor != null && glowColor == 0;
+    }
+
     private void pullGlows(float x, float overscrollX, float y, float overscrollY) {
+        if (isGlowDisabled()) {
+            return;
+        }
         boolean invalidate = false;
         if (overscrollX < 0) {
             ensureLeftGlow();
@@ -2638,6 +2646,9 @@ public class RecyclerView extends ViewGroup implements ScrollingView,
     }
 
     void absorbGlows(int velocityX, int velocityY) {
+        if (isGlowDisabled()) {
+            return;
+        }
         if (velocityX < 0) {
             ensureLeftGlow();
             if (mLeftGlow.isFinished()) {
@@ -4479,7 +4490,7 @@ public class RecyclerView extends ViewGroup implements ScrollingView,
         // TODO If padding is not 0 and clipChildrenToPadding is false, to draw glows properly, we
         // need find children closest to edges. Not sure if it is worth the effort.
         boolean needsInvalidate = false;
-        if (glowColor == null || glowColor != 0) {
+        if (!isGlowDisabled()) {
             if (mLeftGlow != null && !mLeftGlow.isFinished()) {
                 final int restore = c.save();
                 final int padding = mClipToPadding ? getPaddingBottom() : 0;
