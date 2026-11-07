@@ -16,6 +16,7 @@ import static org.telegram.ui.Components.Premium.LimitReachedBottomSheet.TYPE_BO
 import android.Manifest;
 import android.animation.Animator;
 import android.animation.AnimatorListenerAdapter;
+import android.animation.ObjectAnimator;
 import android.animation.ValueAnimator;
 import android.annotation.SuppressLint;
 import android.app.Activity;
@@ -58,7 +59,6 @@ import android.view.KeyEvent;
 import android.view.Menu;
 import android.view.MotionEvent;
 import android.view.View;
-import android.view.ViewAnimationUtils;
 import android.view.ViewGroup;
 import android.view.ViewTreeObserver;
 import android.view.Window;
@@ -211,6 +211,7 @@ import org.telegram.ui.Components.StickersAlert;
 import org.telegram.ui.Components.TermsOfServiceView;
 import org.telegram.ui.Components.TextStyleSpan;
 import org.telegram.ui.Components.ThemeEditorView;
+import org.telegram.ui.Components.ThemeRevealView;
 import org.telegram.ui.Components.UndoView;
 import org.telegram.ui.Components.inset.WindowAnimatedInsetsProvider;
 import org.telegram.ui.Components.poll.PollAttachedMediaPack;
@@ -302,7 +303,7 @@ public class LaunchActivity extends BasePermissionsActivity implements INavigati
     private final PipActivityController pipActivityController = new PipActivityController(this);
     private final IPipActivityHandler pipActivityHandler = pipActivityController.getHandler();
 
-    private ImageView themeSwitchImageView;
+    private ThemeRevealView themeSwitchImageView;
     private ImageView themeSwitchSunView;
     public ActionBarLayout actionBarLayout;
     private ActionBarLayout layersActionBarLayout;
@@ -488,7 +489,7 @@ public class LaunchActivity extends BasePermissionsActivity implements INavigati
         ((ViewGroup) (getWindow().getDecorView())).addView(pipActivityController.getPipContentView());
         pipActivityController.getPipContentView().bringToFront();
 
-        themeSwitchImageView = new ImageView(this);
+        themeSwitchImageView = new ThemeRevealView(this);
         themeSwitchImageView.setVisibility(View.GONE);
 
         drawerLayoutContainer = new DrawerLayoutContainer(this);
@@ -7509,9 +7510,6 @@ public class LaunchActivity extends BasePermissionsActivity implements INavigati
                     final boolean colorNotDark = args.length > 8 ? (boolean) args[8] : false;
                     int w = drawerLayoutContainer.getMeasuredWidth();
                     int h = drawerLayoutContainer.getMeasuredHeight();
-                    if (!toDark && darkThemeView != null) {
-                        darkThemeView.setVisibility(View.INVISIBLE);
-                    }
                     rippleAbove = null;
                     if (args.length > 6) {
                         rippleAbove = (View) args[6];
@@ -7525,36 +7523,40 @@ public class LaunchActivity extends BasePermissionsActivity implements INavigati
                     }
 
                     Bitmap bitmap = null;
+                    boolean windowBitmap = false;
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                         bitmap = AndroidUtilities.getBitmapFromWindow(getWindow());
+                        windowBitmap = bitmap != null;
                     }
                     if (bitmap == null) {
                         bitmap = AndroidUtilities.snapshotView(drawerLayoutContainer);
+                    }
+                    if (bitmap == null) {
+                        throw new IllegalStateException("Theme snapshot unavailable");
+                    }
+                    if (darkThemeView != null) {
+                        ThemeRevealView.eraseFromSnapshot(bitmap, windowBitmap ? null : drawerLayoutContainer, darkThemeView);
                     }
                     if (rippleAbove != null && rippleAbove.getBackground() != null) {
                         rippleAbove.getBackground().setAlpha(255);
                     }
                     frameLayout.removeView(themeSwitchImageView);
-                    themeSwitchImageView = new ImageView(this);
+                    themeSwitchImageView = new ThemeRevealView(this);
                     final RLottieDrawable drawable = darkThemeView != null ? darkThemeView.getAnimatedDrawable() : null;
-                    themeSwitchSunView.setImageDrawable(drawable);
-                    if (toDark) {
-                        frameLayout.addView(themeSwitchImageView, 0, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.MATCH_PARENT));
-                        themeSwitchSunView.setVisibility(View.GONE);
-                    } else {
-                        frameLayout.addView(themeSwitchImageView, 1, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.MATCH_PARENT));
-                        themeSwitchSunView.setTranslationX(pos[0] - dp(24));
-                        themeSwitchSunView.setTranslationY(pos[1] - dp(24));
-                        themeSwitchSunView.setVisibility(View.VISIBLE);
-                        themeSwitchSunView.invalidate();
+                    frameLayout.addView(themeSwitchImageView, 1, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.MATCH_PARENT));
+                    themeSwitchSunView.setVisibility(View.GONE);
+                    if (darkThemeView != null) {
+                        themeSwitchImageView.setIcon(darkThemeView, drawable != null ? drawable.getColorFilter() : null);
                     }
                     themeSwitchImageView.setImageBitmap(bitmap);
                     themeSwitchImageView.setVisibility(View.VISIBLE);
                     float finalRadius = (float) Math.max(Math.sqrt((w - pos[0]) * (w - pos[0]) + (h - pos[1]) * (h - pos[1])), Math.sqrt(pos[0] * pos[0] + (h - pos[1]) * (h - pos[1])));
                     float finalRadius2 = (float) Math.max(Math.sqrt((w - pos[0]) * (w - pos[0]) + pos[1] * pos[1]), Math.sqrt(pos[0] * pos[0] + pos[1] * pos[1]));
                     finalRadius = Math.max(finalRadius, finalRadius2);
-                    Animator anim = ViewAnimationUtils.createCircularReveal(toDark ? drawerLayoutContainer : themeSwitchImageView, pos[0], pos[1], toDark ? 0 : finalRadius, toDark ? finalRadius : 0);
-                    anim.setDuration(400);
+                    themeSwitchImageView.setMask(pos[0], pos[1], toDark);
+                    final float softRadius = finalRadius / (1f - ThemeRevealView.SOFT_EDGE);
+                    Animator anim = ObjectAnimator.ofFloat(themeSwitchImageView, ThemeRevealView.RADIUS, toDark ? 0 : softRadius, toDark ? softRadius : 0);
+                    anim.setDuration(450);
                     anim.setInterpolator(Easings.easeInOutQuad);
                     anim.addListener(new AnimatorListenerAdapter() {
                         @Override
@@ -7563,13 +7565,14 @@ public class LaunchActivity extends BasePermissionsActivity implements INavigati
                             drawerLayoutContainer.invalidate();
                             themeSwitchImageView.invalidate();
                             themeSwitchImageView.setImageDrawable(null);
+                            themeSwitchImageView.clearMask();
                             themeSwitchImageView.setVisibility(View.GONE);
                             themeSwitchSunView.setVisibility(View.GONE);
                             if (darkThemeView != null) {
                                 darkThemeView.setImageDrawable(drawable);
                             }
                             NotificationCenter.getGlobalInstance().postNotificationName(NotificationCenter.themeAccentListUpdated);
-                            if (!toDark && darkThemeView != null) {
+                            if (darkThemeView != null) {
                                 darkThemeView.setVisibility(View.VISIBLE);
                             }
                             DialogsActivity.switchingTheme = false;
@@ -7592,7 +7595,14 @@ public class LaunchActivity extends BasePermissionsActivity implements INavigati
                 } catch (Throwable e) {
                     FileLog.e(e);
                     try {
+                        if (rippleAbove != null && rippleAbove.getBackground() != null) {
+                            rippleAbove.getBackground().setAlpha(255);
+                        }
+                        rippleAbove = null;
+                        isNavigationBarColorFrozen = false;
                         themeSwitchImageView.setImageDrawable(null);
+                        themeSwitchImageView.clearMask();
+                        themeSwitchImageView.setVisibility(View.GONE);
                         frameLayout.removeView(themeSwitchImageView);
                         DialogsActivity.switchingTheme = false;
                     } catch (Exception e2) {
