@@ -3,7 +3,9 @@
     <string name="XGramWalletLabel">Wallet</string>
     <string name="XGramUISettings">Interface settings</string>
     <string name="XGramHomeBottomBar">Show bottom bar on home</string>
-    <string name="XGramHomeBottomBarInfo">Restart the app to fully apply this setting.</string>
+    <string name="XGramHomeBottomBarInfo">Show or hide the navigation bar on the chats screen.</string>
+    <string name="XGramClassicUI">Classic interface</string>
+    <string name="XGramClassicDrawer">Classic menu</string>
     <string name="XGramBrowserUnavailable">No browser is available to open this link.</string>
     <string name="XGramBuyPremium">Buy Premium</string>
 </resources>

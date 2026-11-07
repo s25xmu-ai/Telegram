@@ -160,7 +160,7 @@ public class ThemeActivity extends BaseFragment implements NotificationCenter.No
     private int raiseToListenRow;
     private int nextMediaTapRow;
     private int sendByEnterRow;
-    private int xgramUIHeaderRow, xgramUISectionRow, xgramHomeBarRow;
+    private int xgramUIHeaderRow, xgramUISectionRow, xgramHomeBarRow, xgramClassicUIRow;
     private int xgramIOSInputRow;
     private int xgramIOSMenuRow;
     private int saveToGalleryOption1Row;
@@ -600,6 +600,7 @@ public class ThemeActivity extends BaseFragment implements NotificationCenter.No
         xgramUIHeaderRow = -1;
         xgramUISectionRow = -1;
         xgramHomeBarRow = -1;
+        xgramClassicUIRow = -1;
         xgramIOSInputRow = -1;
         xgramIOSMenuRow = -1;
         saveToGalleryOption1Row = -1;
@@ -722,6 +723,7 @@ public class ThemeActivity extends BaseFragment implements NotificationCenter.No
 
             xgramUIHeaderRow = rowCount++;
             xgramHomeBarRow = rowCount++;
+            xgramClassicUIRow = rowCount++;
             xgramIOSInputRow = rowCount++;
             xgramIOSMenuRow = rowCount++;
             xgramUISectionRow = rowCount++;
@@ -1146,6 +1148,8 @@ public class ThemeActivity extends BaseFragment implements NotificationCenter.No
                 if (view instanceof TextCheckCell) {
                     ((TextCheckCell) view).setChecked(!send);
                 }
+            } else if (position == xgramClassicUIRow) {
+                presentFragment(new ClassicUISettingsActivity());
             } else if (position == xgramHomeBarRow) {
                 boolean value = !XGramConfig.isHomeBottomBarVisible();
                 XGramConfig.setHomeBottomBarVisible(value);
@@ -2555,6 +2559,8 @@ public class ThemeActivity extends BaseFragment implements NotificationCenter.No
                         updateDistance = false;
                     } else if (position == searchEngineRow) {
                         cell.setTextAndValue(getString(R.string.SearchEngine), SearchEngine.getCurrent().name, updateSearchEngine, false);
+                    } else if (position == xgramClassicUIRow) {
+                        cell.setText(getString(R.string.XGramClassicUI), true);
                     } else if (position == bluetoothScoRow) {
                         cell.setTextAndValue(getString(R.string.MicrophoneForVoiceMessages), getString(SharedConfig.recordViaSco ? R.string.MicrophoneForVoiceMessagesSco : R.string.MicrophoneForVoiceMessagesBuiltIn), updateRecordViaSco, false);
                         updateRecordViaSco = false;
@@ -2777,7 +2783,7 @@ public class ThemeActivity extends BaseFragment implements NotificationCenter.No
 
         @Override
         public int getItemViewType(int position) {
-            if (position == scheduleFromRow || position == distanceRow ||
+            if (position == xgramClassicUIRow || position == scheduleFromRow || position == distanceRow ||
                     position == scheduleToRow || position == scheduleUpdateLocationRow ||
                     position == contactsReimportRow || position == contactsSortRow ||
                     position == bluetoothScoRow || position == searchEngineRow) {

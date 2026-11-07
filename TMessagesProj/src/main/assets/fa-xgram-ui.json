@@ -255,7 +255,7 @@
   "WalletGiftDragHint": "برای تزیین کارت، این کلکسیونی را روی آن بکشید.",
   "WalletGiftDragHere": "این کلکسیونی را اینجا بکشید.",
   "XGramHomeBottomBar": "نمایش نوار پایین صفحهٔ اصلی",
-  "XGramHomeBottomBarInfo": "برای اعمال کامل این تنظیم، برنامه را دوباره باز کنید.",
+  "XGramHomeBottomBarInfo": "نمایش یا مخفی کردن نوار پایین در صفحه گفتگوها.",
   "PaymentInvoiceDisabledStarsText": "ستاره کافی نیست",
   "StarsPurchaseUnavailable": "خرید ستاره در حال حاضر در دسترس نیست.",
   "MenuProxyDisabled": "غیرفعال",
@@ -384,5 +384,7 @@
   "SessionBotDevice": "دستگاه",
   "SessionBotLocation": "موقعیت",
   "XGramBrowserUnavailable": "مرورگری برای باز کردن این پیوند در دسترس نیست.",
-  "XGramBuyPremium": "خرید پریمیوم"
+  "XGramBuyPremium": "خرید پریمیوم",
+  "XGramClassicUI": "رابط کاربری کلاسیک",
+  "XGramClassicDrawer": "منوی کلاسیک"
 }

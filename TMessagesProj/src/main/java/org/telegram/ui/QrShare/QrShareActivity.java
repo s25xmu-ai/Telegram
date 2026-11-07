@@ -59,6 +59,8 @@ public class QrShareActivity extends BaseFragment {
 
     /** boolean: the gifts, the emoji and the blur show during the open already (high-end devices only). */
     public static final String ARG_IMMEDIATE = "immediate";
+    public static final String ARG_OPEN_SCANNER = "open_scanner";
+    private boolean openScannerAfterTransition;
     private boolean immediateOnOpen;
 
     /** The own QR. */
@@ -70,6 +72,7 @@ public class QrShareActivity extends BaseFragment {
 
     @Override
     public boolean onFragmentCreate() {
+        openScannerAfterTransition = arguments != null && arguments.getBoolean(ARG_OPEN_SCANNER);
         userId = arguments != null ? arguments.getLong("user_id") : 0;
         chatId = arguments != null ? arguments.getLong("chat_id") : 0;
         immediateOnOpen = arguments != null && arguments.getBoolean(ARG_IMMEDIATE)
@@ -806,6 +809,10 @@ public class QrShareActivity extends BaseFragment {
     public void onTransitionAnimationEnd(boolean isOpen, boolean backward) {
         super.onTransitionAnimationEnd(isOpen, backward);
         if (isOpen) opened = true;
+        if (isOpen && !backward && openScannerAfterTransition) {
+            openScannerAfterTransition = false;
+            onScanClick();
+        }
         if (isOpen && view != null) view.setReveal(1f); // opened without the custom transition: shown as it is
         if (isOpen && !backward && frame != null) {
             // building the keyboard blocks the main thread ~280 ms (34 skipped frames): only after the open, the QR intro

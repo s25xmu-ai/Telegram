@@ -198,7 +198,7 @@ public class MainTabsActivity extends ViewPagerActivity implements NotificationC
         Bulletin.Delegate delegate = new Bulletin.Delegate() {
             @Override
             public int getBottomOffset(int tag) {
-                return navigationBarHeight + dp(DialogsActivity.MAIN_TABS_HEIGHT + DialogsActivity.MAIN_TABS_MARGIN);
+                return navigationBarHeight + (XGramConfig.isHomeBottomBarVisible() || viewPager != null && viewPager.getCurrentPosition() != POSITION_CHATS ? dp(DialogsActivity.MAIN_TABS_HEIGHT + DialogsActivity.MAIN_TABS_MARGIN) : 0);
             }
         };
 
@@ -964,7 +964,15 @@ public class MainTabsActivity extends ViewPagerActivity implements NotificationC
 
     @Override
     public void didReceivedNotification(int id, int account, Object... args) {
-        if (id == NotificationCenter.notificationsCountUpdated || id == NotificationCenter.updateInterfaces) {
+        if (id == NotificationCenter.xgramInterfaceSettingsChanged) {
+            checkUi_tabsPosition();
+            checkUi_fadeView();
+            if (contentView != null) {
+                androidx.core.view.ViewCompat.requestApplyInsets(contentView);
+                contentView.requestLayout();
+                contentView.invalidate();
+            }
+        } else if (id == NotificationCenter.notificationsCountUpdated || id == NotificationCenter.updateInterfaces) {
             checkUnreadCount(fragmentView != null && fragmentView.isAttachedToWindow());
         } else if (id == NotificationCenter.appUpdateLoading) {
             if (updateLayout != null) {
@@ -1030,6 +1038,7 @@ public class MainTabsActivity extends ViewPagerActivity implements NotificationC
             .add(NotificationCenter.callTabsVisibleToggled)
             .add(NotificationCenter.mainUserInfoChanged)
             .add(NotificationCenter.contactsPermissionBadgeCheck)
+            .addGlobal(NotificationCenter.xgramInterfaceSettingsChanged)
             .addGlobal(NotificationCenter.appUpdateAvailable)
             .addGlobal(NotificationCenter.appUpdateLoading)
             .addGlobal(NotificationCenter.needSetDayNightTheme);
