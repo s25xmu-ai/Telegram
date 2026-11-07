@@ -207,6 +207,11 @@ public class ActionBar extends FrameLayout implements FactorAnimator.Target, The
         this.chatAvatarContainer = chatAvatarContainer;
     }
 
+    /** Width already occupied by visible action items, for optional chat header layouts. */
+    public int getVisibleMenuWidth() {
+        return menu == null ? 0 : menu.getVisibleItemsMeasuredWidth();
+    }
+
     public void setupGlass(BlurredBackgroundDrawableViewFactory factory, BlurredBackgroundColorProvider colorProvider) {
         setupGlass(factory, colorProvider, false);
     }

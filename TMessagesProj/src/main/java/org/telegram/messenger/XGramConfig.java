@@ -24,6 +24,7 @@ public final class XGramConfig {
     private static final String KEY_CLASSIC_MESSAGE_MENU = "classic_message_menu";
     private static final String KEY_CLASSIC_INPUT = "classic_message_input";
     private static final String KEY_CLASSIC_CHAT_HEADER_LAYOUT = "classic_chat_header_layout";
+    private static final String KEY_IOS_CHAT_HEADER_LAYOUT = "ios_chat_header_layout";
 
     private static SharedPreferences prefs() {
         return ApplicationLoader.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
@@ -65,7 +66,17 @@ public final class XGramConfig {
     public static void setClassicMessageInput(boolean value) { prefs().edit().putBoolean(KEY_CLASSIC_INPUT, value).apply(); }
 
     public static boolean isClassicChatHeaderLayout() { return prefs().getBoolean(KEY_CLASSIC_CHAT_HEADER_LAYOUT, false); }
-    public static void setClassicChatHeaderLayout(boolean value) { prefs().edit().putBoolean(KEY_CLASSIC_CHAT_HEADER_LAYOUT, value).apply(); }
+    public static void setClassicChatHeaderLayout(boolean value) {
+        SharedPreferences.Editor editor = prefs().edit().putBoolean(KEY_CLASSIC_CHAT_HEADER_LAYOUT, value);
+        if (value) editor.putBoolean(KEY_IOS_CHAT_HEADER_LAYOUT, false);
+        editor.apply();
+    }
+    public static boolean isIOSChatHeaderLayout() { return prefs().getBoolean(KEY_IOS_CHAT_HEADER_LAYOUT, false) && !isClassicChatHeaderLayout(); }
+    public static void setIOSChatHeaderLayout(boolean value) {
+        SharedPreferences.Editor editor = prefs().edit().putBoolean(KEY_IOS_CHAT_HEADER_LAYOUT, value);
+        if (value) editor.putBoolean(KEY_CLASSIC_CHAT_HEADER_LAYOUT, false);
+        editor.apply();
+    }
 
     /** iOS-style chat bottom bar (message input field). Enabled by default. */
     public static boolean isIOSMessageInputField() {

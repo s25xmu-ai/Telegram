@@ -6,8 +6,9 @@
     <string name="XGramHomeBottomBarInfo">Show or hide the navigation bar on the chats screen.</string>
     <string name="XGramClassicUI">Classic interface</string>
     <string name="XGramIOSUI">iOS interface</string>
-    <string name="XGramIOSUIInfo">These options control the existing iOS-inspired message styles. Enabling one replaces the classic style for the same component. Reopen the chat to apply the message bar.</string>
-    <string name="XGramClassicChatHeaderLayout">Classic chat header avatar and text layout</string>
+    <string name="XGramIOSUIInfo">These options can be combined. Enabling an iOS style replaces the classic style for the same component. Reopen the chat to apply the message bar and header.</string>
+    <string name="XGramIOSChatHeader">iOS-inspired chat header (in progress)</string>
+    <string name="XGramClassicChatHeaderLayout">Classic chat header (in progress)</string>
     <string name="XGramClassicDrawer">Classic menu</string>
     <string name="XGramClassicDialogRows">Classic chat list row dimensions</string>
     <string name="XGramClassicMessageMenu">Classic message menu background</string>

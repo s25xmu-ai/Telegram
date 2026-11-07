@@ -37,11 +37,17 @@ public class IOSUISettingsActivity extends BaseFragment {
             XGramConfig.setIOSMessageInputField(value);
             input.setChecked(value);
         });
-        TextCheckCell menu = addToggle(context, list, R.string.XGramIOSMessageMenu, XGramConfig.isIOSMessageMenu(), false);
+        TextCheckCell menu = addToggle(context, list, R.string.XGramIOSMessageMenu, XGramConfig.isIOSMessageMenu(), true);
         menu.setOnClickListener(v -> {
             boolean value = !XGramConfig.isIOSMessageMenu();
             XGramConfig.setIOSMessageMenu(value);
             menu.setChecked(value);
+        });
+        TextCheckCell header = addToggle(context, list, R.string.XGramIOSChatHeader, XGramConfig.isIOSChatHeaderLayout(), false);
+        header.setOnClickListener(v -> {
+            boolean value = !XGramConfig.isIOSChatHeaderLayout();
+            XGramConfig.setIOSChatHeaderLayout(value);
+            header.setChecked(value);
         });
         TextView info = new TextView(context);
         info.setTypeface(AndroidUtilities.getVazirmatnTypeface());

@@ -700,6 +700,8 @@ public class ChatActivity extends BaseFragment implements
 
     public String quickReplyShortcut;
     private int chatMode;
+    private boolean xgramClassicChatHeader;
+    private boolean xgramIOSChatHeader;
     private int scheduledMessagesCount = -1;
     public boolean isSubscriberSuggestions;
 
@@ -3630,6 +3632,9 @@ public class ChatActivity extends BaseFragment implements
 
     @Override
     public View createView(Context context) {
+        boolean standardHeader = chatMode == MODE_DEFAULT && !isInsideContainer && !inPreviewMode && !inBubbleMode && !isReport();
+        xgramClassicChatHeader = standardHeader && XGramConfig.isClassicChatHeaderLayout();
+        xgramIOSChatHeader = standardHeader && XGramConfig.isIOSChatHeaderLayout();
         Timer t = Timer.create("ChatActivity.createView");
 
         blurredBackgroundColorProvider = new BlurredBackgroundColorProviderThemed(themeDelegate, Theme.key_chat_messagePanelBackground) {
@@ -4229,7 +4234,8 @@ public class ChatActivity extends BaseFragment implements
                 openSearchWithText(isSupportedTags() ? "" : null);
             }
         };
-        if (XGramConfig.isClassicChatHeaderLayout()) avatarContainer.setClassicHeaderLayout();
+        if (xgramClassicChatHeader) avatarContainer.setClassicHeaderLayout();
+        else if (xgramIOSChatHeader) avatarContainer.setIOSHeaderLayout();
         else avatarContainer.setGlassMode();
         avatarContainer.allowShorterStatus = true;
         avatarContainer.premiumIconHiddable = true;
@@ -4643,10 +4649,14 @@ public class ChatActivity extends BaseFragment implements
 
         contentView.setOccupyStatusBar(!inBubbleMode && !isInsideContainer && !inPreviewMode);
 
-        actionBar.setupGlass(
-            glassBackgroundDrawableFactory,
-            BlurredBackgroundProviderImpl.topPanelChatActivity(themeDelegate),
-            ChatObject.isForum(currentChat));
+        if (xgramClassicChatHeader || xgramIOSChatHeader) {
+            updateXGramChatHeaderColors();
+        } else {
+            actionBar.setupGlass(
+                glassBackgroundDrawableFactory,
+                BlurredBackgroundProviderImpl.topPanelChatActivity(themeDelegate),
+                ChatObject.isForum(currentChat));
+        }
 
         if (chatMode == MODE_PINNED) {
             actionBar.setChatAvatarContainer(avatarContainer);
@@ -42964,6 +42974,7 @@ public class ChatActivity extends BaseFragment implements
             if (avatarContainer != null) {
                 avatarContainer.updateColors();
             }
+            updateXGramChatHeaderColors();
             if (contentView != null) {
                 contentView.invalidateBlurredViews();
                 contentView.invalidateBackground();
@@ -42998,8 +43009,15 @@ public class ChatActivity extends BaseFragment implements
         themeDescriptions.add(new ThemeDescription(fragmentView, 0, null, null, null, null, Theme.key_chat_wallpaper_gradient_to2));
         themeDescriptions.add(new ThemeDescription(fragmentView, 0, null, null, null, null, Theme.key_chat_wallpaper_gradient_to3));
 
+        if (xgramClassicChatHeader || xgramIOSChatHeader) {
+            themeDescriptions.add(new ThemeDescription(null, 0, null, null, null, selectedBackgroundDelegate, xgramIOSChatHeader ? Theme.key_windowBackgroundWhite : Theme.key_actionBarDefault));
+            if (xgramIOSChatHeader) {
+                themeDescriptions.add(new ThemeDescription(null, 0, null, null, null, selectedBackgroundDelegate, Theme.key_windowBackgroundWhiteBlackText));
+                themeDescriptions.add(new ThemeDescription(null, 0, null, null, null, selectedBackgroundDelegate, Theme.key_windowBackgroundWhiteBlueText));
+            }
+        }
         if (!isReport()) {
-            themeDescriptions.add(new ThemeDescription(actionBar, ThemeDescription.FLAG_AB_ITEMSCOLOR, null, null, null, null, Theme.key_actionBarDefaultIcon));
+            themeDescriptions.add(new ThemeDescription(actionBar, ThemeDescription.FLAG_AB_ITEMSCOLOR, null, null, null, null, xgramIOSChatHeader ? Theme.key_windowBackgroundWhiteBlueText : Theme.key_actionBarDefaultIcon));
             themeDescriptions.add(new ThemeDescription(actionBar, ThemeDescription.FLAG_AB_SELECTORCOLOR, null, null, null, null, Theme.key_actionBarDefaultSelector));
             themeDescriptions.add(new ThemeDescription(actionBar, ThemeDescription.FLAG_AB_TITLECOLOR, null, null, null, null, Theme.key_actionBarDefaultTitle));
             themeDescriptions.add(new ThemeDescription(actionBar, ThemeDescription.FLAG_AB_SUBTITLECOLOR, null, null, null, null, Theme.key_actionBarDefaultSubtitle));
@@ -43014,7 +43032,7 @@ public class ChatActivity extends BaseFragment implements
         themeDescriptions.add(new ThemeDescription(actionBar, ThemeDescription.FLAG_AB_SUBMENUITEM | ThemeDescription.FLAG_IMAGECOLOR, null, null, null, selectedBackgroundDelegate, Theme.key_actionBarDefaultSubmenuItemIcon));
         themeDescriptions.add(new ThemeDescription(chatListView, ThemeDescription.FLAG_LISTGLOWCOLOR, null, null, null, null, Theme.key_actionBarDefault));
 
-        themeDescriptions.add(new ThemeDescription(avatarContainer != null ? avatarContainer.getTitleTextView() : null, ThemeDescription.FLAG_TEXTCOLOR, null, null, null, null, Theme.key_actionBarDefaultTitle));
+        themeDescriptions.add(new ThemeDescription(avatarContainer != null ? avatarContainer.getTitleTextView() : null, ThemeDescription.FLAG_TEXTCOLOR, null, null, null, null, xgramIOSChatHeader ? Theme.key_windowBackgroundWhiteBlackText : Theme.key_actionBarDefaultTitle));
         themeDescriptions.add(new ThemeDescription(avatarContainer != null ? avatarContainer.getTitleTextView() : null, ThemeDescription.FLAG_IMAGECOLOR, null, null, null, null, Theme.key_actionBarDefaultSubtitle));
         themeDescriptions.add(new ThemeDescription(avatarContainer != null ? avatarContainer.getSubtitleTextView() : null, ThemeDescription.FLAG_TEXTCOLOR | ThemeDescription.FLAG_CHECKTAG, null, new Paint[]{Theme.chat_statusPaint, Theme.chat_statusRecordPaint}, null, null, Theme.key_chat_status, null));
         themeDescriptions.add(new ThemeDescription(avatarContainer != null ? avatarContainer.getSubtitleTextView() : null, ThemeDescription.FLAG_TEXTCOLOR | ThemeDescription.FLAG_CHECKTAG, null, null, null, null, Theme.key_actionBarDefaultSubtitle, null));
@@ -44658,8 +44676,22 @@ public class ChatActivity extends BaseFragment implements
         return super.hideKeyboardOnShow();
     }
 
+    private void updateXGramChatHeaderColors() {
+        if (actionBar == null || !(xgramClassicChatHeader || xgramIOSChatHeader)) return;
+        actionBar.setBackgroundColor(getThemedColor(xgramIOSChatHeader ? Theme.key_windowBackgroundWhite : Theme.key_actionBarDefault));
+        actionBar.setItemsColor(getThemedColor(xgramIOSChatHeader ? Theme.key_windowBackgroundWhiteBlueText : Theme.key_actionBarDefaultIcon), false);
+        if (avatarContainer != null && xgramIOSChatHeader) {
+            avatarContainer.getTitleTextView().setTextColor(getThemedColor(Theme.key_windowBackgroundWhiteBlackText));
+            avatarContainer.setOverrideSubtitleColor(getThemedColor(Theme.key_windowBackgroundWhiteBlueText));
+            avatarContainer.updateSubtitle();
+        }
+    }
+
     @Override
     public boolean isLightStatusBar() {
+        if ((xgramClassicChatHeader || xgramIOSChatHeader) && actionBar != null && !actionBar.isActionModeShowed()) {
+            return ColorUtils.calculateLuminance(getThemedColor(xgramIOSChatHeader ? Theme.key_windowBackgroundWhite : Theme.key_actionBarDefault)) > 0.7f;
+        }
         if (isReport()) {
             Theme.ResourcesProvider resourcesProvider = getResourceProvider();
             int color;

@@ -664,8 +664,16 @@ public class ChatAvatarContainer extends FrameLayout implements FactorAnimator.T
     @Override
     protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
         final int width = MeasureSpec.getSize(widthMeasureSpec);
-        final int availableWidth = width - dp((avatarImageView.getVisibility() == VISIBLE ? 54 : 0) + 16);
-        int avatarSize = dp(avatarSizeInDp) - (classicHeaderLayout ? 0 : 2);
+        final int availableWidth;
+        if (iosHeaderLayout) {
+            int avatarLeft = getIOSAvatarLeft(width);
+            int center = width / 2;
+            int end = avatarImageView.getVisibility() == VISIBLE ? avatarLeft - dp(8) : width - dp(8);
+            availableWidth = Math.max(0, 2 * Math.min(center - dp(8), end - center));
+        } else {
+            availableWidth = Math.max(0, width - dp((avatarImageView.getVisibility() == VISIBLE ? 54 : 0) + 16));
+        }
+        int avatarSize = dp(avatarSizeInDp) - (classicHeaderLayout || iosHeaderLayout ? 0 : 2);
         avatarImageView.measure(MeasureSpec.makeMeasureSpec(avatarSize, MeasureSpec.EXACTLY), MeasureSpec.makeMeasureSpec(avatarSize, MeasureSpec.EXACTLY));
         titleTextView.measure(MeasureSpec.makeMeasureSpec(availableWidth, MeasureSpec.AT_MOST), MeasureSpec.makeMeasureSpec(dp(24 + 8), MeasureSpec.AT_MOST));
         if (subtitleTextView != null) {
@@ -756,7 +764,24 @@ public class ChatAvatarContainer extends FrameLayout implements FactorAnimator.T
 
     private boolean glassMode;
     private boolean classicHeaderLayout;
+    private boolean iosHeaderLayout;
     public void setClassicHeaderLayout() { classicHeaderLayout = true; }
+    public void setIOSHeaderLayout() {
+        iosHeaderLayout = true;
+        avatarSizeInDp = 36;
+        avatarImageView.setRoundRadius(dp(18));
+        titleTextView.setTextSize(17);
+        if (subtitleTextView != null) subtitleTextView.setPadding(0, 0, 0, 0);
+        if (animatedSubtitleTextView != null) {
+            animatedSubtitleTextView.setPadding(0, 0, 0, 0);
+            animatedSubtitleTextView.setGravity(Gravity.CENTER);
+        }
+    }
+    private int getIOSAvatarLeft(int width) {
+        int menuWidth = getParent() instanceof ActionBar ? ((ActionBar) getParent()).getVisibleMenuWidth() : 0;
+        int extraMenuWidth = Math.max(0, menuWidth - dp(52));
+        return Math.max(0, width - extraMenuWidth - dp(36));
+    }
     public void setGlassMode() {
         if (titleTextView != null) {
             titleTextView.setTextSizePx(dp(17.5f));
@@ -770,13 +795,14 @@ public class ChatAvatarContainer extends FrameLayout implements FactorAnimator.T
     @Override
     protected void onLayout(boolean changed, int left, int top, int right, int bottom) {
         final int actionBarHeight = ActionBar.getCurrentActionBarHeight();
-        final int viewTop = (actionBarHeight - avatarImageView.getMeasuredHeight() - (classicHeaderLayout ? 0 : 2)) / 2 + (occupyStatusBar ? AndroidUtilities.statusBarHeight : 0);
+        final int viewTop = (actionBarHeight - avatarImageView.getMeasuredHeight() - (classicHeaderLayout || iosHeaderLayout ? 0 : 2)) / 2 + (occupyStatusBar ? AndroidUtilities.statusBarHeight : 0);
         final int subtitleTop = viewTop + dp(glassMode ? 23.66f : 24);
 
         boolean classicLayout = classicHeaderLayout;
-        int avatarLeft = leftPadding + (classicLayout ? 0 : 1);
+        int avatarLeft = iosHeaderLayout ? getIOSAvatarLeft(getMeasuredWidth()) : leftPadding + (classicLayout ? 0 : 1);
         avatarImageView.layout(avatarLeft, 1 + viewTop, avatarLeft + avatarImageView.getMeasuredWidth(), 1 + viewTop + avatarImageView.getMeasuredHeight());
-        int l = leftPadding + (avatarImageView.getVisibility() == VISIBLE ? dp(classicLayout ? 54 : glassMode ? 49.66f : 55) : dp(classicLayout ? 0 : glassMode ? 13 : 1)) + rightAvatarPadding;
+        int l = iosHeaderLayout ? (getMeasuredWidth() - titleTextView.getMeasuredWidth()) / 2 : leftPadding + (avatarImageView.getVisibility() == VISIBLE ? dp(classicLayout ? 54 : glassMode ? 49.66f : 55) : dp(classicLayout ? 0 : glassMode ? 13 : 1)) + rightAvatarPadding;
+        int avatarDecorationLeft = iosHeaderLayout ? avatarLeft : leftPadding;
         SimpleTextView titleTextLargerCopyView = this.titleTextLargerCopyView.get();
         if (getSubtitleTextView().getVisibility() != GONE) {
             titleTextView.layout(l, viewTop + dp(1.66f) - titleTextView.getPaddingTop(), l + titleTextView.getMeasuredWidth(), viewTop + titleTextView.getTextHeight() + dp(1.66f) - titleTextView.getPaddingTop() + titleTextView.getPaddingBottom());
@@ -791,33 +817,36 @@ public class ChatAvatarContainer extends FrameLayout implements FactorAnimator.T
         }
         if (communityItem != null) {
             communityItem.layout(
-                leftPadding + dp(29f),
+                avatarDecorationLeft + dp(29f),
                 viewTop + dp(27.33f),
-                leftPadding + dp(29f) + communityItem.getMeasuredWidth(),
+                avatarDecorationLeft + dp(29f) + communityItem.getMeasuredWidth(),
                 viewTop + dp(27.33f) + communityItem.getMeasuredHeight());
         }
         if (timeItem != null) {
             timeItem.layout(
-                leftPadding + dp(19.333f),
+                avatarDecorationLeft + dp(19.333f),
                 viewTop - dp(8),
-                leftPadding + dp(19.333f) + timeItem.getMeasuredWidth(),
+                avatarDecorationLeft + dp(19.333f) + timeItem.getMeasuredWidth(),
                 viewTop - dp(8) + timeItem.getMeasuredHeight()
             );
         }
         if (starBgItem != null) {
-            starBgItem.layout(leftPadding + dp(28), viewTop + dp(24), leftPadding + dp(28) + starBgItem.getMeasuredWidth(), viewTop + dp(24) + starBgItem.getMeasuredHeight());
+            starBgItem.layout(avatarDecorationLeft + dp(28), viewTop + dp(24), avatarDecorationLeft + dp(28) + starBgItem.getMeasuredWidth(), viewTop + dp(24) + starBgItem.getMeasuredHeight());
         }
         if (starFgItem != null) {
-            starFgItem.layout(leftPadding + dp(28), viewTop + dp(24), leftPadding + dp(28) + starFgItem.getMeasuredWidth(), viewTop + dp(24) + starFgItem.getMeasuredHeight());
+            starFgItem.layout(avatarDecorationLeft + dp(28), viewTop + dp(24), avatarDecorationLeft + dp(28) + starFgItem.getMeasuredWidth(), viewTop + dp(24) + starFgItem.getMeasuredHeight());
         }
         if (subtitleTextView != null) {
-            subtitleTextView.layout(l, subtitleTop, l + subtitleTextView.getMeasuredWidth(), subtitleTop + subtitleTextView.getTextHeight());
+            int subtitleLeft = iosHeaderLayout ? (getMeasuredWidth() - subtitleTextView.getMeasuredWidth()) / 2 : l;
+            subtitleTextView.layout(subtitleLeft, subtitleTop, subtitleLeft + subtitleTextView.getMeasuredWidth(), subtitleTop + subtitleTextView.getTextHeight());
         } else if (animatedSubtitleTextView != null) {
-            animatedSubtitleTextView.layout(l, subtitleTop, l + animatedSubtitleTextView.getMeasuredWidth(), subtitleTop + animatedSubtitleTextView.getTextHeight());
+            int subtitleLeft = iosHeaderLayout ? (getMeasuredWidth() - animatedSubtitleTextView.getMeasuredWidth()) / 2 : l;
+            animatedSubtitleTextView.layout(subtitleLeft, subtitleTop, subtitleLeft + animatedSubtitleTextView.getMeasuredWidth(), subtitleTop + animatedSubtitleTextView.getTextHeight());
         }
         SimpleTextView subtitleTextLargerCopyView = this.subtitleTextLargerCopyView.get();
         if (subtitleTextLargerCopyView != null) {
-            subtitleTextLargerCopyView.layout(l, subtitleTop, l + subtitleTextLargerCopyView.getMeasuredWidth(), subtitleTop + subtitleTextLargerCopyView.getTextHeight());
+            int subtitleCopyLeft = iosHeaderLayout ? (getMeasuredWidth() - subtitleTextLargerCopyView.getMeasuredWidth()) / 2 : l;
+            subtitleTextLargerCopyView.layout(subtitleCopyLeft, subtitleTop, subtitleCopyLeft + subtitleTextLargerCopyView.getMeasuredWidth(), subtitleTop + subtitleTextLargerCopyView.getTextHeight());
         }
     }
 
