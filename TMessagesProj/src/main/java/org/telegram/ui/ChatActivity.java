@@ -35428,7 +35428,7 @@ public class ChatActivity extends BaseFragment implements
             TLRPC.WebPage parsed = null;
             Throwable failure = null;
             try {
-                parsed = MarkdownParser.fromMarkdown(message);
+                parsed = MarkdownParser.fromDocument(message);
             } catch (Throwable t) {
                 FileLog.e(t);
                 failure = t;
@@ -42025,7 +42025,7 @@ public class ChatActivity extends BaseFragment implements
                     PhotoViewer.getInstance().openPhoto(message, ChatActivity.this, message.type != 0 ? dialog_id : 0, message.type != 0 ? mergeDialogId : 0, message.type != 0 ? getTopicId() : 0, photoViewerProvider);
                     handled = true;
                 }
-                if (MarkdownParser.isMarkdown(message)) {
+                if (MarkdownParser.isMarkdown(message) || MarkdownParser.isDiff(message)) {
                     parseMarkdownAsync(message);
                     handled = true;
                 }
