@@ -17366,6 +17366,11 @@ public class ChatActivity extends BaseFragment implements
     private boolean shouldHaveLightNavigationBarIcons;
 
     public boolean isShouldHaveLightNavigationBarIcons() {
+        if (XGramConfig.isClassicMessageInput() && chatMode != MODE_EDIT_BUSINESS_LINK
+                && (windowInsetsStateHolder.inAppViewIsVisible() || windowInsetsStateHolder.getInsets(WindowInsetsCompat.Type.ime()).bottom == 0)
+                && bottomViewsVisibilityController.getVisibility(MESSAGE_INPUT_CONTAINER) > 0.5f) {
+            return AndroidUtilities.computePerceivedBrightness(getThemedColor(Theme.key_chat_messagePanelBackground)) < 0.721f;
+        }
         return shouldHaveLightNavigationBarIcons && (!windowInsetsStateHolder.inAppViewIsVisible() || themeDelegate != null && themeDelegate.isDark);
     }
 

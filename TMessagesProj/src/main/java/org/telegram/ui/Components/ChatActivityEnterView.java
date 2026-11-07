@@ -47,6 +47,7 @@ import android.graphics.Rect;
 import android.graphics.RectF;
 import android.graphics.Shader;
 import android.graphics.drawable.Drawable;
+import android.graphics.drawable.InsetDrawable;
 import android.media.AudioManager;
 import android.net.Uri;
 import android.os.Build;
@@ -2930,7 +2931,7 @@ public class ChatActivityEnterView extends FrameLayout implements
                 attachButton.setColorFilter(new PorterDuffColorFilter(getThemedColor(useClassicInputStyle() ? Theme.key_chat_messagePanelIcons : Theme.key_glass_defaultIcon), PorterDuff.Mode.MULTIPLY));
                 attachButton.setImageResource(R.drawable.msg_input_attach2);
                 attachButton.setBackground(Theme.createSelectorDrawable(getThemedColor(Theme.key_listSelector)));
-                messageEditTextContainer.addView(attachButton, LayoutHelper.createFrame(useClassicInputStyle() ? 48 : DEFAULT_HEIGHT, useClassicInputStyle() ? 48 : DEFAULT_HEIGHT, Gravity.BOTTOM | Gravity.RIGHT));
+                messageEditTextContainer.addView(attachButton, LayoutHelper.createFrame(useClassicInputStyle() ? 48 : DEFAULT_HEIGHT, useClassicInputStyle() ? 48 : DEFAULT_HEIGHT, Gravity.BOTTOM | (useClassicInputStyle() ? Gravity.LEFT : Gravity.RIGHT)));
             }
             attachButton.setOnClickListener(v -> {
                 boolean pausedForTrim = !recordingAudioVideo &&
@@ -3647,7 +3648,9 @@ public class ChatActivityEnterView extends FrameLayout implements
         sendButton.setAlpha(0.0f);
         if (useClassicInputStyle() && Build.VERSION.SDK_INT >= 21) {
             int sendColor = getThemedColor(Theme.key_chat_messagePanelSend);
-            sendButton.setBackground(Theme.createSelectorDrawable(ColorUtils.setAlphaComponent(sendColor, 24), 1));
+            // SendButton is 100dp wide, but its icon is aligned to the final 48dp.
+            // Constrain the ripple to that area without shrinking its touch target.
+            sendButton.setBackground(new InsetDrawable(Theme.createSelectorDrawable(ColorUtils.setAlphaComponent(sendColor, 24), 1), dp(52), 0, 0, 0));
         }
         sendButtonContainer.addView(sendButton, LayoutHelper.createFrame(100, useClassicInputStyle() ? 48 : DEFAULT_HEIGHT, Gravity.RIGHT | Gravity.BOTTOM));
         sendButton.setOnClickListener(view -> {
@@ -4780,7 +4783,9 @@ public class ChatActivityEnterView extends FrameLayout implements
             messageTextTranslationX = offset;
             updateMessageTextParams();
         }
-        attachButton.setTranslationX(attachLayoutPaddingTranslationX + attachLayoutTranslationX + offset);
+        if (attachButton != null) {
+            attachButton.setTranslationX(useClassicInputStyle() ? offset : attachLayoutPaddingTranslationX + attachLayoutTranslationX + offset);
+        }
         audioVideoSendButton.setTranslationX(offset);
         if (botButton != null) {
             botButton.setTranslationX(offset);
@@ -8967,6 +8972,10 @@ private void showAiButton(boolean show_) {
                 layoutParams.rightMargin = dp(2);
             }
         }
+        if (useClassicInputStyle() && attachVisible != 0 && attachButton != null) {
+            // The attachment is on the left; the other optional controls remain on the right.
+            layoutParams.rightMargin = Math.max(dp(2), layoutParams.rightMargin - dp(48));
+        }
         layoutParams.rightMargin = Math.max(layoutParams.rightMargin, Math.max(0, sendButton.width() - dp(DEFAULT_HEIGHT)));
         if (doneButton != null && doneButton.getVisibility() == VISIBLE) {
             layoutParams.rightMargin = Math.max(layoutParams.rightMargin, Math.max(0, doneButton.width() - dp(DEFAULT_HEIGHT)));
@@ -12083,7 +12092,7 @@ private void showAiButton(boolean show_) {
         if (emojiView != null) {
             return;
         }
-        emojiView = new EmojiView(parentFragment, allowAnimatedEmoji, true, true, getContext(), true, info, sizeNotifierLayout, shouldDrawBackground, resourcesProvider, emojiViewFrozen, windowInsetsInAppController != null) {
+        emojiView = new EmojiView(parentFragment, allowAnimatedEmoji, true, true, getContext(), true, info, sizeNotifierLayout, useClassicInputStyle() || shouldDrawBackground, resourcesProvider, emojiViewFrozen, windowInsetsInAppController != null && !useClassicInputStyle()) {
             @Override
             public void setTranslationY(float translationY) {
                 super.setTranslationY(translationY);
@@ -12101,7 +12110,7 @@ private void showAiButton(boolean show_) {
         emojiView.setShowing(false);
         if (windowInsetsInAppController != null) {
             emojiView.shouldLightenBackground = false;
-            emojiView.setShouldDrawBackground(false);
+            emojiView.setShouldDrawBackground(useClassicInputStyle());
             emojiView.isNewHeightControl = true;
         }
         emojiView.setDelegate(new EmojiView.EmojiViewDelegate() {
@@ -14822,6 +14831,19 @@ private void showAiButton(boolean show_) {
                 ((MarginLayoutParams) richDraftPreview.getLayoutParams()).leftMargin = dp(50);
             }
         }
+        if (useClassicInputStyle() && attachButton != null) {
+            // Preserve the space occupied by bot/sender controls, then place the
+            // attachment to the left of emoji and keep text clear of both.
+            MarginLayoutParams emojiParams = (MarginLayoutParams) emojiButton.getLayoutParams();
+            MarginLayoutParams attachParams = (MarginLayoutParams) attachButton.getLayoutParams();
+            attachParams.leftMargin = Math.max(0, emojiParams.leftMargin - dp(3));
+            emojiParams.leftMargin += dp(48);
+            if (deleteRichDraftButton != null && deleteRichDraftButton.getParent() == messageEditTextContainer) {
+                ((MarginLayoutParams) deleteRichDraftButton.getLayoutParams()).leftMargin += dp(48);
+            }
+            if (messageEditText != null) ((MarginLayoutParams) messageEditText.getLayoutParams()).leftMargin += dp(48);
+            if (richDraftPreview != null) ((MarginLayoutParams) richDraftPreview.getLayoutParams()).leftMargin += dp(48);
+        }
         updateBotCommandsMenuContainerTopPadding();
         super.onMeasure(widthMeasureSpec, heightMeasureSpec);
 
@@ -15076,7 +15098,7 @@ private void showAiButton(boolean show_) {
 
     private void updateAttachButtonTranslationX() {
         if (attachButton == null) return;
-        if (iOSMessageInputFieldAvailable()) {
+        if (iOSMessageInputFieldAvailable() || useClassicInputStyle()) {
             attachButton.setTranslationX(0);
             return;
         }

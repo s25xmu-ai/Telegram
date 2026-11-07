@@ -333,14 +333,27 @@ public class ChatInputViewsContainer extends FrameLayout {
 
         if (needDrawInAppKeyboard) {
             underKeyboardBackgroundDrawable.draw(canvas);
+            if (classicInputStyle && classicInputVisibility > 0f) {
+                classicPanelPaint.setColor(Theme.getColor(Theme.key_chat_emojiPanelBackground, classicResourcesProvider));
+                classicPanelPaint.setAlpha(Math.round(255 * classicInputVisibility));
+                canvas.drawRect(0, getMeasuredHeight() - imeBottomInset, getMeasuredWidth(), getMeasuredHeight(), classicPanelPaint);
+            }
         }
-
         super.dispatchDraw(canvas);
+
+        // The system navigation buttons sit below the composer or in-app emoji
+        // panel in edge-to-edge mode. Leave a real IME to draw its own navbar.
+        if (classicInputStyle && classicInputVisibility > 0f && (needDrawInAppKeyboard || imeBottomInset <= 0)) {
+            int navbarHeight = windowInsetsProvider.getCurrentNavigationBarInset();
+            classicPanelPaint.setColor(Theme.getColor(Theme.key_chat_messagePanelBackground, classicResourcesProvider));
+            classicPanelPaint.setAlpha(Math.round(255 * classicInputVisibility));
+            canvas.drawRect(0, getMeasuredHeight() - navbarHeight, getMeasuredWidth(), getMeasuredHeight(), classicPanelPaint);
+        }
     }
 
     @Override
     protected boolean drawChild(@NonNull Canvas canvas, View child, long drawingTime) {
-        final boolean needClip = child == inAppKeyboardBubbleContainer;
+        final boolean needClip = child == inAppKeyboardBubbleContainer && !classicInputStyle;
         if (needClip) {
             canvas.save();
             canvas.clipPath(underKeyboardBackgroundDrawable.getPath());
