@@ -6795,7 +6795,29 @@ public class SharedMediaLayout extends FrameLayout implements NotificationCenter
         }
     }
 
+    private boolean isComputingLayout() {
+        for (int a = 0; a < mediaPages.length; a++) {
+            if (mediaPages[a] == null) continue;
+            if (mediaPages[a].listView != null && mediaPages[a].listView.isComputingLayout()) {
+                return true;
+            }
+            if (mediaPages[a].animationSupportingListView != null && mediaPages[a].animationSupportingListView.isComputingLayout()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     public void updateAdapters() {
+        if (isComputingLayout()) {
+            post(() -> {
+                if (isComputingLayout()) {
+                    return;
+                }
+                updateAdapters();
+            });
+            return;
+        }
         if (photoVideoAdapter != null) {
             photoVideoAdapter.notifyDataSetChanged();
         }
