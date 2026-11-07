@@ -493,6 +493,24 @@ public class LaunchActivity extends BasePermissionsActivity implements INavigati
 
         drawerLayoutContainer = new DrawerLayoutContainer(this);
         drawerLayoutContainer.setActionBarLayout(actionBarLayout);
+        drawerLayoutContainer.setClassicDrawerGesture(new DrawerLayoutContainer.ClassicDrawerGesture() {
+            private DialogsActivity currentDialogs() {
+                if (AndroidUtilities.isTablet() || classicDrawerOverlay != null || actionBarLayout == null
+                        || actionBarLayout.getFragmentStack().size() != 1 || !sheetFragmentsStack.isEmpty()
+                        || (passcodeDialog != null && passcodeDialog.passcodeView.getVisibility() == View.VISIBLE)) return null;
+                BaseFragment fragment = actionBarLayout.getLastFragment();
+                if (fragment instanceof MainTabsActivity) fragment = ((MainTabsActivity) fragment).getCurrentVisibleFragment();
+                return fragment instanceof DialogsActivity ? (DialogsActivity) fragment : null;
+            }
+            @Override public boolean canOpen() {
+                DialogsActivity dialogs = currentDialogs();
+                return dialogs != null && dialogs.canOpenClassicDrawerFromEdge();
+            }
+            @Override public void open() {
+                DialogsActivity dialogs = currentDialogs();
+                if (dialogs != null) dialogs.openClassicDrawerFromEdge();
+            }
+        });
         drawerLayoutContainer.addOnLayoutChangeListener(new View.OnLayoutChangeListener() {
             private boolean wasPortrait;
 
@@ -8453,7 +8471,7 @@ public class LaunchActivity extends BasePermissionsActivity implements INavigati
     }
 
     public boolean onBackPressed(boolean invoked) {
-        if (classicDrawerOverlay != null) {
+        if (classicDrawerOverlay != null && !classicDrawerOverlay.isDrawCurrentPreviewFragmentAbove()) {
             if (invoked) classicDrawerOverlay.closeDrawer(false);
             return false;
         }

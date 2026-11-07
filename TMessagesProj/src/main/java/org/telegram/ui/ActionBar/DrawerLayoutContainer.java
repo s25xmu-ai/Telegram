@@ -31,6 +31,19 @@ public class DrawerLayoutContainer extends FrameLayout {
     private INavigationLayout parentActionBarLayout;
     private ActionBarLayout actionBarLayout;
     private boolean inLayout;
+    private ClassicDrawerGesture classicDrawerGesture;
+    private boolean watchingClassicDrawerEdge;
+    private boolean consumingClassicDrawerSwipe;
+    private float classicDrawerDownX, classicDrawerDownY;
+
+    public interface ClassicDrawerGesture {
+        boolean canOpen();
+        void open();
+    }
+
+    public void setClassicDrawerGesture(ClassicDrawerGesture gesture) {
+        classicDrawerGesture = gesture;
+    }
 
     public DrawerLayoutContainer(Context context) {
         super(context);
@@ -52,12 +65,42 @@ public class DrawerLayoutContainer extends FrameLayout {
     }
 
     public boolean onTouchEvent(MotionEvent ev) {
-        return false;
+        if (!consumingClassicDrawerSwipe) return false;
+        if (ev.getActionMasked() == MotionEvent.ACTION_UP || ev.getActionMasked() == MotionEvent.ACTION_CANCEL) {
+            consumingClassicDrawerSwipe = false;
+        }
+        return true;
     }
 
     @Override
     public boolean onInterceptTouchEvent(MotionEvent ev) {
-        return parentActionBarLayout.checkTransitionAnimation();
+        if (parentActionBarLayout.checkTransitionAnimation()) return true;
+        final int action = ev.getActionMasked();
+        if (action == MotionEvent.ACTION_DOWN) {
+            consumingClassicDrawerSwipe = false;
+            classicDrawerDownX = ev.getX();
+            classicDrawerDownY = ev.getY();
+            watchingClassicDrawerEdge = classicDrawerGesture != null && classicDrawerGesture.canOpen()
+                    && classicDrawerDownX <= AndroidUtilities.dp(24)
+                    && classicDrawerDownY > AndroidUtilities.statusBarHeight
+                    && classicDrawerDownY < getHeight() - AndroidUtilities.navigationBarHeight;
+        } else if (action == MotionEvent.ACTION_MOVE && watchingClassicDrawerEdge) {
+            final float dx = ev.getX() - classicDrawerDownX;
+            final float dy = Math.abs(ev.getY() - classicDrawerDownY);
+            if (dy > AndroidUtilities.dp(12) && dy > Math.abs(dx)) {
+                watchingClassicDrawerEdge = false;
+            } else if (dx > AndroidUtilities.dp(24) && dx > dy * 1.5f) {
+                watchingClassicDrawerEdge = false;
+                if (classicDrawerGesture != null && classicDrawerGesture.canOpen()) {
+                    consumingClassicDrawerSwipe = true;
+                    classicDrawerGesture.open();
+                    return true;
+                }
+            }
+        } else if (action == MotionEvent.ACTION_UP || action == MotionEvent.ACTION_CANCEL || action == MotionEvent.ACTION_POINTER_DOWN) {
+            watchingClassicDrawerEdge = false;
+        }
+        return false;
     }
 
     @Override

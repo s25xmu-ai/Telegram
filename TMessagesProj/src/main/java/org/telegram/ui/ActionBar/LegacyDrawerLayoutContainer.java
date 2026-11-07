@@ -92,7 +92,12 @@ public class LegacyDrawerLayoutContainer extends FrameLayout {
 
     private boolean firstLayout = true;
     private Runnable onClosed;
+    private org.telegram.messenger.Utilities.Callback<Float> drawerProgressListener;
     private boolean closingOverlay;
+
+    public void setDrawerProgressListener(org.telegram.messenger.Utilities.Callback<Float> listener) {
+        drawerProgressListener = listener;
+    }
 
     public void setOnClosed(Runnable callback) {
         onClosed = callback;
@@ -217,7 +222,9 @@ public class LegacyDrawerLayoutContainer extends FrameLayout {
         if (drawerLayout.getVisibility() != newVisibility) {
             drawerLayout.setVisibility(newVisibility);
         }
-        setScrimOpacity(drawerLayout.getMeasuredWidth() > 0 ? drawerPosition / (float) drawerLayout.getMeasuredWidth() : 0f);
+        float progress = drawerLayout.getMeasuredWidth() > 0 ? drawerPosition / (float) drawerLayout.getMeasuredWidth() : 0f;
+        setScrimOpacity(progress);
+        if (drawerProgressListener != null) drawerProgressListener.run(progress);
     }
 
     @Keep
@@ -405,7 +412,16 @@ public class LegacyDrawerLayoutContainer extends FrameLayout {
         Bitmap bitmap = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
         Canvas canvas = new Canvas(bitmap);
         canvas.scale(1.0f / 6.0f, 1.0f / 6.0f);
-        draw(canvas);
+        // This port is an overlay rather than the window root. Capture the parent
+        // so the account-preview blur includes the real conversation list beneath it.
+        boolean drawingPreview = drawCurrentPreviewFragmentAbove;
+        drawCurrentPreviewFragmentAbove = false;
+        try {
+            if (getParent() instanceof View) ((View) getParent()).draw(canvas);
+            else draw(canvas);
+        } finally {
+            drawCurrentPreviewFragmentAbove = drawingPreview;
+        }
         Utilities.stackBlurBitmap(bitmap, Math.max(7, Math.max(w, h) / 180));
         previewBlurDrawable = new BitmapDrawable(bitmap);
         previewBlurDrawable.setBounds(0, 0, measuredWidth, measuredHeight);

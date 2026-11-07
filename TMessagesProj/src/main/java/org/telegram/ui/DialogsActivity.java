@@ -920,11 +920,11 @@ private static final String OFFICIAL_SUPPORT_URL = "https://app.chat-t.me/suppor
                 }
                 if (slideFragmentProgress != 1f) {
                     if (slideFragmentLite) {
-                        canvas.translate((-1) * dp(slideAmplitudeDp) * (1f - slideFragmentProgress), 0);
+                        canvas.translate((isDrawerTransition ? 1 : -1) * dp(slideAmplitudeDp) * (1f - slideFragmentProgress), 0);
                     } else {
                         final float s = 1f - 0.05f * (1f - slideFragmentProgress);
-                        canvas.translate((-dp(4)) * (1f - slideFragmentProgress), 0);
-                        canvas.scale(s, s, 0, -getY() + scrollYOffset + getActionBarFullHeight());
+                        canvas.translate((isDrawerTransition ? dp(4) : -dp(4)) * (1f - slideFragmentProgress), 0);
+                        canvas.scale(s, s, isDrawerTransition ? getMeasuredWidth() : 0, -getY() + scrollYOffset + getActionBarFullHeight());
                     }
                 }
                 result = super.drawChild(canvas, child, drawingTime);
@@ -932,11 +932,11 @@ private static final String OFFICIAL_SUPPORT_URL = "https://app.chat-t.me/suppor
             } else if (child == actionBar && slideFragmentProgress != 1f) {
                 canvas.save();
                 if (slideFragmentLite) {
-                    canvas.translate((-1) * dp(slideAmplitudeDp) * (1f - slideFragmentProgress), 0);
+                    canvas.translate((isDrawerTransition ? 1 : -1) * dp(slideAmplitudeDp) * (1f - slideFragmentProgress), 0);
                 } else {
                     float s = 1f - 0.05f * (1f - slideFragmentProgress);
-                    canvas.translate((-dp(4)) * (1f - slideFragmentProgress), 0);
-                    canvas.scale(s, s, 0, (actionBar.getOccupyStatusBar() ? AndroidUtilities.statusBarHeight : 0) + ActionBar.getCurrentActionBarHeight() / 2f);
+                    canvas.translate((isDrawerTransition ? dp(4) : -dp(4)) * (1f - slideFragmentProgress), 0);
+                    canvas.scale(s, s, isDrawerTransition ? getMeasuredWidth() : 0, (actionBar.getOccupyStatusBar() ? AndroidUtilities.statusBarHeight : 0) + ActionBar.getCurrentActionBarHeight() / 2f);
                 }
                 result = super.drawChild(canvas, child, drawingTime);
                 canvas.restore();
@@ -1113,10 +1113,10 @@ private static final String OFFICIAL_SUPPORT_URL = "https://app.chat-t.me/suppor
                 canvas.translate(fragmentContextView.getX(), fragmentContextView.getY());
                 if (slideFragmentProgress != 1f) {
                     if (slideFragmentLite) {
-                        canvas.translate((-1) * dp(slideAmplitudeDp) * (1f - slideFragmentProgress), 0);
+                        canvas.translate((isDrawerTransition ? 1 : -1) * dp(slideAmplitudeDp) * (1f - slideFragmentProgress), 0);
                     } else {
                         final float s = 1f - 0.05f * (1f - slideFragmentProgress);
-                        canvas.translate((-dp(4)) * (1f - slideFragmentProgress), 0);
+                        canvas.translate((isDrawerTransition ? dp(4) : -dp(4)) * (1f - slideFragmentProgress), 0);
                         canvas.scale(s, 1f, 0, fragmentContextView.getY());
                     }
                 }
@@ -3092,6 +3092,7 @@ private static final String OFFICIAL_SUPPORT_URL = "https://app.chat-t.me/suppor
             LaunchActivity launch = (LaunchActivity) activity;
             if (ownedClassicDrawer != null && launch.classicDrawerOverlay == ownedClassicDrawer) {
                 View drawer = ownedClassicDrawer;
+                setClassicDrawerProgress(0f);
                 if (drawer.getParent() instanceof ViewGroup) ((ViewGroup) drawer.getParent()).removeView(drawer);
                 launch.classicDrawerOverlay = null;
                 ownedClassicDrawer = null;
@@ -12604,7 +12605,21 @@ private static final String OFFICIAL_SUPPORT_URL = "https://app.chat-t.me/suppor
     final int slideAmplitudeDp = 40;
     boolean slideFragmentLite;
     boolean isSlideBackTransition;
+    boolean isDrawerTransition;
     ValueAnimator slideBackTransitionAnimator;
+
+    // Adapted from DialogsActivity.setProgressToDrawerOpened in Telegram 10.14.5.
+    private void setClassicDrawerProgress(float progress) {
+        if (SharedConfig.getDevicePerformanceClass() <= SharedConfig.PERFORMANCE_CLASS_LOW || isSlideBackTransition) return;
+        boolean transitioning = progress > 0;
+        if (searchIsShowed) { transitioning = false; progress = 0; }
+        if (transitioning != isDrawerTransition) {
+            isDrawerTransition = transitioning;
+            setFragmentIsSliding(transitioning);
+            if (fragmentView != null) fragmentView.requestLayout();
+        }
+        setSlideTransitionProgress(1f - progress);
+    }
 
     @Override
     public Animator getCustomSlideTransition(boolean topFragment, boolean backAnimation, float distanceToMove) {
@@ -12706,7 +12721,7 @@ private static final String OFFICIAL_SUPPORT_URL = "https://app.chat-t.me/suppor
         }
 
         if (slideFragmentLite) {
-            final float translationX = -dp(slideAmplitudeDp) * (1f - slideFragmentProgress);
+            final float translationX = (isDrawerTransition ? 1 : -1) * dp(slideAmplitudeDp) * (1f - slideFragmentProgress);
             if (dialogStoriesCell != null) {
                 dialogStoriesCell.setTranslationX(translationX);
             }
@@ -12719,13 +12734,13 @@ private static final String OFFICIAL_SUPPORT_URL = "https://app.chat-t.me/suppor
                 }
             }
         } else {
-            final float translationX = -dp(4) * (1f - slideFragmentProgress);
+            final float translationX = (isDrawerTransition ? dp(4) : -dp(4)) * (1f - slideFragmentProgress);
             final float s = 1f - 0.05f * (1f - slideFragmentProgress);
             if (dialogStoriesCell != null) {
                 dialogStoriesCell.setScaleX(s);
                 dialogStoriesCell.setScaleY(s);
                 dialogStoriesCell.setTranslationX(translationX);
-                dialogStoriesCell.setPivotX(0);
+                dialogStoriesCell.setPivotX(isDrawerTransition ? dialogStoriesCell.getMeasuredWidth() : 0);
                 dialogStoriesCell.setPivotY(0);
             }
             if (fragmentSearchField != null) {
@@ -12739,7 +12754,7 @@ private static final String OFFICIAL_SUPPORT_URL = "https://app.chat-t.me/suppor
                     rightSlidingDialogContainer.getFragmentView().setScaleY(s);
                     rightSlidingDialogContainer.getFragmentView().setTranslationX(translationX);
                 }
-                rightSlidingDialogContainer.getFragmentView().setPivotX(0);
+                rightSlidingDialogContainer.getFragmentView().setPivotX(isDrawerTransition ? rightSlidingDialogContainer.getMeasuredWidth() : 0);
                 rightSlidingDialogContainer.getFragmentView().setPivotY(0);
             }
         }
@@ -13762,19 +13777,32 @@ private static final String OFFICIAL_SUPPORT_URL = "https://app.chat-t.me/suppor
             });
     }
 
+    public boolean canOpenClassicDrawerFromEdge() {
+        return useClassicDrawer() && getParentLayout() != null && !searching && !searchIsShowed
+                && !hasShownSheet() && filterOptions == null && actionBar != null && !actionBar.isActionModeShowed()
+                && (rightSlidingDialogContainer == null || !rightSlidingDialogContainer.hasFragment());
+    }
+
+    public void openClassicDrawerFromEdge() {
+        if (canOpenClassicDrawerFromEdge()) showClassicDrawer();
+    }
+
     // Telegram 10.14.5's actual drawer, adapter, cells and account animations,
     // hosted as an overlay because the current release owns the root layout.
     private void showClassicDrawer() {
         Activity activity = getParentActivity();
         if (!(activity instanceof LaunchActivity) || activity.isFinishing() || getParentLayout() == null) return;
         LaunchActivity launch = (LaunchActivity) activity;
+        INavigationLayout navigation = getParentLayout();
         if (launch.classicDrawerOverlay != null) return;
         final org.telegram.ui.ActionBar.LegacyDrawerLayoutContainer drawer = new org.telegram.ui.ActionBar.LegacyDrawerLayoutContainer(activity);
         launch.classicDrawerOverlay = drawer;
         ownedClassicDrawer = drawer;
-        drawer.setParentActionBarLayout(getParentLayout());
+        drawer.setParentActionBarLayout(navigation);
+        drawer.setDrawerProgressListener(this::setClassicDrawerProgress);
         drawer.setAllowOpenDrawer(true, false);
         drawer.setOnClosed(() -> {
+            setClassicDrawerProgress(0f);
             if (drawer.getParent() instanceof ViewGroup) ((ViewGroup) drawer.getParent()).removeView(drawer);
             if (launch.classicDrawerOverlay == drawer) launch.classicDrawerOverlay = null;
             if (ownedClassicDrawer == drawer) ownedClassicDrawer = null;
@@ -13889,6 +13917,126 @@ private static final String OFFICIAL_SUPPORT_URL = "https://app.chat-t.me/suppor
             else if (id == 43) { Bundle args = new Bundle(); args.putLong("user_id", getUserConfig().getClientUserId()); args.putBoolean(org.telegram.ui.QrShare.QrShareActivity.ARG_OPEN_SCANNER, true); presentFragment(new org.telegram.ui.QrShare.QrShareActivity(args)); }
             else if (id == 44) AndroidUtilities.runOnUIThread(() -> XGramWalletUnavailable.show(getContext(), resourceProvider), 300);
             else if (id == 45) AndroidUtilities.runOnUIThread(this::showItemOptions, 300);
+        });
+        final ItemTouchHelper accountTouchHelper = new ItemTouchHelper(new ItemTouchHelper.SimpleCallback(ItemTouchHelper.UP | ItemTouchHelper.DOWN, 0) {
+
+            private RecyclerView.ViewHolder selectedViewHolder;
+
+            @Override
+            public boolean onMove(@NonNull RecyclerView recyclerView, @NonNull RecyclerView.ViewHolder viewHolder, @NonNull RecyclerView.ViewHolder target) {
+                if (viewHolder.getItemViewType() != target.getItemViewType()) {
+                    return false;
+                }
+                adapter.swapElements(viewHolder.getAdapterPosition(), target.getAdapterPosition());
+                return true;
+            }
+
+            @Override
+            public void onSwiped(@NonNull RecyclerView.ViewHolder viewHolder, int direction) {
+            }
+
+            @Override
+            public boolean isLongPressDragEnabled() {
+                return false;
+            }
+
+            @Override
+            public void onSelectedChanged(RecyclerView.ViewHolder viewHolder, int actionState) {
+                clearSelectedViewHolder();
+                if (actionState != ItemTouchHelper.ACTION_STATE_IDLE) {
+                    selectedViewHolder = viewHolder;
+                    final View view = viewHolder.itemView;
+                    list.cancelClickRunnables(false);
+                    view.setBackgroundColor(Theme.getColor(Theme.key_dialogBackground));
+                    if (Build.VERSION.SDK_INT >= 21) {
+                        ObjectAnimator.ofFloat(view, "elevation", AndroidUtilities.dp(1)).setDuration(150).start();
+                    }
+                }
+            }
+
+            @Override
+            public void clearView(RecyclerView recyclerView, RecyclerView.ViewHolder viewHolder) {
+                clearSelectedViewHolder();
+            }
+
+            private void clearSelectedViewHolder() {
+                if (selectedViewHolder != null) {
+                    final View view = selectedViewHolder.itemView;
+                    selectedViewHolder = null;
+                    view.setTranslationX(0f);
+                    view.setTranslationY(0f);
+                    if (Build.VERSION.SDK_INT >= 21) {
+                        final ObjectAnimator animator = ObjectAnimator.ofFloat(view, "elevation", 0f);
+                        animator.addListener(new AnimatorListenerAdapter() {
+                            @Override
+                            public void onAnimationEnd(Animator animation) {
+                                view.setBackground(null);
+                            }
+                        });
+                        animator.setDuration(150).start();
+                    }
+                }
+            }
+
+            @Override
+            public void onChildDraw(@NonNull Canvas c, @NonNull RecyclerView recyclerView, @NonNull RecyclerView.ViewHolder viewHolder, float dX, float dY, int actionState, boolean isCurrentlyActive) {
+                final View view = viewHolder.itemView;
+                if (adapter.isAccountsShown()) {
+                    RecyclerView.ViewHolder topViewHolder = recyclerView.findViewHolderForAdapterPosition(adapter.getFirstAccountPosition() - 1);
+                    RecyclerView.ViewHolder bottomViewHolder = recyclerView.findViewHolderForAdapterPosition(adapter.getLastAccountPosition() + 1);
+                    if (topViewHolder != null && topViewHolder.itemView != null && topViewHolder.itemView.getBottom() == view.getTop() && dY < 0f) {
+                        dY = 0f;
+                    } else if (bottomViewHolder != null && bottomViewHolder.itemView != null && bottomViewHolder.itemView.getTop() == view.getBottom() && dY > 0f) {
+                        dY = 0f;
+                    }
+                }
+                view.setTranslationX(dX);
+                view.setTranslationY(dY);
+            }
+        });
+        accountTouchHelper.attachToRecyclerView(list);
+        list.setOnItemLongClickListener((view, position) -> {
+            if (view instanceof org.telegram.ui.Cells.DrawerUserCell) {
+                final int accountNumber = ((org.telegram.ui.Cells.DrawerUserCell) view).getAccountNumber();
+                if (accountNumber == currentAccount || AndroidUtilities.isTablet()) {
+                    accountTouchHelper.startDrag(list.getChildViewHolder(view));
+                    return true;
+                } else {
+                    final BaseFragment fragment = new DialogsActivity(null) {
+                        @Override
+                        public void onTransitionAnimationEnd(boolean isOpen, boolean backward) {
+                            super.onTransitionAnimationEnd(isOpen, backward);
+                            if (!isOpen && backward) { // closed
+                                drawer.setDrawCurrentPreviewFragmentAbove(false);
+                                navigation.getView().invalidate();
+                            }
+                        }
+
+                        @Override
+                        public void onPreviewOpenAnimationEnd() {
+                            super.onPreviewOpenAnimationEnd();
+                            drawer.setAllowOpenDrawer(false, false);
+                            drawer.setDrawCurrentPreviewFragmentAbove(false);
+                            launch.switchToAccount(accountNumber, true);
+                            navigation.getView().invalidate();
+                        }
+                    };
+                    fragment.setCurrentAccount(accountNumber);
+                    if (navigation.presentFragmentAsPreview(fragment)) {
+                        drawer.setDrawCurrentPreviewFragmentAbove(true);
+                        return true;
+                    }
+                }
+            }
+            if (view instanceof org.telegram.ui.Cells.DrawerActionCell) {
+                int id = adapter.getId(position);
+                TLRPC.TL_attachMenuBot attachMenuBot = adapter.getAttachMenuBot(position);
+                if (attachMenuBot != null) {
+                    BotWebViewSheet.deleteBot(currentAccount, attachMenuBot.bot_id, null);
+                    return true;
+                }
+            }
+            return false;
         });
         launch.drawerLayoutContainer.addView(drawer, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.MATCH_PARENT));
         drawer.getViewTreeObserver().addOnPreDrawListener(new android.view.ViewTreeObserver.OnPreDrawListener() {
