@@ -797,7 +797,9 @@ public final class RoundVideoSession {
         requireMainThread();
         if (state == State.RELEASED || state == State.COMPLETED) return false;
         diagnostics.log("cancel requested: state=" + state);
-        if (!cancelOutput(OutputInvalidationReason.CANCELLED)) return false;
+        // A generation completed on the output thread is still cancellable until its result is
+        // delivered on the main thread, which happens together with the COMPLETED state.
+        cancelOutput(OutputInvalidationReason.CANCELLED, true);
         disableCameraEffects();
         releasePlayer();
         setState(State.RELEASED);
@@ -1414,7 +1416,7 @@ public final class RoundVideoSession {
     private void fail(@NonNull Exception error) {
         if (state == State.ERROR || state == State.RELEASED) return;
         diagnostics.error("fatal error in state=" + state, error);
-        if (!cancelOutput(OutputInvalidationReason.ERROR)) return;
+        if (!cancelOutput(OutputInvalidationReason.ERROR, false)) return;
         disableCameraEffects();
         releasePlayer();
         mainHandler.removeCallbacks(durationLimitRunnable);
@@ -1480,10 +1482,13 @@ public final class RoundVideoSession {
         return File.createTempFile(prefix, ".mp4", outputDirectory);
     }
 
-    private boolean cancelOutput(@NonNull OutputInvalidationReason reason) {
+    private boolean cancelOutput(
+            @NonNull OutputInvalidationReason reason,
+            boolean includeCompleted
+    ) {
         synchronized (outputLock) {
             OutputGeneration generation = outputGeneration;
-            if (generation != null && generation.completed) return false;
+            if (generation != null && generation.completed && !includeCompleted) return false;
             cancelRequested = true;
             if (generation != null && !generation.invalidated) {
                 generation.invalidated = true;
