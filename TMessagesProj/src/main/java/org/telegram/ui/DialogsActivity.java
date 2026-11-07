@@ -13698,6 +13698,16 @@ private static final String OFFICIAL_SUPPORT_URL = "https://app.chat-t.me/suppor
         additionFloatingButtonOffset = hasMainTabs && XGramConfig.isHomeBottomBarVisible() ? dp(MAIN_TABS_HEIGHT + MAIN_TABS_MARGIN) : 0;
         if (optionsItem != null) optionsItem.setIcon(useClassicDrawer() ? R.drawable.xgram_menu_classic : R.drawable.ic_ab_other);
         updateFloatingButtonOffset();
+        if (viewPages != null) {
+            for (ViewPage page : viewPages) {
+                if (page != null && page.listView != null) {
+                    for (int i = 0; i < page.listView.getChildCount(); i++) {
+                        page.listView.getChildAt(i).requestLayout();
+                    }
+                    page.listView.requestLayout();
+                }
+            }
+        }
         if (fragmentView != null) {
             checkInsets();
             ViewCompat.requestApplyInsets(fragmentView);

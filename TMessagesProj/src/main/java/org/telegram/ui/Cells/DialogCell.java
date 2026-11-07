@@ -60,6 +60,7 @@ import androidx.core.content.ContextCompat;
 import androidx.core.graphics.ColorUtils;
 import androidx.core.math.MathUtils;
 
+import org.telegram.messenger.XGramConfig;
 import org.telegram.messenger.AndroidUtilities;
 import org.telegram.messenger.ApplicationLoader;
 import org.telegram.messenger.ChatObject;
@@ -983,6 +984,13 @@ public class DialogCell extends BaseCell implements StoriesListPlaceProvider.Ava
 
     @Override
     protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
+        // Standard dialog-row heights from Telegram release-11.4.2-5469.
+        // Keep topic and specialized cells' custom dimensions intact.
+        if (parentFragment != null && !isTopic) {
+            boolean classicRows = XGramConfig.isClassicDialogRows();
+            if (heightDefault == 70 || heightDefault == 72) heightDefault = classicRows ? 72 : 70;
+            if (heightThreeLines == 76 || heightThreeLines == 78) heightThreeLines = classicRows ? 78 : 76;
+        }
         if (emojiStatusView != null) {
             emojiStatusView.measure(
                 MeasureSpec.makeMeasureSpec(dp(22), MeasureSpec.EXACTLY),

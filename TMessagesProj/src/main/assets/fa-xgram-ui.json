@@ -387,5 +387,9 @@
   "XGramBuyPremium": "خرید پریمیوم",
   "XGramClassicUI": "رابط کاربری کلاسیک",
   "XGramClassicDrawer": "منوی کلاسیک",
+  "XGramClassicDialogRows": "ارتفاع کلاسیک ردیف گفتگوها",
+  "XGramClassicMessageMenu": "پس‌زمینه کلاسیک منوی پیام",
+  "XGramClassicMessageInput": "نوار پیام ساده",
+  "XGramClassicUIInfo": "این گزینه‌ها مستقل و قابل ترکیب‌اند. برای اعمال نوار پیام، گفتگو را ببندید و دوباره باز کنید. گزینه‌های کلاسیک پیام بر ظاهر آی‌اواس همان بخش اولویت دارند.",
   "XGramWalletUnavailable": "موقتاً در دسترس نمی‌باشد."
 }

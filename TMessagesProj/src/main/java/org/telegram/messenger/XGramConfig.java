@@ -20,6 +20,9 @@ public final class XGramConfig {
     private static final String KEY_IOS_MESSAGE_MENU = "ios_message_menu";
     private static final String KEY_HOME_BOTTOM_BAR = "home_bottom_bar";
     private static final String KEY_CLASSIC_DRAWER = "classic_drawer_v2";
+    private static final String KEY_CLASSIC_DIALOG_ROWS = "classic_dialog_rows";
+    private static final String KEY_CLASSIC_MESSAGE_MENU = "classic_message_menu";
+    private static final String KEY_CLASSIC_INPUT = "classic_message_input";
 
     private static SharedPreferences prefs() {
         return ApplicationLoader.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
@@ -48,21 +51,37 @@ public final class XGramConfig {
         NotificationCenter.getGlobalInstance().postNotificationName(NotificationCenter.xgramInterfaceSettingsChanged);
     }
 
+    public static boolean isClassicDialogRows() { return prefs().getBoolean(KEY_CLASSIC_DIALOG_ROWS, false); }
+    public static void setClassicDialogRows(boolean value) {
+        prefs().edit().putBoolean(KEY_CLASSIC_DIALOG_ROWS, value).apply();
+        NotificationCenter.getGlobalInstance().postNotificationName(NotificationCenter.xgramInterfaceSettingsChanged);
+    }
+
+    public static boolean isClassicMessageMenu() { return prefs().getBoolean(KEY_CLASSIC_MESSAGE_MENU, false); }
+    public static void setClassicMessageMenu(boolean value) { prefs().edit().putBoolean(KEY_CLASSIC_MESSAGE_MENU, value).apply(); }
+
+    public static boolean isClassicMessageInput() { return prefs().getBoolean(KEY_CLASSIC_INPUT, false); }
+    public static void setClassicMessageInput(boolean value) { prefs().edit().putBoolean(KEY_CLASSIC_INPUT, value).apply(); }
+
     /** iOS-style chat bottom bar (message input field). Enabled by default. */
     public static boolean isIOSMessageInputField() {
-        return prefs().getBoolean(KEY_IOS_INPUT_FIELD, true);
+        return prefs().getBoolean(KEY_IOS_INPUT_FIELD, true) && !isClassicMessageInput();
     }
 
     public static void setIOSMessageInputField(boolean value) {
-        prefs().edit().putBoolean(KEY_IOS_INPUT_FIELD, value).apply();
+        SharedPreferences.Editor editor = prefs().edit().putBoolean(KEY_IOS_INPUT_FIELD, value);
+        if (value) editor.putBoolean(KEY_CLASSIC_INPUT, false);
+        editor.apply();
     }
 
     /** iOS-style message context menu. Enabled by default. */
     public static boolean isIOSMessageMenu() {
-        return prefs().getBoolean(KEY_IOS_MESSAGE_MENU, true);
+        return prefs().getBoolean(KEY_IOS_MESSAGE_MENU, true) && !isClassicMessageMenu();
     }
 
     public static void setIOSMessageMenu(boolean value) {
-        prefs().edit().putBoolean(KEY_IOS_MESSAGE_MENU, value).apply();
+        SharedPreferences.Editor editor = prefs().edit().putBoolean(KEY_IOS_MESSAGE_MENU, value);
+        if (value) editor.putBoolean(KEY_CLASSIC_MESSAGE_MENU, false);
+        editor.apply();
     }
 }

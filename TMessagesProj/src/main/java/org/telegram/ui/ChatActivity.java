@@ -31403,10 +31403,13 @@ public class ChatActivity extends BaseFragment implements
                 flags |= ActionBarPopupWindow.ActionBarPopupWindowLayout.FLAG_USE_SWIPEBACK;
             }
 
-            ActionBarPopupWindow.ActionBarPopupWindowLayout popupLayout = new ActionBarPopupWindow.ActionBarPopupWindowLayout(getParentActivity(), R.drawable.popup_fixed_alert4, themeDelegate, flags);
+            // Telegram 11.4.2 used popup_fixed_alert with a solid theme background.
+            final boolean classicMessageMenu = XGramConfig.isClassicMessageMenu();
+            final int messageMenuBackground = classicMessageMenu ? R.drawable.popup_fixed_alert : R.drawable.popup_fixed_alert4;
+            ActionBarPopupWindow.ActionBarPopupWindowLayout popupLayout = new ActionBarPopupWindow.ActionBarPopupWindowLayout(getParentActivity(), messageMenuBackground, themeDelegate, flags);
             popupLayout.setMinimumWidth(AndroidUtilities.dp(200));
             Rect backgroundPaddings = new Rect();
-            Drawable shadowDrawable = getParentActivity().getResources().getDrawable(R.drawable.popup_fixed_alert4).mutate();
+            Drawable shadowDrawable = getParentActivity().getResources().getDrawable(messageMenuBackground).mutate();
             shadowDrawable.getPadding(backgroundPaddings);
             popupLayout.setBackgroundColor(getThemedColor(Theme.key_actionBarDefaultSubmenuBackground));
             MessageSeenView messageSeenView = null;
@@ -31414,10 +31417,12 @@ public class ChatActivity extends BaseFragment implements
             updateScrimSourceBitmap();
 
             final boolean iosMessageMenu = XGramConfig.isIOSMessageMenu();
-            popupLayout.setBackground(scrimBlur3Factory.create(popupLayout, true)
-                .setColorProvider(BlurredBackgroundProviderImpl.messageMenuBackground(resourceProvider))
-                .setRadius(dp(iosMessageMenu ? 14 : 12))
-                .setPadding(dp(8)));
+            if (!classicMessageMenu) {
+                popupLayout.setBackground(scrimBlur3Factory.create(popupLayout, true)
+                    .setColorProvider(BlurredBackgroundProviderImpl.messageMenuBackground(resourceProvider))
+                    .setRadius(dp(iosMessageMenu ? 14 : 12))
+                    .setPadding(dp(8)));
+            }
 
             boolean addGap = false;
 
