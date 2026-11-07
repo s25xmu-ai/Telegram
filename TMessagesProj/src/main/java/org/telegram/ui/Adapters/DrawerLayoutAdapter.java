@@ -254,7 +254,6 @@ public class DrawerLayoutAdapter extends RecyclerListView.SelectionAdapter {
         int savedIcon;
         int settingsIcon;
         int inviteIcon;
-        int helpIcon;
         if (eventType == 0) {
             newGroupIcon = R.drawable.msg_groups_ny;
             //newSecretIcon = R.drawable.msg_secret_ny;
@@ -264,7 +263,6 @@ public class DrawerLayoutAdapter extends RecyclerListView.SelectionAdapter {
             savedIcon = R.drawable.msg_saved_ny;
             settingsIcon = R.drawable.msg_settings_ny;
             inviteIcon = R.drawable.msg_invite_ny;
-            helpIcon = R.drawable.msg_help_ny;
         } else if (eventType == 1) {
             newGroupIcon = R.drawable.msg_groups_14;
             //newSecretIcon = R.drawable.msg_secret_14;
@@ -274,7 +272,6 @@ public class DrawerLayoutAdapter extends RecyclerListView.SelectionAdapter {
             savedIcon = R.drawable.msg_saved_14;
             settingsIcon = R.drawable.msg_settings_14;
             inviteIcon = R.drawable.msg_secret_ny;
-            helpIcon = R.drawable.msg_help;
         } else if (eventType == 2) {
             newGroupIcon = R.drawable.msg_groups_hw;
             //newSecretIcon = R.drawable.msg_secret_hw;
@@ -284,7 +281,6 @@ public class DrawerLayoutAdapter extends RecyclerListView.SelectionAdapter {
             savedIcon = R.drawable.msg_saved_hw;
             settingsIcon = R.drawable.msg_settings_hw;
             inviteIcon = R.drawable.msg_invite_hw;
-            helpIcon = R.drawable.msg_help_hw;
         } else {
             newGroupIcon = R.drawable.msg_groups;
             //newSecretIcon = R.drawable.msg_secret;
@@ -294,7 +290,6 @@ public class DrawerLayoutAdapter extends RecyclerListView.SelectionAdapter {
             savedIcon = R.drawable.msg_saved;
             settingsIcon = R.drawable.msg_settings_old;
             inviteIcon = R.drawable.msg_invite;
-            helpIcon = R.drawable.msg_help;
         }
         UserConfig me = UserConfig.getInstance(UserConfig.selectedAccount);
         boolean showDivider = false;
@@ -331,8 +326,6 @@ public class DrawerLayoutAdapter extends RecyclerListView.SelectionAdapter {
         // XGram entry points retained alongside the original Telegram 10 rows.
         items.add(new Item(40, LocaleController.getString(R.string.NewChannel), R.drawable.msg_channel));
         items.add(new Item(41, LocaleController.getString(R.string.ArchivedChats), R.drawable.msg_archive));
-        items.add(new Item(42, LocaleController.getString(R.string.BrowserSettingsTitle), R.drawable.msg_link));
-        items.add(new Item(43, LocaleController.getString(R.string.ScanQrCode), R.drawable.msg_qrcode));
         if (org.telegram.messenger.XGramConfig.showMoneyEntry(UserConfig.selectedAccount)) {
             items.add(new Item(44, LocaleController.getString(R.string.XGramWalletLabel), R.drawable.xgram_wallet_icon));
         }
@@ -343,7 +336,6 @@ public class DrawerLayoutAdapter extends RecyclerListView.SelectionAdapter {
         items.add(new Item(8, LocaleController.getString("Settings", R.string.Settings), settingsIcon));
         items.add(null); // divider
         items.add(new Item(7, LocaleController.getString("InviteFriends", R.string.InviteFriends), inviteIcon));
-        items.add(new Item(13, LocaleController.getString("TelegramFeatures", R.string.TelegramFeatures), helpIcon));
     }
 
     public boolean click(View view, int position) {

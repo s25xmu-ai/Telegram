@@ -13855,7 +13855,9 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
                     } else if (position == recentActionsRow) {
                         textCell.setTextAndIcon(LocaleController.getString(R.string.EventLog), R.drawable.msg_log, true);
                     } else if (position == settingsRow) {
-                        textCell.setTextAndIcon(LocaleController.getString(R.string.ChannelAdminSettings), R.drawable.msg_customize, position != membersSectionRow - 1);
+                        int settingsTitle = ChatObject.isChannel(currentChat) && !currentChat.megagroup
+                                ? R.string.ChannelAdminSettings : R.string.GroupSettingsTitle;
+                        textCell.setTextAndIcon(LocaleController.getString(settingsTitle), R.drawable.msg_customize, position != membersSectionRow - 1);
                     } else if (position == channelBalanceRow) {
                         final TL_stars.StarsAmount stars_balance = BotStarsController.getInstance(currentAccount).getBotStarsBalance(-chatId);
                         final long ton_balance = BotStarsController.getInstance(currentAccount).getTONBalance(-chatId);

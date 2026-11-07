@@ -13915,16 +13915,10 @@ private static final String OFFICIAL_SUPPORT_URL = "https://app.chat-t.me/suppor
             else if (id == 8) presentFragment(new SettingsActivity());
             else if (id == 10) presentFragment(new CallLogActivity());
             else if (id == 11) { Bundle args = new Bundle(); args.putLong("user_id", getUserConfig().getClientUserId()); presentFragment(new ChatActivity(args)); }
-            else if (id == 13) Browser.openUrl(activity, getString(R.string.TelegramFeaturesUrl));
             else if (id == 15) AndroidUtilities.runOnUIThread(this::showSelectStatusDialog, 300);
             else if (id == 16) { Bundle args = new Bundle(); args.putLong("user_id", getUserConfig().getClientUserId()); args.putBoolean("my_profile", true); presentFragment(new ProfileActivity(args)); }
             else if (id == 40) { Bundle args = new Bundle(); args.putInt("step", 0); presentFragment(new ChannelCreateActivity(args)); }
             else if (id == 41) { Bundle args = new Bundle(); args.putInt("folderId", 1); presentFragment(new DialogsActivity(args)); }
-            else if (id == 42) {
-                try { Intent intent = new Intent(Intent.ACTION_MAIN); intent.addCategory(Intent.CATEGORY_APP_BROWSER); activity.startActivity(intent); }
-                catch (Exception e) { FileLog.e(e); presentFragment(new org.telegram.ui.web.WebBrowserSettings(null)); }
-            }
-            else if (id == 43) { Bundle args = new Bundle(); args.putLong("user_id", getUserConfig().getClientUserId()); args.putBoolean(org.telegram.ui.QrShare.QrShareActivity.ARG_OPEN_SCANNER, true); presentFragment(new org.telegram.ui.QrShare.QrShareActivity(args)); }
             else if (id == 44) AndroidUtilities.runOnUIThread(() -> XGramWalletUnavailable.show(getContext(), resourceProvider), 300);
             else if (id == 45) AndroidUtilities.runOnUIThread(this::showItemOptions, 300);
         });
