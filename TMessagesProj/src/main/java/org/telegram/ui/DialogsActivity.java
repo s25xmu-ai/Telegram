@@ -97,6 +97,7 @@ import org.telegram.ui.recyclerview.LinearSmoothScrollerCustom;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.viewpager.widget.ViewPager;
 
+import org.telegram.messenger.XGramConfig;
 import org.telegram.messenger.AccountInstance;
 import org.telegram.messenger.AndroidUtilities;
 import org.telegram.messenger.AnimationNotificationsLocker;
@@ -216,6 +217,7 @@ import org.telegram.ui.Stars.StarsController;
 import org.telegram.ui.Stars.StarsIntroActivity;
 import org.telegram.ui.Stories.StealthModeAlert;
 import org.telegram.ui.Stories.recorder.ButtonWithCounterView;
+import org.telegram.ui.Wallet.WalletActivity;
 import org.telegram.ui.bots.BotWebViewSheet;
 import org.telegram.ui.Components.Bulletin;
 import org.telegram.ui.Components.BulletinFactory;
@@ -692,6 +694,7 @@ private static final String OFFICIAL_SUPPORT_URL = "https://app.chat-t.me/suppor
     public boolean notify = true;
     public int scheduleDate;
     public int scheduleRepeatPeriod;
+    public boolean forceDocument;
 
     private int canReadCount;
     private int canPinCount;
@@ -2841,7 +2844,6 @@ private static final String OFFICIAL_SUPPORT_URL = "https://app.chat-t.me/suppor
 
 
     private NotificationCenter.ObserversGroup observersGroup;
-    private NotificationCenter.ObserversGroup globalObserversGroup;
 
     @Override
     public boolean onFragmentCreate() {
@@ -2902,15 +2904,15 @@ private static final String OFFICIAL_SUPPORT_URL = "https://app.chat-t.me/suppor
         }
 
         observersGroup = getNotificationCenter().createObserversGroup(this);
-        globalObserversGroup = NotificationCenter.getGlobalInstance().createObserversGroup(this);
+        observersGroup.addGlobal(NotificationCenter.xgramInterfaceSettingsChanged);
 
         if (searchString == null) {
             currentConnectionState = getConnectionsManager().getConnectionState();
 
-            globalObserversGroup.add(NotificationCenter.emojiLoaded);
+            observersGroup.addGlobal(NotificationCenter.emojiLoaded);
             if (!onlySelect) {
-                globalObserversGroup.add(NotificationCenter.closeSearchByActiveAction);
-                globalObserversGroup.add(NotificationCenter.proxySettingsChanged);
+                observersGroup.addGlobal(NotificationCenter.closeSearchByActiveAction);
+                observersGroup.addGlobal(NotificationCenter.proxySettingsChanged);
                 observersGroup.add(NotificationCenter.filterSettingsUpdated);
                 observersGroup.add(NotificationCenter.dialogsUnreadCounterChanged);
             }
@@ -2941,7 +2943,7 @@ private static final String OFFICIAL_SUPPORT_URL = "https://app.chat-t.me/suppor
                 .add(NotificationCenter.userEmojiStatusUpdated)
                 .add(NotificationCenter.currentUserPremiumStatusChanged);
 
-            globalObserversGroup.add(NotificationCenter.didSetPasscode);
+            observersGroup.addGlobal(NotificationCenter.didSetPasscode);
         }
         observersGroup
             .add(NotificationCenter.messagesDeleted)
@@ -2993,8 +2995,8 @@ private static final String OFFICIAL_SUPPORT_URL = "https://app.chat-t.me/suppor
         }
 
         BirthdayController.getInstance(currentAccount).check();
-        additionNavigationBarHeight = hasMainTabs ? dp(MAIN_TABS_HEIGHT_WITH_MARGINS) : 0;
-        additionFloatingButtonOffset = hasMainTabs ? dp(DialogsActivity.MAIN_TABS_HEIGHT + DialogsActivity.MAIN_TABS_MARGIN) : 0;
+        additionNavigationBarHeight = hasMainTabs && XGramConfig.isHomeBottomBarVisible() ? dp(MAIN_TABS_HEIGHT_WITH_MARGINS) : 0;
+        additionFloatingButtonOffset = hasMainTabs && XGramConfig.isHomeBottomBarVisible() ? dp(DialogsActivity.MAIN_TABS_HEIGHT + DialogsActivity.MAIN_TABS_MARGIN) : 0;
 
         return true;
     }
@@ -3088,10 +3090,6 @@ private static final String OFFICIAL_SUPPORT_URL = "https://app.chat-t.me/suppor
         if (observersGroup != null) {
             observersGroup.removeAllObservers();
             observersGroup = null;
-        }
-        if (globalObserversGroup != null) {
-            globalObserversGroup.removeAllObservers();
-            globalObserversGroup = null;
         }
 
         if (commentView != null) {
@@ -3457,15 +3455,15 @@ private static final String OFFICIAL_SUPPORT_URL = "https://app.chat-t.me/suppor
         fragmentSearchFieldWatcher.setDoNotCloseAfterFieldEmpty();
 
         if (initialDialogsType == DIALOGS_TYPE_DEFAULT) {
-            optionsItem = menu.addItem(4, R.drawable.ic_ab_other);
+            optionsItem = menu.addItem(4, useClassicDrawer() ? R.drawable.xgram_menu_classic : R.drawable.ic_ab_other);
             optionsItem.setContentDescription(LocaleController.getString(R.string.AccDescrMoreOptions));
             optionsItem.setOnClickListener(v -> {
                 getContactsController().loadGlobalPrivacySetting();
-                showItemOptions();
+                if (useClassicDrawer()) showClassicDrawer(); else showItemOptions();
             });
             optionsItem.setOnLongClickListener(v -> {
                 getContactsController().loadGlobalPrivacySetting();
-                showItemOptions();
+                if (useClassicDrawer()) showClassicDrawer(); else showItemOptions();
                 return true;
             });
         }
@@ -3531,9 +3529,7 @@ private static final String OFFICIAL_SUPPORT_URL = "https://app.chat-t.me/suppor
             } else {
     statusDrawable = new AnimatedEmojiDrawable.SwapAnimatedEmojiDrawable(null, dp(26));
     statusDrawable.center = true;
-    SpannableStringBuilder ssb = new SpannableStringBuilder("XGram");
-    ssb.setSpan(new ForegroundColorSpan(getThemedColor(Theme.key_telegram_color_dialogsLogo)), 0, ssb.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
-    actionBar.setTitle(ssb, statusDrawable);
+    actionBar.setTitle("XGram", statusDrawable);
     updateStatus(UserConfig.getInstance(currentAccount).getCurrentUser(), false);
             }
             if (folderId == 0) {
@@ -5148,6 +5144,7 @@ private static final String OFFICIAL_SUPPORT_URL = "https://app.chat-t.me/suppor
                 if (delegate == null || selectedDialogs.isEmpty()) {
                     return;
                 }
+                forceDocument = false;
                 ArrayList<MessagesStorage.TopicKey> topicKeys = new ArrayList<>();
                 for (int i = 0; i < selectedDialogs.size(); i++) {
                     topicKeys.add(MessagesStorage.TopicKey.of(selectedDialogs.get(i), 0));
@@ -7034,6 +7031,7 @@ private static final String OFFICIAL_SUPPORT_URL = "https://app.chat-t.me/suppor
     @Override
     public void onResume() {
         super.onResume();
+        updateXGramInterfaceSettings();
         if (dialogStoriesCell != null) {
             dialogStoriesCell.onResume();
         }
@@ -10525,7 +10523,9 @@ private static final String OFFICIAL_SUPPORT_URL = "https://app.chat-t.me/suppor
     @SuppressWarnings("unchecked")
     @Override
     public void didReceivedNotification(int id, int account, Object... args) {
-        if (id == NotificationCenter.dialogsNeedReload) {
+        if (id == NotificationCenter.xgramInterfaceSettingsChanged) {
+            updateXGramInterfaceSettings();
+        } else if (id == NotificationCenter.dialogsNeedReload) {
             if (viewPages == null || dialogsListFrozen) {
                 return;
             }
@@ -11360,6 +11360,7 @@ private static final String OFFICIAL_SUPPORT_URL = "https://app.chat-t.me/suppor
         }
         sharedMediaEntries = entries;
         sharedLink = null;
+        forceDocument = false;
         if (commentView != null) {
             attachShareTopView(initialCaption);
         } else {
@@ -11515,6 +11516,16 @@ private static final String OFFICIAL_SUPPORT_URL = "https://app.chat-t.me/suppor
             }
 
             @Override
+            public int getSelectedCount() {
+                return sharedMediaEntries != null ? sharedMediaEntries.size() : 0;
+            }
+
+            @Override
+            public boolean canSendAsFile() {
+                return canSendDocumentsToSelectedDialogs();
+            }
+
+            @Override
             public long getDialogId() {
                 return selectedDialogs.isEmpty() ? 0 : selectedDialogs.get(0);
             }
@@ -11571,10 +11582,11 @@ private static final String OFFICIAL_SUPPORT_URL = "https://app.chat-t.me/suppor
                 if (shareTopView != null) {
                     shareTopView.setSharedMedia(currentAccount, sharedMediaEntries);
                 }
-                final boolean useExternalOptions = !notify || scheduleDate != 0;
+                final boolean useExternalOptions = !notify || scheduleDate != 0 || forceDocument;
                 if (useExternalOptions && delegate != null && !selectedDialogs.isEmpty()) {
                     DialogsActivity.this.notify = notify;
                     DialogsActivity.this.scheduleDate = scheduleDate;
+                    DialogsActivity.this.forceDocument = forceDocument;
                     final ArrayList<MessagesStorage.TopicKey> topicKeys = new ArrayList<>();
                     for (int i = 0; i < selectedDialogs.size(); i++) {
                         topicKeys.add(MessagesStorage.TopicKey.of(selectedDialogs.get(i), 0));
@@ -11937,10 +11949,20 @@ private static final String OFFICIAL_SUPPORT_URL = "https://app.chat-t.me/suppor
         );
     }
 
+    private boolean canSendDocumentsToSelectedDialogs() {
+        for (int i = 0; i < selectedDialogs.size(); ++i) {
+            final TLRPC.Chat chat = getMessagesController().getChat(-selectedDialogs.get(i));
+            if (chat != null && !ChatObject.canSendDocument(chat)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
     private boolean onSendLongClick(View view) {
         if (getParentActivity() == null) return false;
 
-        boolean onlyMyself = false;
+        boolean onlyMyself = !selectedDialogs.isEmpty();
         boolean canSchedule = true;
         for (int i = 0; i < selectedDialogs.size(); ++i) {
             final long did = selectedDialogs.get(i);
@@ -11956,9 +11978,20 @@ private static final String OFFICIAL_SUPPORT_URL = "https://app.chat-t.me/suppor
         }
         final boolean onlyMyselfFinal = onlyMyself;
 
+        boolean canSendDocs = hasSharedMediaEntries() && canSendDocumentsToSelectedDialogs();
+        if (canSendDocs) {
+            for (MediaController.PhotoEntry entry : sharedMediaEntries) {
+                if (entry.hasVideoEditsLostAsDocument()) {
+                    canSendDocs = false;
+                    break;
+                }
+            }
+        }
+        final boolean multipleMedia = sharedMediaEntries != null && sharedMediaEntries.size() > 1;
+
         ItemOptions.makeOptions(this, view)
-            .add(R.drawable.input_notify_off, getString(R.string.SendWithoutSound), () -> {
-                this.notify = false;
+            .addIf(canSendDocs, R.drawable.msg_sendfile, LocaleController.getString(multipleMedia ? R.string.SendAsFiles : R.string.SendAsFile), () -> {
+                this.forceDocument = true;
                 if (delegate == null || selectedDialogs.isEmpty()) {
                     return;
                 }
@@ -11967,12 +12000,24 @@ private static final String OFFICIAL_SUPPORT_URL = "https://app.chat-t.me/suppor
                     topicKeys.add(MessagesStorage.TopicKey.of(selectedDialogs.get(i), 0));
                 delegate.didSelectDialogs(DialogsActivity.this, topicKeys, commentView.getFieldText(), false, notify, scheduleDate, scheduleRepeatPeriod, null);
             })
-            .addIf(canSchedule, R.drawable.msg_calendar2, LocaleController.getString(R.string.ScheduleMessage), () -> {
+            .add(R.drawable.input_notify_off, getString(R.string.SendWithoutSound), () -> {
+                this.notify = false;
+                this.forceDocument = false;
+                if (delegate == null || selectedDialogs.isEmpty()) {
+                    return;
+                }
+                final ArrayList<MessagesStorage.TopicKey> topicKeys = new ArrayList<>();
+                for (int i = 0; i < selectedDialogs.size(); i++)
+                    topicKeys.add(MessagesStorage.TopicKey.of(selectedDialogs.get(i), 0));
+                delegate.didSelectDialogs(DialogsActivity.this, topicKeys, commentView.getFieldText(), false, notify, scheduleDate, scheduleRepeatPeriod, null);
+            })
+            .addIf(canSchedule, R.drawable.msg_calendar2, LocaleController.getString(onlyMyselfFinal ? R.string.SetReminder : R.string.ScheduleMessage), () -> {
                 AlertsCreator.createScheduleDatePickerDialog(getParentActivity(), onlyMyselfFinal ? getUserConfig().getClientUserId() : -1, new AlertsCreator.ScheduleDatePickerDelegate() {
                     @Override
                     public void didSelectDate(boolean notify, int scheduleDate, int scheduleRepeatPeriod) {
                         DialogsActivity.this.scheduleDate = scheduleDate;
                         DialogsActivity.this.scheduleRepeatPeriod = scheduleRepeatPeriod;
+                        DialogsActivity.this.forceDocument = false;
                         if (delegate == null || selectedDialogs.isEmpty()) {
                             return;
                         }
@@ -12051,6 +12096,9 @@ private static final String OFFICIAL_SUPPORT_URL = "https://app.chat-t.me/suppor
                 actionBar.setPopupItemsColor(getThemedColor(Theme.key_actionBarDefaultSubmenuItemIcon), true, true);
                 actionBar.setPopupItemsSelectorColor(getThemedColor(Theme.key_dialogButtonSelector), true);
                 actionBar.updateColors();
+                if (hasMainTabs && !onlySelect && folderId == 0 && communityId == 0) {
+                    actionBar.setTitleColor(getThemedColor(Theme.key_telegram_color_dialogsLogo));
+                }
             }
             if (statusDrawable != null) {
                 updateStatus(UserConfig.getInstance(currentAccount).getCurrentUser(), false);
@@ -13641,6 +13689,271 @@ private static final String OFFICIAL_SUPPORT_URL = "https://app.chat-t.me/suppor
         }
     }
 
+    private boolean useClassicDrawer() {
+        return XGramConfig.isClassicDrawerEnabled() && folderId == 0 && communityId == 0 && !onlySelect;
+    }
+
+    private void updateXGramInterfaceSettings() {
+        additionNavigationBarHeight = hasMainTabs && XGramConfig.isHomeBottomBarVisible() ? dp(MAIN_TABS_HEIGHT_WITH_MARGINS) : 0;
+        additionFloatingButtonOffset = hasMainTabs && XGramConfig.isHomeBottomBarVisible() ? dp(MAIN_TABS_HEIGHT + MAIN_TABS_MARGIN) : 0;
+        if (optionsItem != null) optionsItem.setIcon(useClassicDrawer() ? R.drawable.xgram_menu_classic : R.drawable.ic_ab_other);
+        updateFloatingButtonOffset();
+        if (viewPages != null) {
+            for (ViewPage page : viewPages) {
+                if (page != null && page.listView != null) {
+                    for (int i = 0; i < page.listView.getChildCount(); i++) {
+                        page.listView.getChildAt(i).requestLayout();
+                    }
+                    page.listView.requestLayout();
+                }
+            }
+        }
+        if (fragmentView != null) {
+            checkInsets();
+            ViewCompat.requestApplyInsets(fragmentView);
+            fragmentView.requestLayout();
+            fragmentView.invalidate();
+        }
+    }
+
+    private void toggleXGramDayNight() {
+            if (switchingTheme) {
+                return;
+            }
+            switchingTheme = true;
+            SharedPreferences preferences = ApplicationLoader.applicationContext.getSharedPreferences("themeconfig", Activity.MODE_PRIVATE);
+            String dayThemeName = preferences.getString("lastDayTheme", "Blue");
+            if (Theme.getTheme(dayThemeName) == null || Theme.getTheme(dayThemeName).isDark()) {
+                dayThemeName = "Blue";
+            }
+            String nightThemeName = preferences.getString("lastDarkTheme", "Dark Blue");
+            if (Theme.getTheme(nightThemeName) == null || !Theme.getTheme(nightThemeName).isDark()) {
+                nightThemeName = "Dark Blue";
+            }
+            Theme.ThemeInfo themeInfo = Theme.getActiveTheme();
+            if (dayThemeName.equals(nightThemeName)) {
+                if (themeInfo.isDark() || dayThemeName.equals("Dark Blue") || dayThemeName.equals("Night")) {
+                    dayThemeName = "Blue";
+                } else {
+                    nightThemeName = "Dark Blue";
+                }
+            }
+
+            boolean toDark;
+            if (toDark = dayThemeName.equals(themeInfo.getKey())) {
+                themeInfo = Theme.getTheme(nightThemeName);
+            } else {
+                themeInfo = Theme.getTheme(dayThemeName);
+            }
+            switchTheme(themeInfo, toDark);
+            Theme.turnOffAutoNight(BulletinFactory.of(this), () -> {
+                presentFragment(new ThemeActivity(ThemeActivity.THEME_TYPE_NIGHT));
+            });
+    }
+
+    /**
+     * Adapted from Mercurygram v10.6.1.3's DrawerLayoutAdapter,
+     * DrawerProfileCell and DrawerActionCell (GPL-2.0-or-later):
+     * https://github.com/Mercurygram/Mercurygram/tree/v10.6.1.3
+     * The current app no longer has the old drawer container, so the panel is
+     * hosted in a dialog; actions use the current navigation and account APIs.
+     */
+    private void showClassicDrawer() {
+        final Activity activity = getParentActivity();
+        if (activity == null || activity.isFinishing()) return;
+        final Dialog dialog = new Dialog(activity);
+        dialog.requestWindowFeature(android.view.Window.FEATURE_NO_TITLE);
+        final ScrollView scroll = new ScrollView(activity);
+        final LinearLayout items = new LinearLayout(activity);
+        items.setOrientation(LinearLayout.VERTICAL);
+        items.setPadding(0, 0, 0, dp(16));
+        items.setBackgroundColor(getThemedColor(Theme.key_chats_menuBackground));
+        scroll.addView(items);
+
+        // Mercurygram's profile header: avatar opens the profile; the rest
+        // expands the list of accounts.
+        TLRPC.User currentUser = getUserConfig().getCurrentUser();
+        FrameLayout header = new FrameLayout(activity);
+        final int headerColorKey = Theme.hasThemeKey(Theme.key_chats_menuTopBackground) && getThemedColor(Theme.key_chats_menuTopBackground) != 0
+                ? Theme.key_chats_menuTopBackground : Theme.key_chats_menuTopBackgroundCats;
+        header.setBackgroundColor(getThemedColor(headerColorKey));
+        items.addView(header, new LinearLayout.LayoutParams(-1, dp(148)));
+        BackupImageView avatar = new BackupImageView(activity);
+        avatar.getImageReceiver().setRoundRadius(dp(32));
+        if (currentUser != null) avatar.setForUserOrChat(currentUser, new AvatarDrawable(currentUser));
+        header.addView(avatar, LayoutHelper.createFrame(64, 64, Gravity.LEFT | Gravity.BOTTOM, 16, 0, 0, 67));
+        avatar.setContentDescription(getString(R.string.MyProfile));
+        avatar.setOnClickListener(v -> {
+            dialog.dismiss();
+            Bundle args = new Bundle();
+            args.putLong("user_id", getUserConfig().getClientUserId());
+            args.putBoolean("my_profile", true);
+            presentFragment(new ProfileActivity(args));
+        });
+        TextView name = new TextView(activity);
+        name.setText(currentUser == null ? "" : UserObject.getUserName(currentUser));
+        name.setTextColor(getThemedColor(Theme.key_chats_menuName));
+        name.setTypeface(AndroidUtilities.bold());
+        name.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 15);
+        name.setSingleLine(true);
+        header.addView(name, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, 24, Gravity.LEFT | Gravity.BOTTOM, 16, 0, 52, 29));
+        TextView phone = new TextView(activity);
+        phone.setText(currentUser == null || TextUtils.isEmpty(currentUser.phone) ? "" : org.telegram.PhoneFormat.PhoneFormat.getInstance().format("+" + currentUser.phone));
+        phone.setTextColor(getThemedColor(Theme.key_chats_menuPhoneCats));
+        phone.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 13);
+        phone.setSingleLine(true);
+        header.addView(phone, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, 20, Gravity.LEFT | Gravity.BOTTOM, 16, 0, 52, 8));
+        ImageView arrow = new ImageView(activity);
+        arrow.setImageResource(R.drawable.msg_expand);
+        arrow.setColorFilter(new PorterDuffColorFilter(getThemedColor(Theme.key_chats_menuName), PorterDuff.Mode.SRC_IN));
+        header.addView(arrow, LayoutHelper.createFrame(48, 48, Gravity.RIGHT | Gravity.BOTTOM));
+        header.setContentDescription(getString(R.string.AddAccount));
+        header.setClickable(true);
+        final LinearLayout accounts = new LinearLayout(activity);
+        accounts.setOrientation(LinearLayout.VERTICAL);
+        items.addView(accounts, new LinearLayout.LayoutParams(-1, -2));
+        ArrayList<Integer> accountNumbers = new ArrayList<>();
+        for (int a = 0; a < UserConfig.MAX_ACCOUNT_COUNT; a++) {
+            if (UserConfig.getInstance(a).isClientActivated()) accountNumbers.add(a);
+        }
+        Collections.sort(accountNumbers, (a, b) -> Integer.compare(UserConfig.getInstance(a).loginTime, UserConfig.getInstance(b).loginTime));
+        for (int account : accountNumbers) {
+            TLRPC.User user = UserConfig.getInstance(account).getCurrentUser();
+            if (user == null) continue;
+            LinearLayout row = new LinearLayout(activity);
+            row.setGravity(Gravity.CENTER_VERTICAL);
+            row.setPadding(dp(19), 0, dp(16), 0);
+            row.setBackground(Theme.createSelectorDrawable(getThemedColor(Theme.key_listSelector)));
+            BackupImageView accountAvatar = new BackupImageView(activity);
+            accountAvatar.getImageReceiver().setRoundRadius(dp(16));
+            accountAvatar.setForUserOrChat(user, new AvatarDrawable(user));
+            row.addView(accountAvatar, new LinearLayout.LayoutParams(dp(32), dp(32)));
+            TextView accountName = new TextView(activity);
+            accountName.setText(UserObject.getUserName(user));
+            accountName.setSingleLine(true);
+            accountName.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 15);
+            accountName.setTextColor(getThemedColor(Theme.key_chats_menuItemText));
+            accountName.setPadding(dp(21), 0, 0, 0);
+            row.addView(accountName, new LinearLayout.LayoutParams(0, -2, 1));
+            if (account == currentAccount) {
+                ImageView check = new ImageView(activity);
+                check.setImageResource(R.drawable.msg_check_s);
+                row.addView(check, new LinearLayout.LayoutParams(dp(24), dp(24)));
+            }
+            row.setOnClickListener(v -> {
+                dialog.dismiss();
+                if (account != currentAccount && activity instanceof LaunchActivity) ((LaunchActivity) activity).switchToAccount(account, true);
+            });
+            accounts.addView(row, new LinearLayout.LayoutParams(-1, dp(48)));
+        }
+        if (accountNumbers.size() < UserConfig.MAX_ACCOUNT_COUNT) {
+            addClassicDrawerItem(accounts, dialog, R.drawable.msg_addbot, getString(R.string.AddAccount), () -> {
+                int freeAccounts = 0;
+                Integer availableAccount = null;
+                for (int a = UserConfig.MAX_ACCOUNT_COUNT - 1; a >= 0; a--) {
+                    if (!UserConfig.getInstance(a).isClientActivated()) {
+                        freeAccounts++;
+                        if (availableAccount == null) availableAccount = a;
+                    }
+                }
+                if (!UserConfig.hasPremiumOnAccounts()) freeAccounts -= UserConfig.MAX_ACCOUNT_COUNT - UserConfig.MAX_ACCOUNT_DEFAULT_COUNT;
+                if (freeAccounts > 0 && availableAccount != null) presentFragment(new LoginActivity(availableAccount));
+                else if (!UserConfig.hasPremiumOnAccounts()) showDialog(new LimitReachedBottomSheet(this, getContext(), LimitReachedBottomSheet.TYPE_ACCOUNTS, currentAccount, null));
+            });
+        }
+        boolean accountsShown = accountNumbers.size() > 1 && MessagesController.getGlobalMainSettings().getBoolean("accountsShown", true);
+        accounts.setVisibility(accountsShown ? View.VISIBLE : View.GONE);
+        arrow.setRotation(accountsShown ? 180 : 0);
+        header.setOnClickListener(v -> {
+            boolean shown = accounts.getVisibility() != View.VISIBLE;
+            accounts.setVisibility(shown ? View.VISIBLE : View.GONE);
+            arrow.animate().rotation(shown ? 180 : 0).setDuration(180).start();
+            MessagesController.getGlobalMainSettings().edit().putBoolean("accountsShown", shown).apply();
+        });
+        ImageView themeButton = new ImageView(activity);
+        themeButton.setImageResource(Theme.isCurrentThemeDark() ? R.drawable.menu_day_mode_24 : R.drawable.menu_night_mode_24);
+        themeButton.setColorFilter(new PorterDuffColorFilter(getThemedColor(Theme.key_chats_menuName), PorterDuff.Mode.SRC_IN));
+        themeButton.setContentDescription(getString(Theme.isCurrentThemeDark() ? R.string.SwitchThemeToDay : R.string.SwitchThemeToNight));
+        header.addView(themeButton, LayoutHelper.createFrame(48, 48, Gravity.RIGHT | Gravity.TOP, 0, 8, 8, 0));
+        themeButton.setOnClickListener(v -> { dialog.dismiss(); toggleXGramDayNight(); });
+        addClassicDrawerItem(items, dialog, R.drawable.left_status_profile, getString(R.string.MyProfile), () -> {
+            Bundle args = new Bundle();
+            args.putLong("user_id", getUserConfig().getClientUserId());
+            args.putBoolean("my_profile", true);
+            presentFragment(new ProfileActivity(args));
+        });
+        items.addView(new org.telegram.ui.Cells.DividerCell(activity, resourceProvider));
+        addClassicDrawerItem(items, dialog, R.drawable.msg_channel, getString(R.string.NewChannel), () -> {
+            Bundle args = new Bundle(); args.putInt("step", 0); presentFragment(new ChannelCreateActivity(args));
+        });
+        addClassicDrawerItem(items, dialog, R.drawable.msg_groups, getString(R.string.NewGroup), () -> presentFragment(new GroupCreateActivity(new Bundle())));
+        addClassicDrawerItem(items, dialog, R.drawable.msg_saved, getString(R.string.SavedMessages), () -> {
+            Bundle args = new Bundle();
+            args.putLong("user_id", getUserConfig().getClientUserId());
+            presentFragment(new ChatActivity(args));
+        });
+        addClassicDrawerItem(items, dialog, R.drawable.msg_archive, getString(R.string.ArchivedChats), () -> {
+            Bundle args = new Bundle(); args.putInt("folderId", 1); presentFragment(new DialogsActivity(args));
+        });
+        addClassicDrawerItem(items, dialog, R.drawable.msg_link, getString(R.string.BrowserSettingsTitle), () -> {
+            try {
+                Intent browserIntent = new Intent(Intent.ACTION_MAIN);
+                browserIntent.addCategory(Intent.CATEGORY_APP_BROWSER);
+                activity.startActivity(browserIntent);
+            } catch (Exception e) {
+                FileLog.e(e);
+                presentFragment(new org.telegram.ui.web.WebBrowserSettings(null));
+            }
+        });
+        addClassicDrawerItem(items, dialog, R.drawable.msg_settings_old, getString(R.string.Settings), () -> presentFragment(new SettingsActivity()));
+        addClassicDrawerItem(items, dialog, R.drawable.msg_qrcode, getString(R.string.ScanQrCode), () -> {
+            Bundle args = new Bundle(); args.putLong("user_id", getUserConfig().getClientUserId());
+            args.putBoolean(org.telegram.ui.QrShare.QrShareActivity.ARG_OPEN_SCANNER, true);
+            presentFragment(new org.telegram.ui.QrShare.QrShareActivity(args));
+        });
+        addClassicDrawerItem(items, dialog, R.drawable.msg_contacts, getString(R.string.Contacts), () -> {
+            Bundle args = new Bundle();
+            args.putBoolean("needFinishFragment", false);
+            presentFragment(new ContactsActivity(args));
+        });
+        addClassicDrawerItem(items, dialog, R.drawable.msg_calls, getString(R.string.Calls), () -> presentFragment(new CallLogActivity()));
+        if (XGramConfig.showMoneyEntry(currentAccount)) addClassicDrawerItem(items, dialog, R.drawable.xgram_wallet_icon, getString(R.string.XGramWalletLabel), () -> XGramWalletUnavailable.show(getContext(), resourceProvider));
+        items.addView(new org.telegram.ui.Cells.DividerCell(activity, resourceProvider));
+        addClassicDrawerItem(items, dialog, R.drawable.settings_invite, getString(R.string.InviteFriends), () -> presentFragment(new InviteContactsActivity()));
+        addClassicDrawerItem(items, dialog, R.drawable.msg_help, getString(R.string.TelegramFeatures), () -> Browser.openUrl(activity, getString(R.string.TelegramFeaturesUrl)));
+        addClassicDrawerItem(items, dialog, R.drawable.ic_ab_other, getString(R.string.AccDescrMoreOptions), () -> AndroidUtilities.runOnUIThread(this::showItemOptions, 100));
+        dialog.setContentView(scroll);
+        if (dialog.getWindow() != null) {
+            dialog.getWindow().setWindowAnimations(R.style.XGramClassicDrawerAnimationLeft);
+        }
+        if (showDialog(dialog) == null) return;
+        if (dialog.getWindow() != null) {
+            dialog.getWindow().setBackgroundDrawable(new ColorDrawable(getThemedColor(Theme.key_chats_menuBackground)));
+            dialog.getWindow().setGravity(Gravity.LEFT | Gravity.TOP);
+            dialog.getWindow().setLayout(Math.max(dp(200), Math.min(dp(320), AndroidUtilities.displaySize.x - dp(56))), ViewGroup.LayoutParams.MATCH_PARENT);
+        }
+    }
+
+    /** Row dimensions adapted from Mercurygram's DrawerActionCell. */
+    private void addClassicDrawerItem(LinearLayout parent, Dialog dialog, int icon, CharSequence title, Runnable action) {
+        FrameLayout row = new FrameLayout(parent.getContext());
+        row.setBackground(Theme.createSelectorDrawable(getThemedColor(Theme.key_listSelector)));
+        ImageView image = new ImageView(parent.getContext());
+        image.setImageResource(icon);
+        image.setColorFilter(new PorterDuffColorFilter(getThemedColor(Theme.key_chats_menuItemIcon), PorterDuff.Mode.SRC_IN));
+        row.addView(image, LayoutHelper.createFrame(24, 24, Gravity.LEFT | Gravity.TOP, 19, 12, 0, 0));
+        TextView text = new TextView(parent.getContext());
+        text.setText(title);
+        text.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 15);
+        text.setTypeface(AndroidUtilities.getVazirmatnTypeface());
+        text.setGravity(Gravity.CENTER_VERTICAL | Gravity.LEFT);
+        text.setTextColor(getThemedColor(Theme.key_chats_menuItemText));
+        row.addView(text, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.MATCH_PARENT, Gravity.LEFT | Gravity.TOP, 72, 0, 16, 0));
+        row.setContentDescription(title);
+        row.setOnClickListener(v -> { dialog.dismiss(); action.run(); });
+        parent.addView(row, new LinearLayout.LayoutParams(-1, dp(48)));
+    }
+
     private void showItemOptions() {
         ItemOptions io = ItemOptions.makeOptions(this, optionsItem);
         io.setColors(getThemedColor(Theme.key_actionBarDefaultTitle), getThemedColor(Theme.key_actionBarDefaultTitle));
@@ -13701,38 +14014,7 @@ private static final String OFFICIAL_SUPPORT_URL = "https://app.chat-t.me/suppor
         }
         io.add(isCurrentThemeDark ? R.drawable.menu_day_mode_24 : R.drawable.menu_night_mode_24,
                 getString(isCurrentThemeDark ? R.string.SwitchThemeToDay : R.string.SwitchThemeToNight), () -> {
-            if (switchingTheme) {
-                return;
-            }
-            switchingTheme = true;
-            SharedPreferences preferences = ApplicationLoader.applicationContext.getSharedPreferences("themeconfig", Activity.MODE_PRIVATE);
-            String dayThemeName = preferences.getString("lastDayTheme", "Blue");
-            if (Theme.getTheme(dayThemeName) == null || Theme.getTheme(dayThemeName).isDark()) {
-                dayThemeName = "Blue";
-            }
-            String nightThemeName = preferences.getString("lastDarkTheme", "Dark Blue");
-            if (Theme.getTheme(nightThemeName) == null || !Theme.getTheme(nightThemeName).isDark()) {
-                nightThemeName = "Dark Blue";
-            }
-            Theme.ThemeInfo themeInfo = Theme.getActiveTheme();
-            if (dayThemeName.equals(nightThemeName)) {
-                if (themeInfo.isDark() || dayThemeName.equals("Dark Blue") || dayThemeName.equals("Night")) {
-                    dayThemeName = "Blue";
-                } else {
-                    nightThemeName = "Dark Blue";
-                }
-            }
-
-            boolean toDark;
-            if (toDark = dayThemeName.equals(themeInfo.getKey())) {
-                themeInfo = Theme.getTheme(nightThemeName);
-            } else {
-                themeInfo = Theme.getTheme(dayThemeName);
-            }
-            switchTheme(themeInfo, toDark);
-            Theme.turnOffAutoNight(BulletinFactory.of(this), () -> {
-                presentFragment(new ThemeActivity(ThemeActivity.THEME_TYPE_NIGHT));
-            });
+            toggleXGramDayNight();
         });
         io.addGap();
         io.add(R.drawable.outline_groups_24, getString(R.string.NewGroup), () -> {
@@ -13765,7 +14047,7 @@ if (ENABLE_NEW_CHANNEL) {
     });
 }
 
-if (ENABLE_CONTACTS) {
+if (ENABLE_CONTACTS || !XGramConfig.isHomeBottomBarVisible()) {
     io.add(R.drawable.msg_contacts, "مخاطبین", () -> {
         Bundle args = new Bundle();
         args.putBoolean("destroyAfterSelect", true);
@@ -13780,55 +14062,49 @@ if (ENABLE_CONTACTS) {
         if (ApplicationLoader.applicationLoaderInstance != null) {
             ApplicationLoader.applicationLoaderInstance.addItemOptions(io);
         }
-        TLRPC.TL_attachMenuBots menuBots = MediaDataController.getInstance(UserConfig.selectedAccount).getAttachMenuBots();
-        if (launchActivity != null && menuBots != null && menuBots.bots != null && !menuBots.bots.isEmpty()) {
-            for (TLRPC.TL_attachMenuBot attachMenuBot : menuBots.bots) {
-                if (attachMenuBot.show_in_side_menu) {
-                    io.addBot(attachMenuBot, () -> {
-                        if (attachMenuBot.inactive || attachMenuBot.side_menu_disclaimer_needed) {
-                            WebAppDisclaimerAlert.show(getContext(), (allowSendMessage) -> {
-                                TLRPC.TL_messages_toggleBotInAttachMenu botRequest = new TLRPC.TL_messages_toggleBotInAttachMenu();
-                                botRequest.bot = MessagesController.getInstance(currentAccount).getInputUser(attachMenuBot.bot_id);
-                                botRequest.enabled = true;
-                                botRequest.write_allowed = true;
-                                ConnectionsManager.getInstance(currentAccount).sendRequest(botRequest, (response2, error2) -> AndroidUtilities.runOnUIThread(() -> {
-                                    attachMenuBot.inactive = attachMenuBot.side_menu_disclaimer_needed = false;
-                                    LaunchActivity.showAttachMenuBot(launchActivity, currentAccount, attachMenuBot, null, true);
-                                    MediaDataController.getInstance(currentAccount).updateAttachMenuBotsInCache();
-                                }), ConnectionsManager.RequestFlagInvokeAfter | ConnectionsManager.RequestFlagFailOnServerErrors);
-                            }, null, null);
-                        } else {
-                            LaunchActivity.showAttachMenuBot(launchActivity, currentAccount, attachMenuBot, null, true);
-                        }
-                    }, () -> BotWebViewSheet.deleteBot(currentAccount, attachMenuBot.bot_id, null));
+        if (XGramConfig.showMoneyEntry(currentAccount)) {
+            io.add(R.drawable.xgram_wallet_icon, LocaleController.getString(R.string.XGramWalletLabel), () -> {
+                XGramWalletUnavailable.show(getContext(), resourceProvider);
+            });
+        } else {
+            TLRPC.TL_attachMenuBots menuBots = MediaDataController.getInstance(UserConfig.selectedAccount).getAttachMenuBots();
+            if (launchActivity != null && menuBots != null && menuBots.bots != null && !menuBots.bots.isEmpty()) {
+                for (TLRPC.TL_attachMenuBot attachMenuBot : menuBots.bots) {
+                    if (attachMenuBot.show_in_side_menu) {
+                        io.addBot(attachMenuBot, () -> {
+                            if (attachMenuBot.inactive || attachMenuBot.side_menu_disclaimer_needed) {
+                                WebAppDisclaimerAlert.show(getContext(), (allowSendMessage) -> {
+                                    TLRPC.TL_messages_toggleBotInAttachMenu botRequest = new TLRPC.TL_messages_toggleBotInAttachMenu();
+                                    botRequest.bot = MessagesController.getInstance(currentAccount).getInputUser(attachMenuBot.bot_id);
+                                    botRequest.enabled = true;
+                                    botRequest.write_allowed = true;
+                                    ConnectionsManager.getInstance(currentAccount).sendRequest(botRequest, (response2, error2) -> AndroidUtilities.runOnUIThread(() -> {
+                                        attachMenuBot.inactive = attachMenuBot.side_menu_disclaimer_needed = false;
+                                        LaunchActivity.showAttachMenuBot(launchActivity, currentAccount, attachMenuBot, null, true);
+                                        MediaDataController.getInstance(currentAccount).updateAttachMenuBotsInCache();
+                                    }), ConnectionsManager.RequestFlagInvokeAfter | ConnectionsManager.RequestFlagFailOnServerErrors);
+                                }, null, null);
+                            } else {
+                                LaunchActivity.showAttachMenuBot(launchActivity, currentAccount, attachMenuBot, null, true);
+                            }
+                        }, () -> BotWebViewSheet.deleteBot(currentAccount, attachMenuBot.bot_id, null));
+                    }
                 }
             }
         }
-        if (getUserConfig().showCallsTab) {
+        if (!XGramConfig.isHomeBottomBarVisible()) {
+            io.add(R.drawable.msg_calls, getString(R.string.MainTabsCalls), () -> presentFragment(new CallLogActivity()));
+            io.add(R.drawable.msg_openprofile, getString(R.string.MainTabsProfile), () -> {
+                Bundle args = new Bundle();
+                args.putLong("user_id", getUserConfig().getClientUserId());
+                args.putBoolean("my_profile", true);
+                presentFragment(new ProfileActivity(args));
+            });
+        }
+        if (getUserConfig().showCallsTab || !XGramConfig.isHomeBottomBarVisible()) {
             io.add(R.drawable.msg_settings_old, getString(R.string.Settings), () -> {
                 presentFragment(new SettingsActivity());
             });
-        }
-
-        if (proxyMenuSubItem != null) {
-            proxyMenuSubItem.subtextView.setTextColor(getThemedColor(Theme.key_groupcreate_sectionText));
-            proxyMenuSubItem.setOnClickListener(v -> {
-                io.dismiss();
-                presentFragment(new ProxyListActivity());
-            });
-
-            final SharedPreferences preferences = ApplicationLoader.applicationContext
-                    .getSharedPreferences("mainconfig", Activity.MODE_PRIVATE);
-
-            final String proxyAddress = preferences.getString("proxy_ip", "");
-            final boolean proxyEnabled = preferences.getBoolean("proxy_enabled", false);
-            final boolean proxyVisible = proxyEnabled && !TextUtils.isEmpty(proxyAddress)
-                    || getMessagesController().blockedCountry && !SharedConfig.proxyList.isEmpty();
-
-            if (proxyVisible) {
-                io.addGap();
-                io.add(proxyMenuSubItem);
-            }
         }
 
         io.show();

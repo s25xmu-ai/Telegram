@@ -8786,6 +8786,8 @@
   "SendAsNewPhoto": "ارسال به صورت یک عکس جدید",
   "SendBotNoThread": "پیام خارج از رشته",
   "SendByEnter": "ارسال با Enter",
+  "XGramIOSInputField": "نوار پیام به سبک iOS",
+  "XGramIOSMessageMenu": "منوی پیام به سبک iOS",
   "SendContactTo": "اطلاعات تماس به ⁨%1$s⁩ ارسال شود؟",
   "SendContactToGroup": "اطلاعات تماس به ⁨%1$s⁩ ارسال شود؟",
   "SendContactToGroupText": "آیا می‌خواهید این مخاطب را برای **⁨%1$s⁩** ارسال کنید؟",

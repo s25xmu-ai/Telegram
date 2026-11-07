@@ -730,9 +730,10 @@ public class ProfileActionsView extends View {
                     insertIfAvailable(out, KEY_VOICE_CHAT);
                     insertIfNotAvailable(out, KEY_STREAM, KEY_VOICE_CHAT);
                 }
+                insertIfAvailable(out, KEY_DISCUSS);
                 insertIfAvailable(out, KEY_NOTIFICATION);
                 if (!join) {
-                    insertIfAvailable(out, KEY_DISCUSS);
+//                    insertIfAvailable(out, KEY_DISCUSS);
                     insertIfNotAvailable2(out, KEY_GIFT, KEY_DISCUSS, KEY_STORY);
                 }
                 insertIfNotAvailable(out, KEY_SHARE, KEY_STORY);
@@ -744,6 +745,7 @@ public class ProfileActionsView extends View {
                 }
                 break;
             case MODE_GROUP:
+                insertIfAvailable(out, KEY_OPEN_CHANNEL);
             case MODE_FORUM:
                 if (join) {
                     insertIfAvailable(out, KEY_JOIN);
@@ -893,6 +895,9 @@ public class ProfileActionsView extends View {
             case KEY_NOTIFICATION:
                 newAction = new Action();
                 updateNotification(newAction, false);
+                break;
+            case KEY_OPEN_CHANNEL:
+                newAction = new Action(ActionButton.OPEN_CHANNEL);
                 break;
         }
 
@@ -1088,6 +1093,8 @@ public class ProfileActionsView extends View {
                 to.left = to.right;
             } else if ((key == KEY_GIFT || key == KEY_DISCUSS) && mode == MODE_CHANNEL) {
                 to.left = to.right;
+            } else if (key == KEY_OPEN_CHANNEL && mode == MODE_GROUP) {
+                to.left = to.right;
             } else {
                 to.left = to.right = to.centerX();
             }
@@ -1148,6 +1155,9 @@ public class ProfileActionsView extends View {
                     fromLeft = true;
                     fromRight = false;
                 } else if (fromLeft && lastAction != null && !lastAction.isDeleting) {
+                    fromLeft = false;
+                    fromRight = true;
+                } else if (key == KEY_OPEN_CHANNEL && mode == MODE_GROUP) {
                     fromLeft = false;
                     fromRight = true;
                 }
@@ -1231,7 +1241,9 @@ public class ProfileActionsView extends View {
         SET_PHOTO(R.string.ProfileActionsEditPhoto2, R.drawable.filled_profile_photo, R.drawable.outline_profile_photo),
         EDIT_USERNAME(R.string.ProfileActionsEditUsername, R.drawable.filled_profile_edit_24, R.drawable.outline_profile_edit_24),
         EDIT_INFO(R.string.ProfileActionsEditInfo, R.drawable.filled_profile_edit_24, R.drawable.outline_profile_edit_24),
-        SETTINGS(R.string.Settings, R.drawable.filled_profile_settings, R.drawable.outline_profile_settings),;
+        SETTINGS(R.string.Settings, R.drawable.filled_profile_settings, R.drawable.outline_profile_settings),
+        OPEN_CHANNEL(R.string.ProfileChannel, R.drawable.msg_folders_channels, R.drawable.msg_folders_channels),
+        QR_BUTTON(R.string.QrCode, R.drawable.msg_qrcode, R.drawable.msg_qrcode);
 
         final @StringRes int title;
         final @DrawableRes int filledIcon;
@@ -1353,4 +1365,16 @@ public class ProfileActionsView extends View {
         }
         return accessibilityNodeProvider;
     }
+
+    /** XGram (from Cherrygram) start */
+    public static final int KEY_OPEN_CHANNEL = 1390;
+    public static final int KEY_QR_BUTTON = 1391;
+
+    public void addQRButton() {
+        final Action action = new Action(ActionButton.QR_BUTTON);
+        action.key = KEY_QR_BUTTON;
+        actions.add(action);
+    }
+    /** XGram (from Cherrygram) finish */
+
 }

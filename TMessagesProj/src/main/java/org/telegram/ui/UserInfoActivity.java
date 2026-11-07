@@ -405,20 +405,6 @@ public class UserInfoActivity extends UniversalFragment implements NotificationC
         if (hadLocation) {
             items.add(SettingsActivity.SettingCell.Factory.of(BUTTON_LOCATION, IconBackgroundColors.RED.top, IconBackgroundColors.RED.bottom, R.drawable.filled_location, getString(R.string.EditProfileLocation)));
         }
-        if (bots != null && !bots.isEmpty()) {
-            final StringBuilder value = new StringBuilder();
-            for (final TL_account.TL_connectedBot bot : bots) {
-                final TLRPC.User botUser = MessagesController.getInstance(currentAccount).getUser(bot.bot_id);
-                if (botUser != null) {
-                    if (value.length() > 0) value.append(", ");
-                    value.append(UserObject.getUserName(botUser));
-                }
-            }
-            items.add(SettingsActivity.SettingCell.Factory.of(BUTTON_AI, IconBackgroundColors.PURPLE.top, IconBackgroundColors.PURPLE.bottom, R.drawable.premium_ai_editor, getString(R.string.EditProfileChatAutomation), value));
-        } else {
-            items.add(SettingsActivity.SettingCell.Factory.of(BUTTON_AI, IconBackgroundColors.PURPLE.top, IconBackgroundColors.PURPLE.bottom, R.drawable.premium_ai_editor, applyNewSpan(getString(R.string.EditProfileChatAutomation))));
-        }
-        items.add(UItem.asShadow(-3, getString(R.string.EditProfileChatAutomationInfo)));
         final boolean hasAddAccount = UserConfig.getActivatedAccountsCount() < UserConfig.MAX_ACCOUNT_COUNT;
         if (hasAddAccount) {
             addAccountRow = items.size();
@@ -456,11 +442,31 @@ public class UserInfoActivity extends UniversalFragment implements NotificationC
         }
         if ((birthday.flags & 1) != 0) {
             Calendar calendar = Calendar.getInstance();
-            calendar.set(Calendar.YEAR, birthday.year);
-            calendar.set(Calendar.MONTH, birthday.month - 1);
-            calendar.set(Calendar.DAY_OF_MONTH, birthday.day);
+            calendar.clear();
+            calendar.set(birthday.year, birthday.month - 1, birthday.day);
+            java.util.Locale locale = LocaleController.getInstance().getCurrentLocale();
+            if (locale != null && "fa".equalsIgnoreCase(locale.getLanguage())) {
+                return org.telegram.messenger.PersianDate.format(calendar.getTimeInMillis(), true);
+            }
             return LocaleController.getInstance().getFormatterBoostExpired().format(calendar.getTimeInMillis());
         } else {
+            java.util.Locale locale = LocaleController.getInstance().getCurrentLocale();
+            if (locale != null && "fa".equalsIgnoreCase(locale.getLanguage())) {
+                // Telegram stores yearless birthdays as a recurring Gregorian day.
+                // Display the next occurrence, without changing the stored birthday.
+                java.time.LocalDate today = java.time.LocalDate.now();
+                for (int year = today.getYear(); year <= today.getYear() + 8; year++) {
+                    try {
+                        java.time.LocalDate next = java.time.LocalDate.of(year, birthday.month, birthday.day);
+                        if (!next.isBefore(today)) {
+                            Calendar calendar = Calendar.getInstance();
+                            calendar.clear();
+                            calendar.set(next.getYear(), next.getMonthValue() - 1, next.getDayOfMonth());
+                            return org.telegram.messenger.PersianDate.format(calendar.getTimeInMillis(), false);
+                        }
+                    } catch (java.time.DateTimeException ignored) { }
+                }
+            }
             Calendar calendar = Calendar.getInstance();
             calendar.set(Calendar.MONTH, birthday.month - 1);
             calendar.set(Calendar.DAY_OF_MONTH, birthday.day);

@@ -20,6 +20,7 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.text.TextUtils;
+import android.widget.Toast;
 
 import org.telegram.messenger.AccountInstance;
 import org.telegram.messenger.AndroidUtilities;
@@ -229,6 +230,10 @@ public class Browser {
         );
     }
 
+    public static boolean isGetPremiumUrl(String url) {
+        return url != null && url.matches("(?i)^(https?://)?(t\\.me|telegram\\.me|telegram\\.dog)/getpremium([/?#].*)?$");
+    }
+
     public static class Progress {
 
         private Runnable onInitListener;
@@ -293,9 +298,11 @@ public class Browser {
             return;
         }
 
-        // The Premium payment callback is the only app.chat-t.me URL that
-        // must always be opened outside Telegram in the system browser.
-        // Keep all other app.chat-t.me links (including usernames) internal.
+        if (isXGramWebUrl(uri)) {
+            openXGramWebUrl(context, uri);
+            return;
+        }
+        // Keep the payment callback outside Telegram as before.
         if (isPremiumCallbackUrl(uri)) {
             openInExternalBrowser(context, uri.toString(), false, null);
             return;
@@ -385,7 +392,7 @@ public class Browser {
                     .appendQueryParameter("autologin_token", autologin_token)
                     .build();
             }
-            if (allowCustom && !(uri != null && MessagesController.getInstance(currentAccount).isWebBrowserOpenInApp(uri.toString()) || isInstantViewOpen()) && MessagesController.getInstance(currentAccount).isWebBrowserUseCustomTabs() && !internalUri && !scheme.equals("tel") && !isTonsite(uri.toString())) {
+            if (allowCustom && !(uri != null && MessagesController.getInstance(currentAccount).isWebBrowserOpenInApp(uri.toString())) && MessagesController.getInstance(currentAccount).isWebBrowserUseCustomTabs() && !internalUri && !scheme.equals("tel") && !isTonsite(uri.toString())) {
                 if (forceBrowser[0] || !openInExternalApp(context, uri.toString(), false) || !hasAppToOpen(context, uri.toString())) {
                     if (MessagesController.getInstance(currentAccount).authDomains.contains(host)) {
                         Intent intent = new Intent(Intent.ACTION_VIEW, uri);
@@ -421,7 +428,7 @@ public class Browser {
 
             final boolean inappBrowser = (
                 allowInAppBrowser && BubbleActivity.instance == null &&
-                (uri != null && MessagesController.getInstance(currentAccount).isWebBrowserOpenInApp(uri.toString()) || isInstantViewOpen()) &&
+                uri != null && MessagesController.getInstance(currentAccount).isWebBrowserOpenInApp(uri.toString()) &&
                 TextUtils.isEmpty(browserPackage) &&
                 (uri.getScheme() == null || "https".equals(uri.getScheme()) || "http".equals(uri.getScheme()) || "tonsite".equals(uri.getScheme()))
                 ||
@@ -480,16 +487,6 @@ public class Browser {
         intent.putExtra(LaunchActivity.EXTRA_FORCE_REQUEST, forceRequest);
         activity.onNewIntent(intent, progress);
         return true;
-    }
-
-    public static boolean isInstantViewOpen() {
-        BaseFragment fragment = LaunchActivity.getSafeLastFragment();
-        if (fragment != null && fragment.getParentLayout() instanceof ActionBarLayout) {
-            BaseFragment sheetFragment = ((ActionBarLayout) fragment.getParentLayout()).getSheetFragment();
-            if (sheetFragment != null && sheetFragment.getArticleViewer() != null)
-                return true;
-        }
-        return fragment != null && fragment.getArticleViewer() != null;
     }
 
     public static boolean openInTelegramBrowser(Context context, String url, Browser.Progress progress) {
@@ -672,6 +669,36 @@ public class Browser {
         return false;
     }
 
+    public static boolean isXGramWebUrl(Uri uri) {
+        if (uri == null || !("https".equalsIgnoreCase(uri.getScheme()) || "http".equalsIgnoreCase(uri.getScheme()))
+                || !"app.chat-t.me".equalsIgnoreCase(uri.getHost())) return false;
+        String path = uri.getPath();
+        return "/wallet".equals(path) || "/wallet/".equals(path) || "/shard".equals(path) || "/shard/".equals(path);
+    }
+
+    public static boolean openXGramWebUrl(Context context, Uri uri) {
+        // Resolve an actual browser using an unrelated ordinary URL, then target
+        // it explicitly so Android app-link handling cannot reopen this app.
+        Intent probe = new Intent(Intent.ACTION_VIEW, Uri.parse("https://www.example.com/"));
+        probe.addCategory(Intent.CATEGORY_BROWSABLE);
+        List<ResolveInfo> browsers = context.getPackageManager().queryIntentActivities(probe, 0);
+        ResolveInfo preferred = context.getPackageManager().resolveActivity(probe, android.content.pm.PackageManager.MATCH_DEFAULT_ONLY);
+        if (preferred != null && preferred.activityInfo != null) {
+            String preferredPackage = preferred.activityInfo.packageName;
+            for (ResolveInfo info : browsers) {
+                if (info.activityInfo != null && preferredPackage.equals(info.activityInfo.packageName)
+                        && !context.getPackageName().equals(preferredPackage)
+                        && openInExternalBrowser(context, uri.toString(), false, preferredPackage)) return true;
+            }
+        }
+        for (ResolveInfo info : browsers) {
+            if (info.activityInfo != null && !context.getPackageName().equals(info.activityInfo.packageName)
+                    && openInExternalBrowser(context, uri.toString(), false, info.activityInfo.packageName)) return true;
+        }
+        Toast.makeText(context, LocaleController.getString(R.string.XGramBrowserUnavailable), Toast.LENGTH_LONG).show();
+        return false;
+    }
+
     private static boolean isPremiumCallbackUrl(Uri uri) {
         return uri != null
                 && "https".equalsIgnoreCase(uri.getScheme())
@@ -694,6 +721,10 @@ public class Browser {
     }
 
     public static boolean isInternalUri(Uri uri, boolean all, boolean[] forceBrowser) {
+        if (isXGramWebUrl(uri)) {
+            if (forceBrowser != null) forceBrowser[0] = true;
+            return false;
+        }
         String host = AndroidUtilities.getHostAuthority(uri);
         host = host != null ? host.toLowerCase() : "";
 

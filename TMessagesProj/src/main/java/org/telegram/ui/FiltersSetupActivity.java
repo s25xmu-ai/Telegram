@@ -142,6 +142,53 @@ public class FiltersSetupActivity extends BaseFragment implements NotificationCe
         }
     }
 
+    // Suggested folder labels are returned by the server, not the app language pack.
+    private static boolean usePersianSuggestedFolders() {
+        java.util.Locale locale = LocaleController.getInstance().getCurrentLocale();
+        return locale != null && "fa".equalsIgnoreCase(locale.getLanguage());
+    }
+
+    private static String suggestedFolderTitle(String title) {
+        if (!usePersianSuggestedFolders() || title == null) return title;
+        switch (title.trim().toLowerCase(java.util.Locale.ROOT)) {
+            case "unread": return "خوانده‌نشده";
+            case "personal": return "شخصی";
+            case "work": return "کار";
+            case "channels": return "کانال‌ها";
+            case "groups": return "گروه‌ها";
+            case "bots": return "ربات‌ها";
+            case "contacts": return "مخاطبین";
+            case "non-muted": case "not muted": return "بی‌صدا نشده";
+            case "all chats": return "همه گفتگوها";
+            default: return title;
+        }
+    }
+
+    private static String suggestedFolderDescription(TLRPC.TL_dialogFilterSuggested suggested) {
+        if (!usePersianSuggestedFolders() || suggested.filter == null) return suggested.description;
+        TLRPC.DialogFilter filter = suggested.filter;
+        ArrayList<String> included = new ArrayList<>();
+        ArrayList<String> excluded = new ArrayList<>();
+        if (filter.contacts) included.add("مخاطبین");
+        if (filter.non_contacts) included.add("غیرمخاطبین");
+        if (filter.groups) included.add("گروه‌ها");
+        if (filter.broadcasts) included.add("کانال‌ها");
+        if (filter.bots) included.add("ربات‌ها");
+        if (!filter.include_peers.isEmpty() || !filter.pinned_peers.isEmpty()) included.add("گفتگوهای انتخاب‌شده");
+        if (filter.exclude_read) excluded.add("خوانده‌شده");
+        if (filter.exclude_muted) excluded.add("بی‌صدا");
+        if (filter.exclude_archived) excluded.add("بایگانی‌شده");
+        if (!filter.exclude_peers.isEmpty()) excluded.add("گفتگوهای مستثناشده");
+        if (included.isEmpty() && excluded.isEmpty()) return suggested.description;
+        StringBuilder out = new StringBuilder();
+        if (!included.isEmpty()) out.append("شامل: ").append(TextUtils.join("، ", included));
+        if (!excluded.isEmpty()) {
+            if (out.length() > 0) out.append(" — ");
+            out.append("به‌جز: ").append(TextUtils.join("، ", excluded));
+        }
+        return out.toString();
+    }
+
     public static class SuggestedFilterCell extends FrameLayout {
 
         private TextView textView;
@@ -194,8 +241,8 @@ public class FiltersSetupActivity extends BaseFragment implements NotificationCe
             suggestedFilter = filter;
             setWillNotDraw(!needDivider);
 
-            textView.setText(filter.filter.title.text);
-            valueTextView.setText(filter.description);
+            textView.setText(suggestedFolderTitle(filter.filter.title.text));
+            valueTextView.setText(suggestedFolderDescription(filter));
         }
 
         public TLRPC.TL_dialogFilterSuggested getSuggestedFilter() {
@@ -982,8 +1029,8 @@ public class FiltersSetupActivity extends BaseFragment implements NotificationCe
                     suggestedFilterCell.setAddOnClickListener(v -> {
                         TLRPC.TL_dialogFilterSuggested suggested = suggestedFilterCell.getSuggestedFilter();
                         MessagesController.DialogFilter filter = new MessagesController.DialogFilter();
-                        filter.name = suggested.filter.title.text;
-                        filter.entities = suggested.filter.title.entities;
+                        filter.name = suggestedFolderTitle(suggested.filter.title.text);
+                        filter.entities = TextUtils.equals(filter.name, suggested.filter.title.text) ? suggested.filter.title.entities : new ArrayList<>();
                         filter.id = 2;
                         while (getMessagesController().dialogFiltersById.get(filter.id) != null) {
                             filter.id++;

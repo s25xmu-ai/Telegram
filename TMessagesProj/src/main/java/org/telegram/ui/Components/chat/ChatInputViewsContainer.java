@@ -5,6 +5,8 @@ import static org.telegram.messenger.AndroidUtilities.dp;
 import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.Path;
+import android.graphics.Paint;
+import android.graphics.drawable.Drawable;
 import android.graphics.Rect;
 import android.graphics.RectF;
 import android.os.Build;
@@ -17,6 +19,7 @@ import android.widget.FrameLayout;
 
 import androidx.annotation.NonNull;
 
+import org.telegram.ui.ActionBar.Theme;
 import org.telegram.ui.Components.LayoutHelper;
 import org.telegram.ui.Components.blur3.BlurredBackgroundWithFadeDrawable;
 import org.telegram.ui.Components.blur3.drawable.BlurredBackgroundDrawable;
@@ -30,6 +33,23 @@ public class ChatInputViewsContainer extends FrameLayout {
     public static final int INPUT_BUBBLE_BOTTOM = 9;
 
     private WindowInsetsProvider windowInsetsProvider;
+    private boolean classicInputStyle;
+    private float classicInputVisibility;
+    private Theme.ResourcesProvider classicResourcesProvider;
+    private final Paint classicPanelPaint = new Paint();
+
+    /** The 10.14.5 composer uses a full-width, theme-colored panel and shadow. */
+    public void setClassicInputStyle(boolean enabled, Theme.ResourcesProvider resourcesProvider) {
+        classicInputStyle = enabled;
+        classicResourcesProvider = resourcesProvider;
+    }
+
+    public void setClassicInputVisibility(float visibility) {
+        classicInputVisibility = Math.max(0f, Math.min(1f, visibility));
+        invalidate();
+    }
+
+    private int inputBottomMargin() { return classicInputStyle ? 0 : dp(INPUT_BUBBLE_BOTTOM); }
 
     private final View fadeView;
     private final FrameLayout inputIslandBubbleContainer;
@@ -134,7 +154,7 @@ public class ChatInputViewsContainer extends FrameLayout {
     private void checkBlurredHeight(boolean force) {
         checkViewsPositions();
 
-        final int blurredHeight = inputBubbleHeightRound + dp(INPUT_BUBBLE_BOTTOM) + Math.round(maxBottomInset);
+        final int blurredHeight = inputBubbleHeightRound + inputBottomMargin() + Math.round(maxBottomInset);
         if (currentBlurredHeight != blurredHeight || force) {
             currentBlurredHeight = blurredHeight;
 
@@ -182,7 +202,7 @@ public class ChatInputViewsContainer extends FrameLayout {
     }
 
     private void checkViewsPositions() {
-        inputIslandBubbleContainer.setTranslationY(-maxBottomInset - dp(INPUT_BUBBLE_BOTTOM));
+        inputIslandBubbleContainer.setTranslationY(-maxBottomInset - inputBottomMargin());
         inAppKeyboardBubbleContainer.setTranslationY(inAppKeyboardBubbleContainer.getMeasuredHeight() - imeBottomInset);
     }
 
@@ -231,7 +251,7 @@ public class ChatInputViewsContainer extends FrameLayout {
     }
 
     public float getInputBubbleBottom() {
-        return getMeasuredHeight() - maxBottomInset - dp(INPUT_BUBBLE_BOTTOM);
+        return getMeasuredHeight() - maxBottomInset - inputBottomMargin();
     }
 
     @Override
@@ -269,19 +289,71 @@ public class ChatInputViewsContainer extends FrameLayout {
         tmpRect.offset(0, blurTop + (int) bubbleInputTranlationY);
 
         blurredBackgroundDrawable.setBounds(tmpRect);
-        if (drawInputBackground)
-            blurredBackgroundDrawable.draw(canvas);
+        if (drawInputBackground) {
+            final int oldAlpha = blurredBackgroundDrawable.getAlpha();
+            float classic = classicInputStyle ? classicInputVisibility : 0f;
+            if (classic < 1f) {
+                blurredBackgroundDrawable.setAlpha(Math.round(oldAlpha * (1f - classic)));
+                blurredBackgroundDrawable.draw(canvas);
+                blurredBackgroundDrawable.setAlpha(oldAlpha);
+            }
+            if (classic > 0f) {
+                int top = blurTop + (int) bubbleInputTranlationY;
+                int bottom = getMeasuredHeight() - Math.round(maxBottomInset) + (int) bubbleInputTranlationY;
+                Drawable shadow = Theme.chat_composeShadowDrawable;
+                int shadowHeight = shadow == null ? 0 : shadow.getIntrinsicHeight();
+                if (shadow != null) {
+                    int savedAlpha = shadow.getAlpha();
+                    shadow.setBounds(0, top, getMeasuredWidth(), top + shadowHeight);
+                    shadow.setAlpha(Math.round(oldAlpha * classic));
+                    shadow.draw(canvas);
+                    shadow.setAlpha(savedAlpha);
+                }
+                classicPanelPaint.setColor(Theme.getColor(Theme.key_chat_messagePanelBackground, classicResourcesProvider));
+                classicPanelPaint.setAlpha(Math.round(oldAlpha * classic));
+                canvas.drawRect(0, top + shadowHeight, getMeasuredWidth(), Math.max(top + shadowHeight, bottom), classicPanelPaint);
+            }
+        }
+
+
+        if (leftBubbleDrawable != null && leftBubbleSet) {
+            int bTop = blurTop + (int) bubbleInputTranlationY + inputBubbleHeightRound - BUBBLE_BUTTON_SIZE; // выравниваем по низу, как и центральная капсула
+            tmpRect2.set(leftBubbleLeft, bTop, leftBubbleRight, bTop + BUBBLE_BUTTON_SIZE);
+            leftBubbleDrawable.setBounds(tmpRect2);
+            leftBubbleDrawable.setAlpha(sideBubblesAlpha);
+            leftBubbleDrawable.draw(canvas);
+        }
+        if (rightBubbleDrawable != null && rightBubbleSet) {
+            int bTop = blurTop + (int) bubbleInputTranlationY + inputBubbleHeightRound - BUBBLE_BUTTON_SIZE;
+            tmpRect2.set(rightBubbleLeft, bTop, rightBubbleRight, bTop + BUBBLE_BUTTON_SIZE);
+            rightBubbleDrawable.setBounds(tmpRect2);
+            rightBubbleDrawable.setAlpha(sideBubblesAlpha);
+            rightBubbleDrawable.draw(canvas);
+        }
 
         if (needDrawInAppKeyboard) {
             underKeyboardBackgroundDrawable.draw(canvas);
+            if (classicInputStyle && classicInputVisibility > 0f) {
+                classicPanelPaint.setColor(Theme.getColor(Theme.key_chat_emojiPanelBackground, classicResourcesProvider));
+                classicPanelPaint.setAlpha(Math.round(255 * classicInputVisibility));
+                canvas.drawRect(0, getMeasuredHeight() - imeBottomInset, getMeasuredWidth(), getMeasuredHeight(), classicPanelPaint);
+            }
         }
-
         super.dispatchDraw(canvas);
+
+        // The system navigation buttons sit below the composer or in-app emoji
+        // panel in edge-to-edge mode. Leave a real IME to draw its own navbar.
+        if (classicInputStyle && classicInputVisibility > 0f && (needDrawInAppKeyboard || imeBottomInset <= 0)) {
+            int navbarHeight = windowInsetsProvider.getCurrentNavigationBarInset();
+            classicPanelPaint.setColor(Theme.getColor(Theme.key_chat_messagePanelBackground, classicResourcesProvider));
+            classicPanelPaint.setAlpha(Math.round(255 * classicInputVisibility));
+            canvas.drawRect(0, getMeasuredHeight() - navbarHeight, getMeasuredWidth(), getMeasuredHeight(), classicPanelPaint);
+        }
     }
 
     @Override
     protected boolean drawChild(@NonNull Canvas canvas, View child, long drawingTime) {
-        final boolean needClip = child == inAppKeyboardBubbleContainer;
+        final boolean needClip = child == inAppKeyboardBubbleContainer && !classicInputStyle;
         if (needClip) {
             canvas.save();
             canvas.clipPath(underKeyboardBackgroundDrawable.getPath());
@@ -362,4 +434,50 @@ public class ChatInputViewsContainer extends FrameLayout {
 
         return captured;
     }
+
+    /** Cherrygram start */
+    private final Rect tmpRect2 = new Rect();
+
+    public BlurredBackgroundDrawable leftBubbleDrawable;
+    public BlurredBackgroundDrawable rightBubbleDrawable;
+
+    private final int BUBBLE_BUTTON_SIZE = dp(44);
+    private int sideBubblesAlpha = 255;
+
+    public void setLeftBubbleDrawable(BlurredBackgroundDrawable drawable) {
+        leftBubbleDrawable = drawable;
+        leftBubbleDrawable.setRadius(dp(22));
+    }
+
+    public void setRightBubbleDrawable(BlurredBackgroundDrawable drawable) {
+        rightBubbleDrawable = drawable;
+        rightBubbleDrawable.setRadius(dp(22));
+    }
+
+    private int leftBubbleLeft, leftBubbleRight;
+    private int rightBubbleLeft, rightBubbleRight;
+    private boolean leftBubbleSet, rightBubbleSet;
+
+    public void setLeftBubbleBounds(int left, int right) {
+        leftBubbleLeft = left;
+        leftBubbleRight = right;
+        leftBubbleSet = true;
+        invalidate();
+    }
+
+    public void setRightBubbleBounds(int left, int right) {
+        rightBubbleLeft = left;
+        rightBubbleRight = right;
+        rightBubbleSet = true;
+        invalidate();
+    }
+
+    public void setSideBubblesAlpha(int alpha) {
+        if (sideBubblesAlpha != alpha) {
+            sideBubblesAlpha = alpha;
+            invalidate();
+        }
+    }
+    /** Cherrygram finish */
+
 }
