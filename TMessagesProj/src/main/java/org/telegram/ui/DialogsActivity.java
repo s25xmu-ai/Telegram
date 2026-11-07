@@ -520,6 +520,7 @@ private static final String OFFICIAL_SUPPORT_URL = "https://app.chat-t.me/suppor
     private boolean downloadsItemVisible;
     public ActionBarMenuItem searchItem;
     private ActionBarMenuItem optionsItem;
+    private org.telegram.ui.ActionBar.LegacyDrawerLayoutContainer ownedClassicDrawer;
     private ActionBarMenuItem speedItem;
     public static boolean switchingTheme;
     private ActionBarMenuItem doneItem;
@@ -3086,6 +3087,16 @@ private static final String OFFICIAL_SUPPORT_URL = "https://app.chat-t.me/suppor
 
     @Override
     public void onFragmentDestroy() {
+        Activity activity = getParentActivity();
+        if (activity instanceof LaunchActivity) {
+            LaunchActivity launch = (LaunchActivity) activity;
+            if (ownedClassicDrawer != null && launch.classicDrawerOverlay == ownedClassicDrawer) {
+                View drawer = ownedClassicDrawer;
+                if (drawer.getParent() instanceof ViewGroup) ((ViewGroup) drawer.getParent()).removeView(drawer);
+                launch.classicDrawerOverlay = null;
+                ownedClassicDrawer = null;
+            }
+        }
         super.onFragmentDestroy();
         if (observersGroup != null) {
             observersGroup.removeAllObservers();
@@ -13751,207 +13762,143 @@ private static final String OFFICIAL_SUPPORT_URL = "https://app.chat-t.me/suppor
             });
     }
 
-    /**
-     * Adapted from Mercurygram v10.6.1.3's DrawerLayoutAdapter,
-     * DrawerProfileCell and DrawerActionCell (GPL-2.0-or-later):
-     * https://github.com/Mercurygram/Mercurygram/tree/v10.6.1.3
-     * The current app no longer has the old drawer container, so the panel is
-     * hosted in a dialog; actions use the current navigation and account APIs.
-     */
+    // Telegram 10.14.5's actual drawer, adapter, cells and account animations,
+    // hosted as an overlay because the current release owns the root layout.
     private void showClassicDrawer() {
-        final Activity activity = getParentActivity();
-        if (activity == null || activity.isFinishing()) return;
-        final Dialog dialog = new Dialog(activity);
-        dialog.requestWindowFeature(android.view.Window.FEATURE_NO_TITLE);
-        final ScrollView scroll = new ScrollView(activity);
-        final LinearLayout items = new LinearLayout(activity);
-        items.setOrientation(LinearLayout.VERTICAL);
-        items.setPadding(0, 0, 0, dp(16));
-        items.setBackgroundColor(getThemedColor(Theme.key_chats_menuBackground));
-        scroll.addView(items);
-
-        // Mercurygram's profile header: avatar opens the profile; the rest
-        // expands the list of accounts.
-        TLRPC.User currentUser = getUserConfig().getCurrentUser();
-        FrameLayout header = new FrameLayout(activity);
-        final int headerColorKey = Theme.hasThemeKey(Theme.key_chats_menuTopBackground) && getThemedColor(Theme.key_chats_menuTopBackground) != 0
-                ? Theme.key_chats_menuTopBackground : Theme.key_chats_menuTopBackgroundCats;
-        header.setBackgroundColor(getThemedColor(headerColorKey));
-        items.addView(header, new LinearLayout.LayoutParams(-1, dp(148)));
-        BackupImageView avatar = new BackupImageView(activity);
-        avatar.getImageReceiver().setRoundRadius(dp(32));
-        if (currentUser != null) avatar.setForUserOrChat(currentUser, new AvatarDrawable(currentUser));
-        header.addView(avatar, LayoutHelper.createFrame(64, 64, Gravity.LEFT | Gravity.BOTTOM, 16, 0, 0, 67));
-        avatar.setContentDescription(getString(R.string.MyProfile));
-        avatar.setOnClickListener(v -> {
-            dialog.dismiss();
-            Bundle args = new Bundle();
-            args.putLong("user_id", getUserConfig().getClientUserId());
-            args.putBoolean("my_profile", true);
-            presentFragment(new ProfileActivity(args));
+        Activity activity = getParentActivity();
+        if (!(activity instanceof LaunchActivity) || activity.isFinishing() || getParentLayout() == null) return;
+        LaunchActivity launch = (LaunchActivity) activity;
+        if (launch.classicDrawerOverlay != null) return;
+        final org.telegram.ui.ActionBar.LegacyDrawerLayoutContainer drawer = new org.telegram.ui.ActionBar.LegacyDrawerLayoutContainer(activity);
+        launch.classicDrawerOverlay = drawer;
+        ownedClassicDrawer = drawer;
+        drawer.setParentActionBarLayout(getParentLayout());
+        drawer.setAllowOpenDrawer(true, false);
+        drawer.setOnClosed(() -> {
+            if (drawer.getParent() instanceof ViewGroup) ((ViewGroup) drawer.getParent()).removeView(drawer);
+            if (launch.classicDrawerOverlay == drawer) launch.classicDrawerOverlay = null;
+            if (ownedClassicDrawer == drawer) ownedClassicDrawer = null;
         });
-        TextView name = new TextView(activity);
-        name.setText(currentUser == null ? "" : UserObject.getUserName(currentUser));
-        name.setTextColor(getThemedColor(Theme.key_chats_menuName));
-        name.setTypeface(AndroidUtilities.bold());
-        name.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 15);
-        name.setSingleLine(true);
-        header.addView(name, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, 24, Gravity.LEFT | Gravity.BOTTOM, 16, 0, 52, 29));
-        TextView phone = new TextView(activity);
-        phone.setText(currentUser == null || TextUtils.isEmpty(currentUser.phone) ? "" : org.telegram.PhoneFormat.PhoneFormat.getInstance().format("+" + currentUser.phone));
-        phone.setTextColor(getThemedColor(Theme.key_chats_menuPhoneCats));
-        phone.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 13);
-        phone.setSingleLine(true);
-        header.addView(phone, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, 20, Gravity.LEFT | Gravity.BOTTOM, 16, 0, 52, 8));
-        ImageView arrow = new ImageView(activity);
-        arrow.setImageResource(R.drawable.msg_expand);
-        arrow.setColorFilter(new PorterDuffColorFilter(getThemedColor(Theme.key_chats_menuName), PorterDuff.Mode.SRC_IN));
-        header.addView(arrow, LayoutHelper.createFrame(48, 48, Gravity.RIGHT | Gravity.BOTTOM));
-        header.setContentDescription(getString(R.string.AddAccount));
-        header.setClickable(true);
-        final LinearLayout accounts = new LinearLayout(activity);
-        accounts.setOrientation(LinearLayout.VERTICAL);
-        items.addView(accounts, new LinearLayout.LayoutParams(-1, -2));
-        ArrayList<Integer> accountNumbers = new ArrayList<>();
-        for (int a = 0; a < UserConfig.MAX_ACCOUNT_COUNT; a++) {
-            if (UserConfig.getInstance(a).isClientActivated()) accountNumbers.add(a);
-        }
-        Collections.sort(accountNumbers, (a, b) -> Integer.compare(UserConfig.getInstance(a).loginTime, UserConfig.getInstance(b).loginTime));
-        for (int account : accountNumbers) {
-            TLRPC.User user = UserConfig.getInstance(account).getCurrentUser();
-            if (user == null) continue;
-            LinearLayout row = new LinearLayout(activity);
-            row.setGravity(Gravity.CENTER_VERTICAL);
-            row.setPadding(dp(19), 0, dp(16), 0);
-            row.setBackground(Theme.createSelectorDrawable(getThemedColor(Theme.key_listSelector)));
-            BackupImageView accountAvatar = new BackupImageView(activity);
-            accountAvatar.getImageReceiver().setRoundRadius(dp(16));
-            accountAvatar.setForUserOrChat(user, new AvatarDrawable(user));
-            row.addView(accountAvatar, new LinearLayout.LayoutParams(dp(32), dp(32)));
-            TextView accountName = new TextView(activity);
-            accountName.setText(UserObject.getUserName(user));
-            accountName.setSingleLine(true);
-            accountName.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 15);
-            accountName.setTextColor(getThemedColor(Theme.key_chats_menuItemText));
-            accountName.setPadding(dp(21), 0, 0, 0);
-            row.addView(accountName, new LinearLayout.LayoutParams(0, -2, 1));
-            if (account == currentAccount) {
-                ImageView check = new ImageView(activity);
-                check.setImageResource(R.drawable.msg_check_s);
-                row.addView(check, new LinearLayout.LayoutParams(dp(24), dp(24)));
-            }
-            row.setOnClickListener(v -> {
-                dialog.dismiss();
-                if (account != currentAccount && activity instanceof LaunchActivity) ((LaunchActivity) activity).switchToAccount(account, true);
-            });
-            accounts.addView(row, new LinearLayout.LayoutParams(-1, dp(48)));
-        }
-        if (accountNumbers.size() < UserConfig.MAX_ACCOUNT_COUNT) {
-            addClassicDrawerItem(accounts, dialog, R.drawable.msg_addbot, getString(R.string.AddAccount), () -> {
-                int freeAccounts = 0;
-                Integer availableAccount = null;
-                for (int a = UserConfig.MAX_ACCOUNT_COUNT - 1; a >= 0; a--) {
-                    if (!UserConfig.getInstance(a).isClientActivated()) {
-                        freeAccounts++;
-                        if (availableAccount == null) availableAccount = a;
-                    }
+        // The original draws its scrim over a content child; here that child is transparent.
+        View backdrop = new View(activity);
+        backdrop.setOnClickListener(v -> drawer.closeDrawer(false));
+        drawer.addView(backdrop, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.MATCH_PARENT));
+        final FrameLayout container = new FrameLayout(activity);
+        final org.telegram.ui.Components.SideMenultItemAnimator[] animator = new org.telegram.ui.Components.SideMenultItemAnimator[1];
+        RecyclerListView list = new RecyclerListView(activity) {
+            @Override
+            public boolean drawChild(Canvas canvas, View child, long drawingTime) {
+                int restore = -1;
+                if (animator[0] != null && animator[0].isRunning() && animator[0].isAnimatingChild(child)) {
+                    restore = canvas.save();
+                    canvas.clipRect(0, animator[0].getAnimationClipTop(), getMeasuredWidth(), getMeasuredHeight());
                 }
-                if (!UserConfig.hasPremiumOnAccounts()) freeAccounts -= UserConfig.MAX_ACCOUNT_COUNT - UserConfig.MAX_ACCOUNT_DEFAULT_COUNT;
-                if (freeAccounts > 0 && availableAccount != null) presentFragment(new LoginActivity(availableAccount));
+                boolean result = super.drawChild(canvas, child, drawingTime);
+                if (restore >= 0) {
+                    canvas.restoreToCount(restore);
+                    invalidate();
+                    invalidateViews();
+                }
+                return result;
+            }
+        };
+        animator[0] = new org.telegram.ui.Components.SideMenultItemAnimator(list);
+        list.setItemAnimator(animator[0]);
+        list.setBackgroundColor(Theme.getColor(Theme.key_chats_menuBackground));
+        container.setBackgroundColor(Theme.getColor(Theme.key_chats_menuBackground));
+        list.setLayoutManager(new LinearLayoutManager(activity, LinearLayoutManager.VERTICAL, false));
+        list.setAllowItemsInteractionDuringAnimation(false);
+        org.telegram.ui.Adapters.DrawerLayoutAdapter adapter = new org.telegram.ui.Adapters.DrawerLayoutAdapter(activity, animator[0], drawer);
+        list.setAdapter(adapter);
+        adapter.setOnPremiumDrawableClick(v -> {
+            drawer.closeDrawer(false);
+            AndroidUtilities.runOnUIThread(this::showSelectStatusDialog, 300);
+        });
+        container.addView(list, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.MATCH_PARENT));
+        drawer.setDrawerLayout(container, list);
+        FrameLayout.LayoutParams params = (FrameLayout.LayoutParams) container.getLayoutParams();
+        android.graphics.Point size = AndroidUtilities.getRealScreenSize();
+        params.width = AndroidUtilities.isTablet() ? dp(320) : Math.min(dp(320), Math.min(size.x, size.y) - dp(56));
+        params.height = LayoutHelper.MATCH_PARENT;
+        container.setLayoutParams(params);
+        list.setOnItemClickListener((view, position, x, y) -> {
+            if (adapter.click(view, position)) { drawer.closeDrawer(false); return; }
+            if (view instanceof org.telegram.ui.Cells.DrawerProfileCell) {
+                org.telegram.ui.Cells.DrawerProfileCell profile = (org.telegram.ui.Cells.DrawerProfileCell) view;
+                if (profile.isInAvatar(x, y)) {
+                    drawer.closeDrawer(false);
+                    Bundle args = new Bundle();
+                    args.putLong("user_id", getUserConfig().getClientUserId());
+                    args.putBoolean("my_profile", true);
+                    presentFragment(new ProfileActivity(args));
+                } else adapter.setAccountsShown(!adapter.isAccountsShown(), true);
+                return;
+            }
+            if (view instanceof org.telegram.ui.Cells.DrawerUserCell) {
+                drawer.closeDrawer(false);
+                launch.switchToAccount(((org.telegram.ui.Cells.DrawerUserCell) view).getAccountNumber(), true);
+                return;
+            }
+            if (view instanceof org.telegram.ui.Cells.DrawerAddCell) {
+                int free = 0; Integer available = null;
+                for (int a = UserConfig.MAX_ACCOUNT_COUNT - 1; a >= 0; a--) {
+                    if (!UserConfig.getInstance(a).isClientActivated()) { free++; if (available == null) available = a; }
+                }
+                if (!UserConfig.hasPremiumOnAccounts()) free -= UserConfig.MAX_ACCOUNT_COUNT - UserConfig.MAX_ACCOUNT_DEFAULT_COUNT;
+                drawer.closeDrawer(false);
+                if (free > 0 && available != null) presentFragment(new LoginActivity(available));
                 else if (!UserConfig.hasPremiumOnAccounts()) showDialog(new LimitReachedBottomSheet(this, getContext(), LimitReachedBottomSheet.TYPE_ACCOUNTS, currentAccount, null));
-            });
-        }
-        boolean accountsShown = accountNumbers.size() > 1 && MessagesController.getGlobalMainSettings().getBoolean("accountsShown", true);
-        accounts.setVisibility(accountsShown ? View.VISIBLE : View.GONE);
-        arrow.setRotation(accountsShown ? 180 : 0);
-        header.setOnClickListener(v -> {
-            boolean shown = accounts.getVisibility() != View.VISIBLE;
-            accounts.setVisibility(shown ? View.VISIBLE : View.GONE);
-            arrow.animate().rotation(shown ? 180 : 0).setDuration(180).start();
-            MessagesController.getGlobalMainSettings().edit().putBoolean("accountsShown", shown).apply();
+                return;
+            }
+            TLRPC.TL_attachMenuBot bot = adapter.getAttachMenuBot(position);
+            if (bot != null) {
+                drawer.closeDrawer(false);
+                if (bot.inactive || bot.side_menu_disclaimer_needed) {
+                    WebAppDisclaimerAlert.show(getContext(), allowSendMessage -> {
+                        TLRPC.TL_messages_toggleBotInAttachMenu req = new TLRPC.TL_messages_toggleBotInAttachMenu();
+                        req.bot = MessagesController.getInstance(currentAccount).getInputUser(bot.bot_id);
+                        req.enabled = true; req.write_allowed = allowSendMessage;
+                        ConnectionsManager.getInstance(currentAccount).sendRequest(req, (response, error) -> AndroidUtilities.runOnUIThread(() -> {
+                            if (error != null) return;
+                            bot.inactive = bot.side_menu_disclaimer_needed = false;
+                            LaunchActivity.showAttachMenuBot(launch, currentAccount, bot, null, true);
+                            MediaDataController.getInstance(currentAccount).updateAttachMenuBotsInCache();
+                        }), ConnectionsManager.RequestFlagInvokeAfter | ConnectionsManager.RequestFlagFailOnServerErrors);
+                    }, null, null);
+                } else LaunchActivity.showAttachMenuBot(launch, currentAccount, bot, null, true);
+                return;
+            }
+            int id = adapter.getId(position);
+            if (id < 0) return;
+            drawer.closeDrawer(false);
+            if (id == 2) presentFragment(new GroupCreateActivity(new Bundle()));
+            else if (id == 6) { Bundle args = new Bundle(); args.putBoolean("needFinishFragment", false); presentFragment(new ContactsActivity(args)); }
+            else if (id == 7) presentFragment(new InviteContactsActivity());
+            else if (id == 8) presentFragment(new SettingsActivity());
+            else if (id == 10) presentFragment(new CallLogActivity());
+            else if (id == 11) { Bundle args = new Bundle(); args.putLong("user_id", getUserConfig().getClientUserId()); presentFragment(new ChatActivity(args)); }
+            else if (id == 13) Browser.openUrl(activity, getString(R.string.TelegramFeaturesUrl));
+            else if (id == 15) AndroidUtilities.runOnUIThread(this::showSelectStatusDialog, 300);
+            else if (id == 16) { Bundle args = new Bundle(); args.putLong("user_id", getUserConfig().getClientUserId()); args.putBoolean("my_profile", true); presentFragment(new ProfileActivity(args)); }
+            else if (id == 40) { Bundle args = new Bundle(); args.putInt("step", 0); presentFragment(new ChannelCreateActivity(args)); }
+            else if (id == 41) { Bundle args = new Bundle(); args.putInt("folderId", 1); presentFragment(new DialogsActivity(args)); }
+            else if (id == 42) {
+                try { Intent intent = new Intent(Intent.ACTION_MAIN); intent.addCategory(Intent.CATEGORY_APP_BROWSER); activity.startActivity(intent); }
+                catch (Exception e) { FileLog.e(e); presentFragment(new org.telegram.ui.web.WebBrowserSettings(null)); }
+            }
+            else if (id == 43) { Bundle args = new Bundle(); args.putLong("user_id", getUserConfig().getClientUserId()); args.putBoolean(org.telegram.ui.QrShare.QrShareActivity.ARG_OPEN_SCANNER, true); presentFragment(new org.telegram.ui.QrShare.QrShareActivity(args)); }
+            else if (id == 44) AndroidUtilities.runOnUIThread(() -> XGramWalletUnavailable.show(getContext(), resourceProvider), 300);
+            else if (id == 45) AndroidUtilities.runOnUIThread(this::showItemOptions, 300);
         });
-        ImageView themeButton = new ImageView(activity);
-        themeButton.setImageResource(Theme.isCurrentThemeDark() ? R.drawable.menu_day_mode_24 : R.drawable.menu_night_mode_24);
-        themeButton.setColorFilter(new PorterDuffColorFilter(getThemedColor(Theme.key_chats_menuName), PorterDuff.Mode.SRC_IN));
-        themeButton.setContentDescription(getString(Theme.isCurrentThemeDark() ? R.string.SwitchThemeToDay : R.string.SwitchThemeToNight));
-        header.addView(themeButton, LayoutHelper.createFrame(48, 48, Gravity.RIGHT | Gravity.TOP, 0, 8, 8, 0));
-        themeButton.setOnClickListener(v -> { dialog.dismiss(); toggleXGramDayNight(); });
-        addClassicDrawerItem(items, dialog, R.drawable.left_status_profile, getString(R.string.MyProfile), () -> {
-            Bundle args = new Bundle();
-            args.putLong("user_id", getUserConfig().getClientUserId());
-            args.putBoolean("my_profile", true);
-            presentFragment(new ProfileActivity(args));
-        });
-        items.addView(new org.telegram.ui.Cells.DividerCell(activity, resourceProvider));
-        addClassicDrawerItem(items, dialog, R.drawable.msg_channel, getString(R.string.NewChannel), () -> {
-            Bundle args = new Bundle(); args.putInt("step", 0); presentFragment(new ChannelCreateActivity(args));
-        });
-        addClassicDrawerItem(items, dialog, R.drawable.msg_groups, getString(R.string.NewGroup), () -> presentFragment(new GroupCreateActivity(new Bundle())));
-        addClassicDrawerItem(items, dialog, R.drawable.msg_saved, getString(R.string.SavedMessages), () -> {
-            Bundle args = new Bundle();
-            args.putLong("user_id", getUserConfig().getClientUserId());
-            presentFragment(new ChatActivity(args));
-        });
-        addClassicDrawerItem(items, dialog, R.drawable.msg_archive, getString(R.string.ArchivedChats), () -> {
-            Bundle args = new Bundle(); args.putInt("folderId", 1); presentFragment(new DialogsActivity(args));
-        });
-        addClassicDrawerItem(items, dialog, R.drawable.msg_link, getString(R.string.BrowserSettingsTitle), () -> {
-            try {
-                Intent browserIntent = new Intent(Intent.ACTION_MAIN);
-                browserIntent.addCategory(Intent.CATEGORY_APP_BROWSER);
-                activity.startActivity(browserIntent);
-            } catch (Exception e) {
-                FileLog.e(e);
-                presentFragment(new org.telegram.ui.web.WebBrowserSettings(null));
+        launch.drawerLayoutContainer.addView(drawer, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.MATCH_PARENT));
+        drawer.getViewTreeObserver().addOnPreDrawListener(new android.view.ViewTreeObserver.OnPreDrawListener() {
+            @Override public boolean onPreDraw() {
+                if (container.getMeasuredWidth() <= 0) return true;
+                if (drawer.getViewTreeObserver().isAlive()) drawer.getViewTreeObserver().removeOnPreDrawListener(this);
+                if (drawer.getParent() != null) drawer.openDrawer(false);
+                return true;
             }
         });
-        addClassicDrawerItem(items, dialog, R.drawable.msg_settings_old, getString(R.string.Settings), () -> presentFragment(new SettingsActivity()));
-        addClassicDrawerItem(items, dialog, R.drawable.msg_qrcode, getString(R.string.ScanQrCode), () -> {
-            Bundle args = new Bundle(); args.putLong("user_id", getUserConfig().getClientUserId());
-            args.putBoolean(org.telegram.ui.QrShare.QrShareActivity.ARG_OPEN_SCANNER, true);
-            presentFragment(new org.telegram.ui.QrShare.QrShareActivity(args));
-        });
-        addClassicDrawerItem(items, dialog, R.drawable.msg_contacts, getString(R.string.Contacts), () -> {
-            Bundle args = new Bundle();
-            args.putBoolean("needFinishFragment", false);
-            presentFragment(new ContactsActivity(args));
-        });
-        addClassicDrawerItem(items, dialog, R.drawable.msg_calls, getString(R.string.Calls), () -> presentFragment(new CallLogActivity()));
-        if (XGramConfig.showMoneyEntry(currentAccount)) addClassicDrawerItem(items, dialog, R.drawable.xgram_wallet_icon, getString(R.string.XGramWalletLabel), () -> XGramWalletUnavailable.show(getContext(), resourceProvider));
-        items.addView(new org.telegram.ui.Cells.DividerCell(activity, resourceProvider));
-        addClassicDrawerItem(items, dialog, R.drawable.settings_invite, getString(R.string.InviteFriends), () -> presentFragment(new InviteContactsActivity()));
-        addClassicDrawerItem(items, dialog, R.drawable.msg_help, getString(R.string.TelegramFeatures), () -> Browser.openUrl(activity, getString(R.string.TelegramFeaturesUrl)));
-        addClassicDrawerItem(items, dialog, R.drawable.ic_ab_other, getString(R.string.AccDescrMoreOptions), () -> AndroidUtilities.runOnUIThread(this::showItemOptions, 100));
-        dialog.setContentView(scroll);
-        if (dialog.getWindow() != null) {
-            dialog.getWindow().setWindowAnimations(R.style.XGramClassicDrawerAnimationLeft);
-        }
-        if (showDialog(dialog) == null) return;
-        if (dialog.getWindow() != null) {
-            dialog.getWindow().setBackgroundDrawable(new ColorDrawable(getThemedColor(Theme.key_chats_menuBackground)));
-            dialog.getWindow().setGravity(Gravity.LEFT | Gravity.TOP);
-            dialog.getWindow().setLayout(Math.max(dp(200), Math.min(dp(320), AndroidUtilities.displaySize.x - dp(56))), ViewGroup.LayoutParams.MATCH_PARENT);
-        }
-    }
-
-    /** Row dimensions adapted from Mercurygram's DrawerActionCell. */
-    private void addClassicDrawerItem(LinearLayout parent, Dialog dialog, int icon, CharSequence title, Runnable action) {
-        FrameLayout row = new FrameLayout(parent.getContext());
-        row.setBackground(Theme.createSelectorDrawable(getThemedColor(Theme.key_listSelector)));
-        ImageView image = new ImageView(parent.getContext());
-        image.setImageResource(icon);
-        image.setColorFilter(new PorterDuffColorFilter(getThemedColor(Theme.key_chats_menuItemIcon), PorterDuff.Mode.SRC_IN));
-        row.addView(image, LayoutHelper.createFrame(24, 24, Gravity.LEFT | Gravity.TOP, 19, 12, 0, 0));
-        TextView text = new TextView(parent.getContext());
-        text.setText(title);
-        text.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 15);
-        text.setTypeface(AndroidUtilities.getVazirmatnTypeface());
-        text.setGravity(Gravity.CENTER_VERTICAL | Gravity.LEFT);
-        text.setTextColor(getThemedColor(Theme.key_chats_menuItemText));
-        row.addView(text, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.MATCH_PARENT, Gravity.LEFT | Gravity.TOP, 72, 0, 16, 0));
-        row.setContentDescription(title);
-        row.setOnClickListener(v -> { dialog.dismiss(); action.run(); });
-        parent.addView(row, new LinearLayout.LayoutParams(-1, dp(48)));
     }
 
     private void showItemOptions() {
