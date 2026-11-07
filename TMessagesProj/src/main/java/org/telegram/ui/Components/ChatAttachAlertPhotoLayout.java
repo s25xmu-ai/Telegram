@@ -964,6 +964,9 @@ public class ChatAttachAlertPhotoLayout extends ChatAttachAlert.AttachAlertLayou
                 if (position < 0 || position >= arrayList.size()) {
                     return;
                 }
+                if (arrayList.get(position) instanceof MediaController.PhotoEntry && !((MediaController.PhotoEntry) arrayList.get(position)).loadLivePhoto(null)) {
+                    return;
+                }
                 if (parentAlert.delegate != null && parentAlert.delegate.selectItemOnClicking() && arrayList.get(position) instanceof MediaController.PhotoEntry) {
                     MediaController.PhotoEntry photoEntry = (MediaController.PhotoEntry) arrayList.get(position);
                     selectedPhotos.clear();
