@@ -218,6 +218,7 @@ import org.telegram.ui.Components.AnimatedEmojiDrawable;
 import org.telegram.ui.Components.AnimatedEmojiSpan;
 import org.telegram.ui.Components.AnimatedFileDrawable;
 import org.telegram.ui.Components.AnimatedFloat;
+import org.telegram.ui.Components.AnimatedClickableSmallTextView;
 import org.telegram.ui.Components.AnimatedTextView;
 import org.telegram.ui.Components.AnimationProperties;
 import org.telegram.ui.Components.AudioPlayerAlert;
@@ -5616,7 +5617,7 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
         }
         for (int a = 0; a < onlineTextView.length; a++) {
             if (a == 1) {
-                onlineTextView[a] = new LinkSpanDrawable.ClickableSmallTextView(context) {
+                onlineTextView[a] = new AnimatedClickableSmallTextView(context) {
 
                     @Override
                     public void setAlpha(float alpha) {
@@ -11329,6 +11330,18 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
 
     private MessagesController.PeerColor peerColor;
 
+    /** 13.2.1 status cross-fade, without changing the optional classic profile. */
+    private void setProfileOnlineText(int index, CharSequence text) {
+        SimpleTextView view = onlineTextView[index];
+        if (index == 1 && view instanceof AnimatedClickableSmallTextView) {
+            boolean animate = fragmentOpened && !openAnimationInProgress && !isPulledDown && !mediaHeaderVisible
+                && !org.telegram.messenger.XGramConfig.isClassicProfileDetails();
+            ((AnimatedClickableSmallTextView) view).setTextAnimated(text, animate);
+        } else {
+            view.setText(text);
+        }
+    }
+
     private void updateProfileData(boolean reload) {
         if (avatarContainer == null || nameTextView == null || getParentActivity() == null) {
             return;
@@ -11503,18 +11516,18 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
                     nameTextView[a].setText(newString);
                 }
                 if (a == 0 && onlineTextOverride != null) {
-                    onlineTextView[a].setText(onlineTextOverride);
+                    setProfileOnlineText(a, onlineTextOverride);
                 } else if (a == 0 && copyFromChatActivity) {
                     ChatActivity chatActivity = (ChatActivity) prevFragment;
                     if (chatActivity.avatarContainer.getSubtitleTextView() instanceof SimpleTextView) {
                         SimpleTextView textView = (SimpleTextView) chatActivity.avatarContainer.getSubtitleTextView();
-                        onlineTextView[a].setText(textView.getText());
+                        setProfileOnlineText(a, textView.getText());
                     } else if (chatActivity.avatarContainer.getSubtitleTextView() instanceof AnimatedTextView) {
                         AnimatedTextView textView = (AnimatedTextView) chatActivity.avatarContainer.getSubtitleTextView();
-                        onlineTextView[a].setText(textView.getText());
+                        setProfileOnlineText(a, textView.getText());
                     }
                 } else {
-                    onlineTextView[a].setText(newString2);
+                    setProfileOnlineText(a, newString2);
                 }
                 onlineTextView[a].setDrawablePadding(dp(9));
                 onlineTextView[a].setRightDrawableInside(true);
@@ -11900,10 +11913,10 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
                     nameTextView[a].setLeftDrawable(null);
                 }
                 if (a == 0 && onlineTextOverride != null) {
-                    onlineTextView[a].setText(onlineTextOverride);
+                    setProfileOnlineText(a, onlineTextOverride);
                 } else {
                     if (copyFromChatActivity || (currentChat.megagroup && chatInfo != null && onlineCount > 0) || isTopic) {
-                        onlineTextView[a].setText(a == 0 ? statusString : appendCommunityHiddenRow(profileStatusString));
+                        setProfileOnlineText(a, a == 0 ? statusString : appendCommunityHiddenRow(profileStatusString));
                     } else if (a == 0 && ChatObject.isChannel(currentChat) && chatInfo != null && chatInfo.participants_count != 0 && (currentChat.megagroup || currentChat.broadcast)) {
                         int[] result = new int[1];
                         boolean ignoreShort = AndroidUtilities.isAccessibilityScreenReaderEnabled();
@@ -11911,21 +11924,21 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
                         if (currentChat.megagroup) {
                             if (chatInfo.participants_count == 0) {
                                 if (chat.has_geo) {
-                                    onlineTextView[a].setText(LocaleController.getString(R.string.MegaLocation).toLowerCase());
+                                    setProfileOnlineText(a, LocaleController.getString(R.string.MegaLocation).toLowerCase());
                                 } else if (ChatObject.isPublic(chat)) {
-                                    onlineTextView[a].setText(LocaleController.getString(R.string.MegaPublic).toLowerCase());
+                                    setProfileOnlineText(a, LocaleController.getString(R.string.MegaPublic).toLowerCase());
                                 } else {
-                                    onlineTextView[a].setText(LocaleController.getString(R.string.MegaPrivate).toLowerCase());
+                                    setProfileOnlineText(a, LocaleController.getString(R.string.MegaPrivate).toLowerCase());
                                 }
                             } else {
                                 CharSequence statusText = LocaleController.formatPluralString("Members", result[0]).replace(String.format("%d", result[0]), shortNumber);
-                                onlineTextView[a].setText(a == 0 ? statusText : appendCommunityHiddenRow(statusText));
+                                setProfileOnlineText(a, a == 0 ? statusText : appendCommunityHiddenRow(statusText));
                             }
                         } else {
-                            onlineTextView[a].setText(LocaleController.formatPluralString("Subscribers", result[0]).replace(String.format("%d", result[0]), shortNumber));
+                            setProfileOnlineText(a, LocaleController.formatPluralString("Subscribers", result[0]).replace(String.format("%d", result[0]), shortNumber));
                         }
                     } else {
-                        onlineTextView[a].setText(a == 0 ? statusString : appendCommunityHiddenRow(profileStatusString));
+                        setProfileOnlineText(a, a == 0 ? statusString : appendCommunityHiddenRow(profileStatusString));
                     }
                 }
                 if (a == 1 && isTopic) {
