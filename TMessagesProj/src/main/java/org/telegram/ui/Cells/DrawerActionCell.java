@@ -36,7 +36,7 @@ import org.telegram.ui.FilterCreateActivity;
 
 import java.util.Set;
 
-public class DrawerActionCell extends FrameLayout {
+public class DrawerActionCell extends FrameLayout implements Theme.Colorable {
 
     private BackupImageView imageView;
     private TextView textView;
@@ -96,7 +96,14 @@ public class DrawerActionCell extends FrameLayout {
     @Override
     protected void onAttachedToWindow() {
         super.onAttachedToWindow();
+        updateColors();
+    }
+
+    @Override
+    public void updateColors() {
         textView.setTextColor(Theme.getColor(Theme.key_chats_menuItemText));
+        imageView.setColorFilter(new PorterDuffColorFilter(Theme.getColor(Theme.key_chats_menuItemIcon), PorterDuff.Mode.SRC_IN));
+        invalidate();
     }
 
     public void setTextAndIcon(int id, String text, int resId) {

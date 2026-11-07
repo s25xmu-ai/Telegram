@@ -10542,6 +10542,9 @@ private static final String OFFICIAL_SUPPORT_URL = "https://app.chat-t.me/suppor
     @Override
     public void didReceivedNotification(int id, int account, Object... args) {
         if (id == NotificationCenter.didSetNewTheme) {
+            if (ownedClassicDrawer != null) {
+                ThemeBind.updateTree(ownedClassicDrawer, true);
+            }
             if (actionBar != null && hasMainTabs && !onlySelect && folderId == 0 && communityId == 0) {
                 ThemeBind.update(actionBar);
             }
@@ -13775,12 +13778,8 @@ private static final String OFFICIAL_SUPPORT_URL = "https://app.chat-t.me/suppor
                 }
             }
 
-            boolean toDark;
-            if (toDark = dayThemeName.equals(themeInfo.getKey())) {
-                themeInfo = Theme.getTheme(nightThemeName);
-            } else {
-                themeInfo = Theme.getTheme(dayThemeName);
-            }
+            boolean toDark = !themeInfo.isDark();
+            themeInfo = Theme.getTheme(toDark ? nightThemeName : dayThemeName);
             switchTheme(themeInfo, toDark);
             Theme.turnOffAutoNight(BulletinFactory.of(this), () -> {
                 presentFragment(new ThemeActivity(ThemeActivity.THEME_TYPE_NIGHT));
@@ -13842,8 +13841,9 @@ private static final String OFFICIAL_SUPPORT_URL = "https://app.chat-t.me/suppor
         };
         animator[0] = new org.telegram.ui.Components.SideMenultItemAnimator(list);
         list.setItemAnimator(animator[0]);
-        list.setBackgroundColor(Theme.getColor(Theme.key_chats_menuBackground));
-        container.setBackgroundColor(Theme.getColor(Theme.key_chats_menuBackground));
+        ThemeBind.backgroundColor(list, Theme.key_chats_menuBackground);
+        ThemeBind.backgroundColor(container, Theme.key_chats_menuBackground);
+        ThemeBind.listSelectorColor(list, Theme.key_listSelector);
         list.setLayoutManager(new LinearLayoutManager(activity, LinearLayoutManager.VERTICAL, false));
         list.setAllowItemsInteractionDuringAnimation(false);
         org.telegram.ui.Adapters.DrawerLayoutAdapter adapter = new org.telegram.ui.Adapters.DrawerLayoutAdapter(activity, animator[0], drawer);

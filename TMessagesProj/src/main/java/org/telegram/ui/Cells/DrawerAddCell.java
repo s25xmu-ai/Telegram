@@ -23,7 +23,7 @@ import org.telegram.messenger.R;
 import org.telegram.ui.ActionBar.Theme;
 import org.telegram.ui.Components.LayoutHelper;
 
-public class DrawerAddCell extends FrameLayout {
+public class DrawerAddCell extends FrameLayout implements Theme.Colorable {
 
     private TextView textView;
 
@@ -57,5 +57,16 @@ public class DrawerAddCell extends FrameLayout {
             drawable.setColorFilter(new PorterDuffColorFilter(Theme.getColor(Theme.key_chats_menuItemIcon), PorterDuff.Mode.MULTIPLY));
         }
         textView.setCompoundDrawablesWithIntrinsicBounds(drawable, null, null, null);
+        updateColors();
+    }
+
+    @Override
+    public void updateColors() {
+        textView.setTextColor(Theme.getColor(Theme.key_chats_menuItemText));
+        Drawable drawable = textView.getCompoundDrawables()[0];
+        if (drawable != null) {
+            drawable.setColorFilter(new PorterDuffColorFilter(Theme.getColor(Theme.key_chats_menuItemIcon), PorterDuff.Mode.MULTIPLY));
+        }
+        invalidate();
     }
 }

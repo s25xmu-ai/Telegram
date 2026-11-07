@@ -35,7 +35,7 @@ import org.telegram.ui.Components.GroupCreateCheckBox;
 import org.telegram.ui.Components.LayoutHelper;
 import org.telegram.ui.Components.Premium.PremiumGradient;
 
-public class DrawerUserCell extends FrameLayout implements NotificationCenter.NotificationCenterDelegate {
+public class DrawerUserCell extends FrameLayout implements NotificationCenter.NotificationCenterDelegate, Theme.Colorable {
 
     private SimpleTextView textView;
     private BackupImageView imageView;
@@ -87,13 +87,21 @@ public class DrawerUserCell extends FrameLayout implements NotificationCenter.No
     @Override
     protected void onAttachedToWindow() {
         super.onAttachedToWindow();
-        textView.setTextColor(Theme.getColor(Theme.key_chats_menuItemText));
+        updateColors();
         status.attach();
         for (int i = 0; i < UserConfig.MAX_ACCOUNT_COUNT; i++){
             NotificationCenter.getInstance(i).addObserver(this, NotificationCenter.currentUserPremiumStatusChanged);
             NotificationCenter.getInstance(i).addObserver(this, NotificationCenter.updateInterfaces);
         }
         NotificationCenter.getGlobalInstance().addObserver(this, NotificationCenter.emojiLoaded);
+    }
+
+    @Override
+    public void updateColors() {
+        textView.setTextColor(Theme.getColor(Theme.key_chats_menuItemText));
+        status.setColor(Theme.getColor(Theme.key_chats_verifiedBackground));
+        checkBox.invalidate();
+        invalidate();
     }
 
     @Override

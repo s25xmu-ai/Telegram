@@ -67,11 +67,12 @@ import org.telegram.ui.Components.Reactions.AnimatedEmojiEffect;
 import org.telegram.ui.Components.Reactions.HwEmojis;
 import org.telegram.ui.Components.Reactions.ReactionsLayoutInBubble;
 import org.telegram.ui.Components.SnowflakesEffect;
+import org.telegram.ui.DialogsActivity;
 import org.telegram.ui.ThemeActivity;
 
 import java.util.ArrayList;
 
-public class DrawerProfileCell extends FrameLayout implements NotificationCenter.NotificationCenterDelegate {
+public class DrawerProfileCell extends FrameLayout implements NotificationCenter.NotificationCenterDelegate, Theme.Colorable {
 
     private BackupImageView avatarImageView;
     private SimpleTextView nameTextView;
@@ -93,7 +94,6 @@ public class DrawerProfileCell extends FrameLayout implements NotificationCenter
     private SnowflakesEffect snowflakesEffect;
     private boolean accountsShown;
     private int darkThemeBackgroundColor;
-    public static boolean switchingTheme;
     public boolean drawPremium;
     public float drawPremiumProgress;
 
@@ -227,10 +227,10 @@ public class DrawerProfileCell extends FrameLayout implements NotificationCenter
             darkThemeView.playAnimation();
         }
         darkThemeView.setOnClickListener(v -> {
-            if (switchingTheme) {
+            if (DialogsActivity.switchingTheme) {
                 return;
             }
-            switchingTheme = true;
+            DialogsActivity.switchingTheme = true;
             SharedPreferences preferences = ApplicationLoader.applicationContext.getSharedPreferences("themeconfig", Activity.MODE_PRIVATE);
             String dayThemeName = preferences.getString("lastDayTheme", "Blue");
             if (Theme.getTheme(dayThemeName) == null || Theme.getTheme(dayThemeName).isDark()) {
@@ -249,14 +249,9 @@ public class DrawerProfileCell extends FrameLayout implements NotificationCenter
                 }
             }
 
-            boolean toDark;
-            if (toDark = dayThemeName.equals(themeInfo.getKey())) {
-                themeInfo = Theme.getTheme(nightThemeName);
-                sunDrawable.setCustomEndFrame(36);
-            } else {
-                themeInfo = Theme.getTheme(dayThemeName);
-                sunDrawable.setCustomEndFrame(0);
-            }
+            boolean toDark = !themeInfo.isDark();
+            themeInfo = Theme.getTheme(toDark ? nightThemeName : dayThemeName);
+            sunDrawable.setCustomEndFrame(toDark ? 36 : 0);
             darkThemeView.playAnimation();
             switchTheme(themeInfo, toDark);
 
@@ -728,7 +723,19 @@ public class DrawerProfileCell extends FrameLayout implements NotificationCenter
         return backgroundKey;
     }
 
+    @Override
     public void updateColors() {
+        applyBackground(true);
+        if (Build.VERSION.SDK_INT >= 21 && darkThemeView.getBackground() != null) {
+            Theme.setSelectorDrawableColor(darkThemeView.getBackground(), darkThemeBackgroundColor = Theme.getColor(Theme.key_listSelector), true);
+        }
+        if (!DialogsActivity.switchingTheme && sunDrawable != null) {
+            int targetFrame = Theme.isCurrentThemeDark() ? 36 : 0;
+            if (sunDrawable.getCustomEndFrame() != targetFrame) {
+                updateSunDrawable(targetFrame == 36);
+            }
+        }
+        invalidate();
         if (snowflakesEffect != null) {
             snowflakesEffect.updateColors();
         }

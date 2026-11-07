@@ -7593,6 +7593,7 @@ public class LaunchActivity extends BasePermissionsActivity implements INavigati
                     anim.start();
                     instant = true;
                 } catch (Throwable e) {
+                    DialogsActivity.switchingTheme = false;
                     FileLog.e(e);
                     try {
                         if (rippleAbove != null && rippleAbove.getBackground() != null) {
