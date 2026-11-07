@@ -721,8 +721,7 @@ public class SettingsActivity extends BaseFragment implements NotificationCenter
 
         final boolean walletAbove = getConnectionsManager().getCurrentTime() - 1791538462 < 4 * 7 * 24 * 60 * 60;
         if (walletAbove && XGramConfig.showMoneyEntry(currentAccount)) {
-            final GramWallet wallet = GramWallet.getInstance(currentAccount);
-            items.add(SettingCell.Factory.of(25, 0, 0, R.drawable.xgram_wallet_settings, TextCell.applyNewSpanTimed(getString(R.string.XGramWalletLabel), 1790679020), null, wallet.getBalance() > 0 ? GramWallet.formatGrams(wallet.getBalance()) : null));
+            items.add(SettingCell.Factory.of(25, 0, 0, R.drawable.xgram_wallet_settings, getString(R.string.XGramWalletLabel), null, null));
             items.add(UItem.asShadow(null));
         }
 
@@ -738,8 +737,7 @@ public class SettingsActivity extends BaseFragment implements NotificationCenter
 
         items.add(UItem.asShadow(null));
         if (!walletAbove && XGramConfig.showMoneyEntry(currentAccount)) {
-            final GramWallet wallet = GramWallet.getInstance(currentAccount);
-            items.add(SettingCell.Factory.of(25, 0, 0, R.drawable.xgram_wallet_settings, TextCell.applyNewSpanTimed(getString(R.string.XGramWalletLabel), 1790679020), null, wallet.getBalance() > 0 ? GramWallet.formatGrams(wallet.getBalance()) : null));
+            items.add(SettingCell.Factory.of(25, 0, 0, R.drawable.xgram_wallet_settings, getString(R.string.XGramWalletLabel), null, null));
             items.add(UItem.asShadow(null));
         }
 
@@ -917,7 +915,7 @@ items.add(SettingCell.Factory.of(
                 presentSettingFragment(new TONIntroActivity());
                 break;
             case 25:
-                presentSettingFragment(new WalletActivity());
+                XGramWalletUnavailable.show(getContext(), resourceProvider);
                 break;
             case 15:
                 presentSettingFragment(new PremiumPreviewFragment(PremiumPreviewFragment.FEATURES_BUSINESS, "settings"));

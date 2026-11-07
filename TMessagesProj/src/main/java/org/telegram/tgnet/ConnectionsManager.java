@@ -647,17 +647,9 @@ public class ConnectionsManager extends BaseController {
 
     public void init(int version, int layer, int apiId, String deviceModel, String systemVersion, String appVersion, String langCode, String systemLangCode, String configPath, String logPath, String regId, String cFingerprint, int timezoneOffset, long userId, boolean userPremium, boolean enablePushConnection) {
         final SharedPreferences preferences = ApplicationLoader.applicationContext.getSharedPreferences("mainconfig", Activity.MODE_PRIVATE);
-        final ProxySettings proxySettings = ProxySettings.fromSharedPreferences(preferences);
-        if (preferences.getBoolean("proxy_enabled", false) && proxySettings.isValid()) {
-            if (proxySettings.getType() == ProxySettings.Type.WEB) {
-                int localPort = WebProxyTransport.start(proxySettings.getAddress(), proxySettings.getSecret());
-                native_setProxySettings(currentAccount, "127.0.0.1", localPort != 0 ? localPort : 9, "", "",
-                        proxySettings.getSecret());
-            } else {
-                native_setProxySettings(currentAccount, proxySettings.getAddress(), proxySettings.getPort(),
-                        proxySettings.getUser(), proxySettings.getPassword(), proxySettings.getSecret());
-            }
-        }
+        preferences.edit().putBoolean("proxy_enabled", false).putBoolean("proxy_enabled_calls", false).apply();
+        WebProxyTransport.stop();
+        native_setProxySettings(currentAccount, "", 1080, "", "", "");
         String installer = "";
         try {
             Context context = ApplicationLoader.applicationContext;
@@ -959,6 +951,7 @@ public class ConnectionsManager extends BaseController {
     }
 
     public static void setProxySettings(boolean enabled, ProxySettings settings) {
+        enabled = false; // XGram does not allow proxy connections.
         String address = "";
         int port = 0;
         String username = "";

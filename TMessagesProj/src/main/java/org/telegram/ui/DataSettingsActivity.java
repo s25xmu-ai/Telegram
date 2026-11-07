@@ -194,9 +194,7 @@ public class DataSettingsActivity extends BaseFragment {
         useLessDataForCallsRow = rowCount++;
 //        quickRepliesRow = rowCount++;
         callsSection2Row = rowCount++;
-        proxySectionRow = rowCount++;
-        proxyRow = rowCount++;
-        proxySection2Row = rowCount++;
+        proxySectionRow = proxyRow = proxySection2Row = -1;
         clearDraftsRow = rowCount++;
         clearDraftsSectionRow = rowCount++;
 

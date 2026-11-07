@@ -538,7 +538,7 @@ public class SharedConfig {
             passportConfigJson = preferences.getString("passportConfigJson", "");
             passportConfigHash = preferences.getInt("passportConfigHash", 0);
             storageCacheDir = preferences.getString("storageCacheDir", null);
-            proxyRotationEnabled = preferences.getBoolean("proxyRotationEnabled", false);
+            proxyRotationEnabled = false; // Proxy connections are disabled in XGram.
             proxyRotationTimeout = preferences.getInt("proxyRotationTimeout", ProxyRotationController.DEFAULT_TIMEOUT_INDEX);
             String authKeyString = preferences.getString("pushAuthKey", null);
             if (!TextUtils.isEmpty(authKeyString)) {
@@ -1511,7 +1511,7 @@ public class SharedConfig {
     }
 
     public static boolean isProxyEnabled() {
-        return MessagesController.getGlobalMainSettings().getBoolean("proxy_enabled", false) && currentProxy != null;
+        return false;
     }
 
     public static void deleteProxy(ProxyInfo proxyInfo) {
@@ -1539,10 +1539,10 @@ public class SharedConfig {
     public static void checkSaveToGalleryFiles() {
         Utilities.globalQueue.postRunnable(() -> {
             try {
-                File telegramPath = new File(Environment.getExternalStorageDirectory(), "Telegram");
-                File imagePath = new File(telegramPath, "Telegram Images");
+                File telegramPath = new File(Environment.getExternalStorageDirectory(), "XGram");
+                File imagePath = new File(telegramPath, "XGram Images");
                 imagePath.mkdir();
-                File videoPath = new File(telegramPath, "Telegram Video");
+                File videoPath = new File(telegramPath, "XGram Video");
                 videoPath.mkdir();
 
                 if (!BuildVars.NO_SCOPED_STORAGE) {

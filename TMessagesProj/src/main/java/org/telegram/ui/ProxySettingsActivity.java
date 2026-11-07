@@ -79,6 +79,12 @@ import java.util.ArrayList;
 
 public class ProxySettingsActivity extends BaseFragment {
 
+    @Override
+    public boolean onFragmentCreate() {
+        return false; // Proxy settings are disabled in XGram.
+    }
+
+
     private final static int FIELD_IP = 0;
     private final static int FIELD_PORT = 1;
     private final static int FIELD_USER = 2;

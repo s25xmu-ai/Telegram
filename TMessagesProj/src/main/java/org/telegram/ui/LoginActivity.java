@@ -8779,30 +8779,9 @@ public class LoginActivity extends BaseFragment implements NotificationCenter.No
     private int currentConnectionState;
 
     private void updateProxyButton(boolean animated, boolean force) {
-        if (proxyDrawable == null) {
-            return;
-        }
-        int state = getConnectionsManager().getConnectionState();
-        if (currentConnectionState == state && !force) {
-            return;
-        }
-        currentConnectionState = state;
-        SharedPreferences preferences = ApplicationLoader.applicationContext.getSharedPreferences("mainconfig", Activity.MODE_PRIVATE);
-        String proxyAddress = preferences.getString("proxy_ip", "");
-        final boolean proxyEnabled = preferences.getBoolean("proxy_enabled", false) && !TextUtils.isEmpty(proxyAddress);
-        final boolean connected = currentConnectionState == ConnectionsManager.ConnectionStateConnected || currentConnectionState == ConnectionsManager.ConnectionStateUpdating;
-        final boolean connecting = currentConnectionState == ConnectionsManager.ConnectionStateConnecting || currentConnectionState == ConnectionsManager.ConnectionStateWaitingForNetwork || currentConnectionState == ConnectionsManager.ConnectionStateConnectingToProxy;
-        if (proxyEnabled) {
-            proxyDrawable.setConnected(true, connected, animated);
-            showProxyButton(true, animated);
-        } else if (getMessagesController().blockedCountry && !SharedConfig.proxyList.isEmpty() || connecting) {
-            proxyDrawable.setConnected(true, connected, animated);
-            showProxyButtonDelayed();
-        } else {
-            showProxyButton(false, animated);
-        }
+        showProxyButton(false, false);
     }
-    
+
     private boolean proxyButtonVisible;
     private Runnable showProxyButtonDelayed;
     private void showProxyButtonDelayed() {

@@ -607,7 +607,7 @@ public class LanguageSelectActivity extends BaseFragment implements Notification
             } else {
                 int count = 0;
                 count++;
-                if (getMessagesController().isTranslationsManualEnabled() || getMessagesController().isTranslationsAutoEnabled()) {
+                if (false /* XGram: translation controls are disabled */) {
                     count++;
                     // The manual "Show Translate Button" setting is hidden.
                     if (getMessagesController().isTranslationsAutoEnabled() && !getMessagesController().premiumFeaturesBlocked()) {
@@ -798,7 +798,7 @@ public class LanguageSelectActivity extends BaseFragment implements Notification
                 }
                 case VIEW_TYPE_HEADER: {
                     HeaderCell header = (HeaderCell) holder.itemView;
-                    header.setText(position == 0 && (getMessagesController().isTranslationsManualEnabled() || getMessagesController().isTranslationsAutoEnabled()) ? LocaleController.getString(R.string.TranslateMessages) : LocaleController.getString(R.string.Language));
+                    header.setText(position == 0 && (false /* XGram: translation controls are disabled */) ? LocaleController.getString(R.string.TranslateMessages) : LocaleController.getString(R.string.Language));
                     break;
                 }
             }
@@ -810,7 +810,7 @@ public class LanguageSelectActivity extends BaseFragment implements Notification
             if (search) {
                 return VIEW_TYPE_LANGUAGE;
             } else {
-                if (getMessagesController().isTranslationsManualEnabled() || getMessagesController().isTranslationsAutoEnabled()) {
+                if (false /* XGram: translation controls are disabled */) {
                     settingsFromPosition = position - i;
                     if (i-- == 0) return VIEW_TYPE_HEADER;
                     // Keep the manual translation feature intact, but do not show its settings row.

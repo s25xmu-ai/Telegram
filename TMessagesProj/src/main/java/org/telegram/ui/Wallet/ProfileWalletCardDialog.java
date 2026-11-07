@@ -253,12 +253,12 @@ public class ProfileWalletCardDialog extends Dialog {
         sendPill.setOnClickListener(v -> {
             if (dismissing) return;
             if (isSelf) {
-                afterDismiss = () -> fragment.presentFragment(new WalletActivity());
+                afterDismiss = () -> org.telegram.ui.XGramWalletUnavailable.show(fragment.getContext(), fragment.getResourceProvider());
             } else if (showHowItWorks) {
                 afterDismiss = () -> WalletActivity.openWalletHowItWorksAlert(fragment.getContext(), fragment.getResourceProvider());
             } else {
                 if (!showSendMoney || TextUtils.isEmpty(profileCard.address)) return;
-                afterDismiss = () -> fragment.presentFragment(new WalletSendEnterAmount(fragment.getCurrentAccount(), profileCard.address));
+                afterDismiss = () -> org.telegram.ui.XGramWalletUnavailable.show(fragment.getContext(), fragment.getResourceProvider());
             }
             dismiss();
         });

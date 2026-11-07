@@ -3529,9 +3529,7 @@ private static final String OFFICIAL_SUPPORT_URL = "https://app.chat-t.me/suppor
             } else {
     statusDrawable = new AnimatedEmojiDrawable.SwapAnimatedEmojiDrawable(null, dp(26));
     statusDrawable.center = true;
-    SpannableStringBuilder ssb = new SpannableStringBuilder("XGram");
-    ssb.setSpan(new ForegroundColorSpan(getThemedColor(Theme.key_telegram_color_dialogsLogo)), 0, ssb.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
-    actionBar.setTitle(ssb, statusDrawable);
+    actionBar.setTitle("XGram", statusDrawable);
     updateStatus(UserConfig.getInstance(currentAccount).getCurrentUser(), false);
             }
             if (folderId == 0) {
@@ -12098,6 +12096,9 @@ private static final String OFFICIAL_SUPPORT_URL = "https://app.chat-t.me/suppor
                 actionBar.setPopupItemsColor(getThemedColor(Theme.key_actionBarDefaultSubmenuItemIcon), true, true);
                 actionBar.setPopupItemsSelectorColor(getThemedColor(Theme.key_dialogButtonSelector), true);
                 actionBar.updateColors();
+                if (hasMainTabs && !onlySelect && folderId == 0 && communityId == 0) {
+                    actionBar.setTitleColor(getThemedColor(Theme.key_telegram_color_dialogsLogo));
+                }
             }
             if (statusDrawable != null) {
                 updateStatus(UserConfig.getInstance(currentAccount).getCurrentUser(), false);
@@ -13763,7 +13764,9 @@ private static final String OFFICIAL_SUPPORT_URL = "https://app.chat-t.me/suppor
         // expands the list of accounts.
         TLRPC.User currentUser = getUserConfig().getCurrentUser();
         FrameLayout header = new FrameLayout(activity);
-        header.setBackgroundColor(getThemedColor(Theme.key_chats_menuBackground));
+        final int headerColorKey = Theme.hasThemeKey(Theme.key_chats_menuTopBackground) && getThemedColor(Theme.key_chats_menuTopBackground) != 0
+                ? Theme.key_chats_menuTopBackground : Theme.key_chats_menuTopBackgroundCats;
+        header.setBackgroundColor(getThemedColor(headerColorKey));
         items.addView(header, new LinearLayout.LayoutParams(-1, dp(148)));
         BackupImageView avatar = new BackupImageView(activity);
         avatar.getImageReceiver().setRoundRadius(dp(32));
@@ -13779,20 +13782,20 @@ private static final String OFFICIAL_SUPPORT_URL = "https://app.chat-t.me/suppor
         });
         TextView name = new TextView(activity);
         name.setText(currentUser == null ? "" : UserObject.getUserName(currentUser));
-        name.setTextColor(getThemedColor(Theme.key_chats_menuItemText));
+        name.setTextColor(getThemedColor(Theme.key_chats_menuName));
         name.setTypeface(AndroidUtilities.bold());
         name.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 15);
         name.setSingleLine(true);
         header.addView(name, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, 24, Gravity.LEFT | Gravity.BOTTOM, 16, 0, 52, 29));
         TextView phone = new TextView(activity);
         phone.setText(currentUser == null || TextUtils.isEmpty(currentUser.username) ? "" : "@" + currentUser.username);
-        phone.setTextColor(getThemedColor(Theme.key_windowBackgroundWhiteGrayText));
+        phone.setTextColor(getThemedColor(Theme.key_chats_menuPhoneCats));
         phone.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 13);
         phone.setSingleLine(true);
         header.addView(phone, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, 20, Gravity.LEFT | Gravity.BOTTOM, 16, 0, 52, 8));
         ImageView arrow = new ImageView(activity);
         arrow.setImageResource(R.drawable.msg_expand);
-        arrow.setColorFilter(new PorterDuffColorFilter(getThemedColor(Theme.key_chats_menuItemIcon), PorterDuff.Mode.SRC_IN));
+        arrow.setColorFilter(new PorterDuffColorFilter(getThemedColor(Theme.key_chats_menuName), PorterDuff.Mode.SRC_IN));
         header.addView(arrow, LayoutHelper.createFrame(48, 48, Gravity.RIGHT | Gravity.BOTTOM));
         header.setContentDescription(getString(R.string.AddAccount));
         header.setClickable(true);
@@ -13859,27 +13862,22 @@ private static final String OFFICIAL_SUPPORT_URL = "https://app.chat-t.me/suppor
         });
         ImageView themeButton = new ImageView(activity);
         themeButton.setImageResource(Theme.isCurrentThemeDark() ? R.drawable.menu_day_mode_24 : R.drawable.menu_night_mode_24);
-        themeButton.setColorFilter(new PorterDuffColorFilter(getThemedColor(Theme.key_chats_menuItemIcon), PorterDuff.Mode.SRC_IN));
+        themeButton.setColorFilter(new PorterDuffColorFilter(getThemedColor(Theme.key_chats_menuName), PorterDuff.Mode.SRC_IN));
         themeButton.setContentDescription(getString(Theme.isCurrentThemeDark() ? R.string.SwitchThemeToDay : R.string.SwitchThemeToNight));
         header.addView(themeButton, LayoutHelper.createFrame(48, 48, Gravity.RIGHT | Gravity.TOP, 0, 8, 8, 0));
         themeButton.setOnClickListener(v -> { dialog.dismiss(); toggleXGramDayNight(); });
-        ImageView proxyButton = new ImageView(activity);
-        proxyButton.setImageResource(R.drawable.settings_privacy);
-        proxyButton.setColorFilter(new PorterDuffColorFilter(getThemedColor(Theme.key_chats_menuItemIcon), PorterDuff.Mode.SRC_IN));
-        proxyButton.setContentDescription(getString(R.string.ProxySettings));
-        header.addView(proxyButton, LayoutHelper.createFrame(48, 48, Gravity.RIGHT | Gravity.TOP, 0, 8, 56, 0));
-        proxyButton.setOnClickListener(v -> { dialog.dismiss(); presentFragment(new ProxyListActivity()); });
-        addClassicDrawerItem(items, dialog, R.drawable.msg_openprofile, getString(R.string.MyProfile), () -> {
+        addClassicDrawerItem(items, dialog, R.drawable.left_status_profile, getString(R.string.MyProfile), () -> {
             Bundle args = new Bundle();
             args.putLong("user_id", getUserConfig().getClientUserId());
             args.putBoolean("my_profile", true);
             presentFragment(new ProfileActivity(args));
         });
+        items.addView(new org.telegram.ui.Cells.DividerCell(activity, resourceProvider));
         addClassicDrawerItem(items, dialog, R.drawable.msg_channel, getString(R.string.NewChannel), () -> {
             Bundle args = new Bundle(); args.putInt("step", 0); presentFragment(new ChannelCreateActivity(args));
         });
         addClassicDrawerItem(items, dialog, R.drawable.msg_groups, getString(R.string.NewGroup), () -> presentFragment(new GroupCreateActivity(new Bundle())));
-        addClassicDrawerItem(items, dialog, R.drawable.outline_saved_24, getString(R.string.SavedMessages), () -> {
+        addClassicDrawerItem(items, dialog, R.drawable.msg_saved, getString(R.string.SavedMessages), () -> {
             Bundle args = new Bundle();
             args.putLong("user_id", getUserConfig().getClientUserId());
             presentFragment(new ChatActivity(args));
@@ -13909,7 +13907,7 @@ private static final String OFFICIAL_SUPPORT_URL = "https://app.chat-t.me/suppor
             presentFragment(new ContactsActivity(args));
         });
         addClassicDrawerItem(items, dialog, R.drawable.msg_calls, getString(R.string.Calls), () -> presentFragment(new CallLogActivity()));
-        if (XGramConfig.showMoneyEntry(currentAccount)) addClassicDrawerItem(items, dialog, R.drawable.xgram_wallet_icon, getString(R.string.XGramWalletLabel), () -> presentFragment(new WalletActivity()));
+        if (XGramConfig.showMoneyEntry(currentAccount)) addClassicDrawerItem(items, dialog, R.drawable.xgram_wallet_icon, getString(R.string.XGramWalletLabel), () -> XGramWalletUnavailable.show(getContext(), resourceProvider));
         items.addView(new org.telegram.ui.Cells.DividerCell(activity, resourceProvider));
         addClassicDrawerItem(items, dialog, R.drawable.settings_invite, getString(R.string.InviteFriends), () -> presentFragment(new InviteContactsActivity()));
         addClassicDrawerItem(items, dialog, R.drawable.msg_help, getString(R.string.TelegramFeatures), () -> Browser.openUrl(activity, getString(R.string.TelegramFeaturesUrl)));
@@ -14056,7 +14054,7 @@ if (ENABLE_CONTACTS || !XGramConfig.isHomeBottomBarVisible()) {
         }
         if (XGramConfig.showMoneyEntry(currentAccount)) {
             io.add(R.drawable.xgram_wallet_icon, LocaleController.getString(R.string.XGramWalletLabel), () -> {
-                presentFragment(new WalletActivity());
+                XGramWalletUnavailable.show(getContext(), resourceProvider);
             });
         } else {
             TLRPC.TL_attachMenuBots menuBots = MediaDataController.getInstance(UserConfig.selectedAccount).getAttachMenuBots();
@@ -14097,27 +14095,6 @@ if (ENABLE_CONTACTS || !XGramConfig.isHomeBottomBarVisible()) {
             io.add(R.drawable.msg_settings_old, getString(R.string.Settings), () -> {
                 presentFragment(new SettingsActivity());
             });
-        }
-
-        if (proxyMenuSubItem != null) {
-            proxyMenuSubItem.subtextView.setTextColor(getThemedColor(Theme.key_groupcreate_sectionText));
-            proxyMenuSubItem.setOnClickListener(v -> {
-                io.dismiss();
-                presentFragment(new ProxyListActivity());
-            });
-
-            final SharedPreferences preferences = ApplicationLoader.applicationContext
-                    .getSharedPreferences("mainconfig", Activity.MODE_PRIVATE);
-
-            final String proxyAddress = preferences.getString("proxy_ip", "");
-            final boolean proxyEnabled = preferences.getBoolean("proxy_enabled", false);
-            final boolean proxyVisible = proxyEnabled && !TextUtils.isEmpty(proxyAddress)
-                    || getMessagesController().blockedCountry && !SharedConfig.proxyList.isEmpty();
-
-            if (proxyVisible) {
-                io.addGap();
-                io.add(proxyMenuSubItem);
-            }
         }
 
         io.show();

@@ -3683,7 +3683,7 @@ public static Typeface getVazirmatnTypeface() {
         }
         File storageDir = null;
         if (Environment.MEDIA_MOUNTED.equals(Environment.getExternalStorageState())) {
-            storageDir = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES), "Telegram");
+            storageDir = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES), "XGram");
             if (!storageDir.mkdirs()) {
                 if (!storageDir.exists()) {
                     if (BuildVars.LOGS_ENABLED) {
@@ -4612,7 +4612,7 @@ public static Typeface getVazirmatnTypeface() {
             if (data != null) {
                 final ProxySettings proxySettings = ProxySettings.fromUri(data);
                 if (proxySettings != null && proxySettings.isValid()) {
-                    if (invoked) showProxyAlert(activity, proxySettings);
+                    // Recognize and consume proxy links without enabling a proxy.
                     return true;
                 }
             }

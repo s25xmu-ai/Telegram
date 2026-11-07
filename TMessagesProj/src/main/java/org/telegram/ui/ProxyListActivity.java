@@ -330,22 +330,7 @@ public class ProxyListActivity extends BaseFragment implements NotificationCente
 
     @Override
     public boolean onFragmentCreate() {
-        super.onFragmentCreate();
-
-        SharedConfig.loadProxyList();
-        currentConnectionState = ConnectionsManager.getInstance(currentAccount).getConnectionState();
-
-        NotificationCenter.getGlobalInstance().addObserver(this, NotificationCenter.proxyChangedByRotation);
-        NotificationCenter.getGlobalInstance().addObserver(this, NotificationCenter.proxySettingsChanged);
-        NotificationCenter.getGlobalInstance().addObserver(this, NotificationCenter.proxyCheckDone);
-        NotificationCenter.getInstance(currentAccount).addObserver(this, NotificationCenter.didUpdateConnectionState);
-
-        final SharedPreferences preferences = MessagesController.getGlobalMainSettings();
-        useProxySettings = preferences.getBoolean("proxy_enabled", false) && !SharedConfig.proxyList.isEmpty();
-
-        updateRows(true);
-
-        return true;
+        return false; // Proxy settings are disabled in XGram.
     }
 
     @Override

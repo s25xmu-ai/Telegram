@@ -8,4 +8,5 @@
     <string name="XGramClassicDrawer">Classic menu</string>
     <string name="XGramBrowserUnavailable">No browser is available to open this link.</string>
     <string name="XGramBuyPremium">Buy Premium</string>
+    <string name="XGramWalletUnavailable">Temporarily unavailable.</string>
 </resources>

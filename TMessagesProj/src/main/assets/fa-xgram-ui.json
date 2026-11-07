@@ -386,5 +386,6 @@
   "XGramBrowserUnavailable": "مرورگری برای باز کردن این پیوند در دسترس نیست.",
   "XGramBuyPremium": "خرید پریمیوم",
   "XGramClassicUI": "رابط کاربری کلاسیک",
-  "XGramClassicDrawer": "منوی کلاسیک"
+  "XGramClassicDrawer": "منوی کلاسیک",
+  "XGramWalletUnavailable": "موقتاً در دسترس نمی‌باشد."
 }

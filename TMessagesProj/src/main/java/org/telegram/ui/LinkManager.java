@@ -1034,15 +1034,8 @@ public class LinkManager {
                 return true;
             }
 
-            if (!TextUtils.isEmpty(third) && "proxy".equalsIgnoreCase(second)) {
-                presentFragment(new ProxyListActivity());
-
-                if ("use-proxy".equalsIgnoreCase(third))
-                    scrollTo("useProxyRow");
-                if ("add-proxy".equalsIgnoreCase(third))
-                    scrollTo("proxyAddRow");
-
-                return true;
+            if ("proxy".equalsIgnoreCase(second)) {
+                return true; // Proxy settings are disabled in XGram.
             }
 
             if ("pause-music".equalsIgnoreCase(second)) {
@@ -1491,7 +1484,7 @@ public class LinkManager {
         }
 
         if (TextUtils.isEmpty(recipient)) {
-            presentFragment(new WalletActivity());
+            XGramWalletUnavailable.show(activity, null);
         } else if (recipient.startsWith("@") || recipient.matches("[a-zA-Z0-9_]{1,32}")) {
             final String username = recipient.startsWith("@") ? recipient.substring(1) : recipient;
             if (TextUtils.isEmpty(username)) return true;

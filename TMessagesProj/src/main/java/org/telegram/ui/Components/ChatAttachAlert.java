@@ -2789,21 +2789,7 @@ public class ChatAttachAlert extends BottomSheet implements NotificationCenter.N
                     }
                     showLayout(photoLayout);
                 } else if (num == LAYOUT_TYPE_MONEY) {
-                    if (gramLayout == null && baseFragment instanceof ChatActivity) {
-                        final TLRPC.User recipient = ((ChatActivity) baseFragment).getCurrentUser();
-                        if (isMoneyTabRecipient(recipient)) {
-                            layouts[11] = gramLayout = new ChatAttachAlertGramLayout(
-                                    this,
-                                    getContext(),
-                                    currentAccount,
-                                    recipient,
-                                    resourcesProvider
-                            );
-                        }
-                    }
-                    if (gramLayout != null) {
-                        showLayout(gramLayout);
-                    }
+                    org.telegram.ui.XGramWalletUnavailable.show(activity, resourcesProvider);
                 } else if (num == 3) {
                     if (!musicEnabled && checkCanRemoveRestrictionsByBoosts()) {
                         return;
