@@ -13238,7 +13238,7 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
                     view = textView;
                     break;
                 case VIEW_TYPE_ABOUT_LINK: {
-                    view = aboutLinkCell = new AboutLinkCell(mContext, ProfileActivity.this, resourcesProvider) {
+                    view = aboutLinkCell = new AboutLinkCell(mContext, ProfileActivity.this, resourcesProvider, classicProfileDetails) {
                         @Override
                         protected void didPressUrl(String url, Browser.Progress progress) {
                             openUrl(url, progress);

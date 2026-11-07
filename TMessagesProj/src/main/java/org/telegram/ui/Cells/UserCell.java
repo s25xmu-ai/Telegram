@@ -497,7 +497,16 @@ public class UserCell extends FrameLayout implements NotificationCenter.Notifica
             MeasureSpec.makeMeasureSpec(dp(callCellStyle ? 56 : 58) + (needDivider ? 1 : 0), MeasureSpec.EXACTLY));
     }
 
+    private boolean customStatusColors;
+
+    private void refreshStatusColors() {
+        if (customStatusColors) return;
+        statusColor = Theme.getColor(Theme.key_windowBackgroundWhiteGrayText, resourcesProvider);
+        statusOnlineColor = Theme.getColor(Theme.key_telegram_color_text, resourcesProvider);
+    }
+
     public void setStatusColors(int color, int onlineColor) {
+        customStatusColors = true;
         statusColor = color;
         statusOnlineColor = onlineColor;
     }
@@ -756,6 +765,18 @@ public class UserCell extends FrameLayout implements NotificationCenter.Notifica
 
     @Override
     public void updateColors() {
+        // Upstream 13.2.1 recolors in place rather than rebinding the whole row.
+        final int oldStatusColor = statusColor, oldStatusOnlineColor = statusOnlineColor;
+        refreshStatusColors();
+        if (statusTextView != null) {
+            final int current = statusTextView.getTextColor();
+            if (current == oldStatusOnlineColor && oldStatusOnlineColor != oldStatusColor) {
+                statusTextView.setTextColor(statusOnlineColor);
+            } else if (current == oldStatusColor) {
+                statusTextView.setTextColor(statusColor);
+            }
+        }
+        if (avatarImageView != null) avatarImageView.invalidate();
     }
 
     public void setSelfAsSavedMessages(boolean value) {
