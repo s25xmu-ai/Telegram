@@ -17,6 +17,7 @@ public class ChatActivityEnterViewAnimatedIconView extends RLottieImageView {
     private State currentState;
     private TransitState animatingState;
     private final int sizeDp;
+    private final boolean classicVoiceAnimation;
 
     private final Map<TransitState, RLottieDrawable> stateMap = new HashMap<TransitState, RLottieDrawable>() {
         @Nullable
@@ -25,7 +26,7 @@ public class ChatActivityEnterViewAnimatedIconView extends RLottieImageView {
             RLottieDrawable obj = super.get(key);
             if (obj == null) {
                 TransitState state = (TransitState) key;
-                int res = state.getResource();
+                int res = state.getResource(classicVoiceAnimation);
                 RLottieDrawable rLottieDrawable = new RLottieDrawable(res, AndroidUtilities.dp(sizeDp), AndroidUtilities.dp(sizeDp));
                 put(state, rLottieDrawable);
                 return rLottieDrawable;
@@ -39,8 +40,13 @@ public class ChatActivityEnterViewAnimatedIconView extends RLottieImageView {
     }
 
     public ChatActivityEnterViewAnimatedIconView(Context context, int sizeDp) {
+        this(context, sizeDp, false);
+    }
+
+    public ChatActivityEnterViewAnimatedIconView(Context context, int sizeDp, boolean classicVoiceAnimation) {
         super(context);
         this.sizeDp = sizeDp;
+        this.classicVoiceAnimation = classicVoiceAnimation;
     }
 
     public void setState(State state, boolean animate) {
@@ -53,7 +59,7 @@ public class ChatActivityEnterViewAnimatedIconView extends RLottieImageView {
             RLottieDrawable drawable = stateMap.get(getAnyState(currentState));
             drawable.stop();
 
-            drawable.setProgress(state == State.VOICE && !XGramConfig.isIOSMessageInputField() ? 0.5f : 0, false);
+            drawable.setProgress(state == State.VOICE && !classicVoiceAnimation && !XGramConfig.isIOSMessageInputField() ? 0.5f : 0, false);
             setAnimation(drawable);
         } else {
             TransitState transitState = getState(fromState, currentState);
@@ -64,10 +70,10 @@ public class ChatActivityEnterViewAnimatedIconView extends RLottieImageView {
             animatingState = transitState;
             RLottieDrawable drawable = stateMap.get(transitState);
             drawable.stop();
-            if (transitState == TransitState.VIDEO_TO_VOICE && !XGramConfig.isIOSMessageInputField()) {
+            if (transitState == TransitState.VIDEO_TO_VOICE && !classicVoiceAnimation && !XGramConfig.isIOSMessageInputField()) {
                 drawable.setCustomEndFrame(30);
                 drawable.setProgress(0, false);
-            } else if (transitState == TransitState.VOICE_TO_VIDEO && !XGramConfig.isIOSMessageInputField()) {
+            } else if (transitState == TransitState.VOICE_TO_VIDEO && !classicVoiceAnimation && !XGramConfig.isIOSMessageInputField()) {
                 drawable.setCustomEndFrame(60);
                 drawable.setProgress(0.5f, false);
             } else {
@@ -142,7 +148,10 @@ public class ChatActivityEnterViewAnimatedIconView extends RLottieImageView {
             this(firstState, secondState, 0);
         }
 
-        int getResource() {
+        int getResource(boolean classicVoiceAnimation) {
+            // Separate animation files are taken from release-10.14.5-4945.
+            if (classicVoiceAnimation && this == VOICE_TO_VIDEO) return R.raw.xgram_classic_voice_to_video;
+            if (classicVoiceAnimation && this == VIDEO_TO_VOICE) return R.raw.xgram_classic_video_to_voice;
             if (this == VOICE_TO_VIDEO) {
                 return XGramConfig.isIOSMessageInputField()
                         ? R.raw.voice_and_video_cg

@@ -5,6 +5,8 @@ import static org.telegram.messenger.AndroidUtilities.dp;
 import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.Path;
+import android.graphics.Paint;
+import android.graphics.drawable.Drawable;
 import android.graphics.Rect;
 import android.graphics.RectF;
 import android.os.Build;
@@ -17,6 +19,7 @@ import android.widget.FrameLayout;
 
 import androidx.annotation.NonNull;
 
+import org.telegram.ui.ActionBar.Theme;
 import org.telegram.ui.Components.LayoutHelper;
 import org.telegram.ui.Components.blur3.BlurredBackgroundWithFadeDrawable;
 import org.telegram.ui.Components.blur3.drawable.BlurredBackgroundDrawable;
@@ -30,6 +33,23 @@ public class ChatInputViewsContainer extends FrameLayout {
     public static final int INPUT_BUBBLE_BOTTOM = 9;
 
     private WindowInsetsProvider windowInsetsProvider;
+    private boolean classicInputStyle;
+    private float classicInputVisibility;
+    private Theme.ResourcesProvider classicResourcesProvider;
+    private final Paint classicPanelPaint = new Paint();
+
+    /** The 10.14.5 composer uses a full-width, theme-colored panel and shadow. */
+    public void setClassicInputStyle(boolean enabled, Theme.ResourcesProvider resourcesProvider) {
+        classicInputStyle = enabled;
+        classicResourcesProvider = resourcesProvider;
+    }
+
+    public void setClassicInputVisibility(float visibility) {
+        classicInputVisibility = Math.max(0f, Math.min(1f, visibility));
+        invalidate();
+    }
+
+    private int inputBottomMargin() { return classicInputStyle ? 0 : dp(INPUT_BUBBLE_BOTTOM); }
 
     private final View fadeView;
     private final FrameLayout inputIslandBubbleContainer;
@@ -134,7 +154,7 @@ public class ChatInputViewsContainer extends FrameLayout {
     private void checkBlurredHeight(boolean force) {
         checkViewsPositions();
 
-        final int blurredHeight = inputBubbleHeightRound + dp(INPUT_BUBBLE_BOTTOM) + Math.round(maxBottomInset);
+        final int blurredHeight = inputBubbleHeightRound + inputBottomMargin() + Math.round(maxBottomInset);
         if (currentBlurredHeight != blurredHeight || force) {
             currentBlurredHeight = blurredHeight;
 
@@ -182,7 +202,7 @@ public class ChatInputViewsContainer extends FrameLayout {
     }
 
     private void checkViewsPositions() {
-        inputIslandBubbleContainer.setTranslationY(-maxBottomInset - dp(INPUT_BUBBLE_BOTTOM));
+        inputIslandBubbleContainer.setTranslationY(-maxBottomInset - inputBottomMargin());
         inAppKeyboardBubbleContainer.setTranslationY(inAppKeyboardBubbleContainer.getMeasuredHeight() - imeBottomInset);
     }
 
@@ -231,7 +251,7 @@ public class ChatInputViewsContainer extends FrameLayout {
     }
 
     public float getInputBubbleBottom() {
-        return getMeasuredHeight() - maxBottomInset - dp(INPUT_BUBBLE_BOTTOM);
+        return getMeasuredHeight() - maxBottomInset - inputBottomMargin();
     }
 
     @Override
@@ -269,8 +289,31 @@ public class ChatInputViewsContainer extends FrameLayout {
         tmpRect.offset(0, blurTop + (int) bubbleInputTranlationY);
 
         blurredBackgroundDrawable.setBounds(tmpRect);
-        if (drawInputBackground)
-            blurredBackgroundDrawable.draw(canvas);
+        if (drawInputBackground) {
+            final int oldAlpha = blurredBackgroundDrawable.getAlpha();
+            float classic = classicInputStyle ? classicInputVisibility : 0f;
+            if (classic < 1f) {
+                blurredBackgroundDrawable.setAlpha(Math.round(oldAlpha * (1f - classic)));
+                blurredBackgroundDrawable.draw(canvas);
+                blurredBackgroundDrawable.setAlpha(oldAlpha);
+            }
+            if (classic > 0f) {
+                int top = blurTop + (int) bubbleInputTranlationY;
+                int bottom = getMeasuredHeight() - Math.round(maxBottomInset) + (int) bubbleInputTranlationY;
+                Drawable shadow = Theme.chat_composeShadowDrawable;
+                int shadowHeight = shadow == null ? 0 : shadow.getIntrinsicHeight();
+                if (shadow != null) {
+                    int savedAlpha = shadow.getAlpha();
+                    shadow.setBounds(0, top, getMeasuredWidth(), top + shadowHeight);
+                    shadow.setAlpha(Math.round(oldAlpha * classic));
+                    shadow.draw(canvas);
+                    shadow.setAlpha(savedAlpha);
+                }
+                classicPanelPaint.setColor(Theme.getColor(Theme.key_chat_messagePanelBackground, classicResourcesProvider));
+                classicPanelPaint.setAlpha(Math.round(oldAlpha * classic));
+                canvas.drawRect(0, top + shadowHeight, getMeasuredWidth(), Math.max(top + shadowHeight, bottom), classicPanelPaint);
+            }
+        }
 
 
         if (leftBubbleDrawable != null && leftBubbleSet) {

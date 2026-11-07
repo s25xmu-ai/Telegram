@@ -4663,6 +4663,7 @@ public class ChatActivity extends BaseFragment implements
         }
 
         chatInputViewsContainer = new ChatInputViewsContainer(context);
+        chatInputViewsContainer.setClassicInputStyle(XGramConfig.isClassicMessageInput() && chatMode != MODE_EDIT_BUSINESS_LINK, themeDelegate);
         chatInputViewsContainer.setClipChildren(false);
         chatInputViewsContainer.setWindowInsetsProvider(windowInsetsStateHolder);
         chatInputViewsContainer.setInputIslandBubbleDrawable(
@@ -8156,7 +8157,8 @@ public class ChatActivity extends BaseFragment implements
         chatActivityEnterView.setViewParentForEmoji(chatInputInAppContainer);
         checkSendButtonBlockedByTyping(false);
 
-        chatInputBubbleContainer.addView(chatActivityEnterView, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT, Gravity.LEFT | Gravity.BOTTOM, 7, 0, 7, 0));
+        int composeSideMargin = XGramConfig.isClassicMessageInput() && chatMode != MODE_EDIT_BUSINESS_LINK ? 0 : 7;
+        chatInputBubbleContainer.addView(chatActivityEnterView, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT, Gravity.LEFT | Gravity.BOTTOM, composeSideMargin, 0, composeSideMargin, 0));
 
         int chatListIndex = contentView.indexOfChild(chatListView);
         chatListIndex = chatListIndex < 0 ? contentView.getChildCount() : (chatListIndex + 1);
@@ -47187,6 +47189,7 @@ public class ChatActivity extends BaseFragment implements
             bottomOverlay.setTranslationY(dp(54) * hideFactor);
         }
         if (chatInputViewsContainer != null) {
+            chatInputViewsContainer.setClassicInputVisibility(bottomViewsVisibilityController.getVisibility(MESSAGE_INPUT_CONTAINER));
             chatInputViewsContainer.setInputBubbleAlpha((int) (255 * (1f - hideFactor)));
             chatInputViewsContainer.setInputBubbleTranslationY(dp(54) * hideFactor);
         }

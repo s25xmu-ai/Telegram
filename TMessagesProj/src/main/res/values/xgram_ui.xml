@@ -11,7 +11,7 @@
     <string name="XGramClassicDrawer">Classic menu</string>
     <string name="XGramClassicDialogRows">Classic chat list row dimensions</string>
     <string name="XGramClassicMessageMenu">Classic message menu background</string>
-    <string name="XGramClassicMessageInput">Simple message input</string>
+    <string name="XGramClassicMessageInput">Classic message input (in progress)</string>
     <string name="XGramClassicUIInfo">These options can be combined. For the message input and header, close and reopen the chat. Classic message options override the corresponding iOS style.</string>
     <string name="XGramBrowserUnavailable">No browser is available to open this link.</string>
     <string name="XGramBuyPremium">Buy Premium</string>
