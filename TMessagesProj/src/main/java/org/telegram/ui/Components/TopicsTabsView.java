@@ -85,6 +85,12 @@ public class TopicsTabsView extends FrameLayout implements NotificationCenter.No
     private final BoolAnimator animatorTopicsVisibility = new BoolAnimator(ANIMATOR_ID_TOPICS_VISIBILITY,
         this, CubicBezierInterpolator.EASE_OUT_QUINT, 380L, true);
 
+    // Temporarily hide the bottom tabs while moving them back to the top.
+    private static final int ANIMATOR_ID_TABS_HIDDEN = 1;
+    private final BoolAnimator animatorTabsHidden = new BoolAnimator(ANIMATOR_ID_TABS_HIDDEN,
+        this, CubicBezierInterpolator.EASE_OUT_QUINT, 380L, false);
+    private boolean movingToTop;
+
     private final int currentAccount;
     private final long dialogId;
     private final Theme.ResourcesProvider resourcesProvider;
@@ -368,6 +374,7 @@ public class TopicsTabsView extends FrameLayout implements NotificationCenter.No
         }
         topicBottom = sp.getBoolean("topicssidetabsb" + dialogId, false);
         toggleButtonSide.setImageResource(topicBottom ? R.drawable.menu_sidebar_top : R.drawable.menu_sidebar_bottom);
+        updateToggleButtonTopIcon();
 
         checkTopicsVisibility(false);
         checkUi_closeButtonVisibility();
@@ -381,7 +388,33 @@ public class TopicsTabsView extends FrameLayout implements NotificationCenter.No
     }
 
     private void onSideMenuButtonClick(View v) {
+        if (!sidemenuEnabled && topicBottom && pendingSidemenu == null && !sidemenuAnimating) {
+            // Telegram 13.2.1: top -> side -> bottom -> top.
+            moveToTop();
+            return;
+        }
         animateSidemenuTo(pendingSidemenu != null ? !pendingSidemenu : !sidemenuEnabled);
+    }
+
+    private void updateToggleButtonTopIcon() {
+        toggleButtonTop.setImageResource(!topicBottom ? R.drawable.menu_sidebar_left : R.drawable.menu_sidebar_top);
+    }
+
+    private void moveToTop() {
+        if (movingToTop) return;
+        movingToTop = true;
+        animatorTabsHidden.setValue(true, true);
+    }
+
+    private void onMovedOutOfSight() {
+        movingToTop = false;
+        topicBottom = false;
+        updateToggleButtonTopIcon();
+        toggleButtonSide.setImageResource(R.drawable.menu_sidebar_bottom);
+        MessagesController.getInstance(currentAccount).getMainSettings().edit()
+            .putBoolean("topicssidetabsb" + dialogId, false)
+            .apply();
+        animatorTabsHidden.setValue(false, true);
     }
 
     private void onCloseButtonClick(View v) {
@@ -576,7 +609,7 @@ public class TopicsTabsView extends FrameLayout implements NotificationCenter.No
 
     private void checkUi_topicsVerticalPosition() {
         topTabsContainer.setAlpha(lerp(1.0f, 0f, sidemenuT));
-        topTabsContainer.setVisibility(((1f - sidemenuT) * animatorTopicsVisibility.getFloatValue()) > 0 ? View.VISIBLE : View.GONE);
+        topTabsContainer.setVisibility(((1f - sidemenuT) * animatorTopicsVisibility.getFloatValue() * (1f - animatorTabsHidden.getFloatValue())) > 0 ? View.VISIBLE : View.GONE);
         if (topicBottom) {
             topTabsContainer.setTranslationY(getMeasuredHeight() - dp(TOP_TABS_HEIGHT + 7 + 7) - sideMenuBackgroundMarginBottom + lerp(dp(TOP_TABS_HEIGHT + 7), 0, getTabsVisibility(Position.BOTTOM)));
         } else {
@@ -615,6 +648,7 @@ public class TopicsTabsView extends FrameLayout implements NotificationCenter.No
                     updateSidemenuPosition();
                     sidemenuAnimating = false;
                     toggleButtonSide.setImageResource(topicBottom ? R.drawable.menu_sidebar_top : R.drawable.menu_sidebar_bottom);
+                    updateToggleButtonTopIcon();
                     animator = null;
                     MessagesController.getInstance(currentAccount).getMainSettings().edit()
                         .putBoolean("topicssidetabs" + dialogId, sidemenuEnabled)
@@ -2167,7 +2201,7 @@ public class TopicsTabsView extends FrameLayout implements NotificationCenter.No
 
 
     private float getTabsVisibility(Position position) {
-        final float visibility = animatorTopicsVisibility.getFloatValue();
+        final float visibility = animatorTopicsVisibility.getFloatValue() * (1f - animatorTabsHidden.getFloatValue());
 
         if (position == Position.LEFT) {
             return sidemenuT * visibility;
@@ -2192,5 +2226,12 @@ public class TopicsTabsView extends FrameLayout implements NotificationCenter.No
     @Override
     public void onFactorChanged(int id, float factor, float fraction, FactorAnimator callee) {
         updateSidemenuPosition();
+    }
+
+    @Override
+    public void onFactorChangeFinished(int id, float finalFactor, FactorAnimator callee) {
+        if (id == ANIMATOR_ID_TABS_HIDDEN && finalFactor == 1f && movingToTop) {
+            onMovedOutOfSight();
+        }
     }
 }
