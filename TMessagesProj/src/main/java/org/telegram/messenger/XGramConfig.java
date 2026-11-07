@@ -20,6 +20,8 @@ public final class XGramConfig {
     private static final String KEY_IOS_MESSAGE_MENU = "ios_message_menu";
     private static final String KEY_HOME_BOTTOM_BAR = "home_bottom_bar";
     private static final String KEY_CLASSIC_DRAWER = "classic_drawer_v2";
+    private static final String KEY_CLASSIC_PROFILE_DETAILS = "classic_profile_details";
+    private static final String KEY_CLASSIC_SETTINGS_ROWS = "classic_settings_rows";
     private static final String KEY_CLASSIC_DIALOG_ROWS = "classic_dialog_rows";
     private static final String KEY_CLASSIC_MESSAGE_MENU = "classic_message_menu";
     private static final String KEY_CLASSIC_INPUT = "classic_message_input";
@@ -52,6 +54,14 @@ public final class XGramConfig {
         prefs().edit().putBoolean(KEY_CLASSIC_DRAWER, value).apply();
         NotificationCenter.getGlobalInstance().postNotificationName(NotificationCenter.xgramInterfaceSettingsChanged);
     }
+
+    /** Version-10 spacing for profile detail rows; disabled unless selected. */
+    public static boolean isClassicProfileDetails() { return prefs().getBoolean(KEY_CLASSIC_PROFILE_DETAILS, false); }
+    public static void setClassicProfileDetails(boolean value) { prefs().edit().putBoolean(KEY_CLASSIC_PROFILE_DETAILS, value).apply(); }
+
+    /** Use the Telegram 10 settings row component, independently of profile spacing. */
+    public static boolean isClassicSettingsRows() { return prefs().getBoolean(KEY_CLASSIC_SETTINGS_ROWS, false); }
+    public static void setClassicSettingsRows(boolean value) { prefs().edit().putBoolean(KEY_CLASSIC_SETTINGS_ROWS, value).apply(); }
 
     public static boolean isClassicDialogRows() { return prefs().getBoolean(KEY_CLASSIC_DIALOG_ROWS, false); }
     public static void setClassicDialogRows(boolean value) {

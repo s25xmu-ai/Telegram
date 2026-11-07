@@ -13202,9 +13202,12 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
                         ;
 
         private Context mContext;
+        // Snapshot the option when opening a profile; existing rows are not rebuilt mid-scroll.
+        private final boolean classicProfileDetails;
 
         public ListAdapter(Context context) {
             mContext = context;
+            classicProfileDetails = org.telegram.messenger.XGramConfig.isClassicProfileDetails();
         }
 
         @Override
@@ -13212,13 +13215,13 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
             View view;
             switch (viewType) {
                 case VIEW_TYPE_HEADER: {
-                    view = new HeaderCell(mContext, 18, resourcesProvider);
+                    view = new HeaderCell(mContext, classicProfileDetails ? 23 : 18, resourcesProvider);
                     break;
                 }
                 case VIEW_TYPE_TEXT_DETAIL_MULTILINE:
                 case VIEW_TYPE_TEXT_DETAIL_MULTILINE_2:
                 case VIEW_TYPE_TEXT_DETAIL:
-                    final TextDetailCell textDetailCell = new TextDetailCell(mContext, 18, resourcesProvider, viewType == VIEW_TYPE_TEXT_DETAIL_MULTILINE_2, viewType == VIEW_TYPE_TEXT_DETAIL_MULTILINE) {
+                    final TextDetailCell textDetailCell = new TextDetailCell(mContext, classicProfileDetails ? 23 : 18, resourcesProvider, viewType == VIEW_TYPE_TEXT_DETAIL_MULTILINE_2, viewType == VIEW_TYPE_TEXT_DETAIL_MULTILINE) {
                         @Override
                         protected int processColor(int color) {
                             return dontApplyPeerColor(color, false);
@@ -13259,7 +13262,7 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
                     break;
                 }
                 case VIEW_TYPE_TEXT: {
-                    view = new TextCell(mContext, 18, false, false, resourcesProvider) {
+                    view = new TextCell(mContext, classicProfileDetails ? 23 : 18, false, false, resourcesProvider) {
                         @Override
                         protected int processColor(int color) {
                             return dontApplyPeerColor(color, false);
@@ -13273,7 +13276,7 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
                     break;
                 }
                 case VIEW_TYPE_NOTIFICATIONS_CHECK: {
-                    view = new NotificationsCheckCell(mContext, 18, 70, false, resourcesProvider) {
+                    view = new NotificationsCheckCell(mContext, classicProfileDetails ? 23 : 18, 70, false, resourcesProvider) {
                         @Override
                         protected int processColor(int color) {
                             return dontApplyPeerColor(color, false);
@@ -13282,7 +13285,7 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
                     break;
                 }
                 case VIEW_TYPE_NOTIFICATIONS_CHECK_SIMPLE: {
-                    view = new TextCheckCell(mContext, 18, false, resourcesProvider);
+                    view = new TextCheckCell(mContext, classicProfileDetails ? 21 : 18, false, resourcesProvider);
                     break;
                 }
                 case VIEW_TYPE_SHADOW: {

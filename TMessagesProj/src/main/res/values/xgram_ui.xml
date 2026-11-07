@@ -11,9 +11,11 @@
     <string name="XGramClassicChatHeaderLayout">Classic chat header (in progress)</string>
     <string name="XGramClassicDrawer">Classic menu</string>
     <string name="XGramClassicDialogRows">Classic chat list row dimensions</string>
+    <string name="XGramClassicSettingsRows">Classic settings rows (in progress)</string>
+    <string name="XGramClassicProfileDetails">Classic profile detail spacing (in progress)</string>
     <string name="XGramClassicMessageMenu">Classic message menu background</string>
     <string name="XGramClassicMessageInput">Classic message input (in progress)</string>
-    <string name="XGramClassicUIInfo">These options can be combined. For the message input and header, close and reopen the chat. Classic message options override the corresponding iOS style.</string>
+    <string name="XGramClassicUIInfo">These options can be combined. Reopen the chat for the message input and header, or the profile or settings screen for their respective options. Classic message options override the corresponding iOS style.</string>
     <string name="XGramBrowserUnavailable">No browser is available to open this link.</string>
     <string name="XGramBuyPremium">Buy Premium</string>
     <string name="XGramWalletUnavailable">Temporarily unavailable.</string>

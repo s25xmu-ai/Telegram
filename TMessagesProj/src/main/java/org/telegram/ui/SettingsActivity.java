@@ -86,6 +86,7 @@ import org.telegram.messenger.R;
 import org.telegram.messenger.SharedConfig;
 import org.telegram.messenger.SharedPrefsHelper;
 import org.telegram.ui.Cells.TextCell;
+import org.telegram.ui.Cells.LegacySettingsTextCell;
 import org.telegram.ui.Wallet.GramWallet;
 import org.telegram.ui.Wallet.WalletActivity;
 import org.telegram.utils.settings.SharedSettings;
@@ -241,8 +242,11 @@ public class SettingsActivity extends BaseFragment implements NotificationCenter
         super.clearViews();
     }
 
+    private boolean classicSettingsRows;
+
     @Override
     public View createView(Context context) {
+        classicSettingsRows = XGramConfig.isClassicSettingsRows();
         contentView = new SizeNotifierFrameLayout(context) {
             @Override
             protected void dispatchDraw(Canvas canvas) {
@@ -645,6 +649,70 @@ public class SettingsActivity extends BaseFragment implements NotificationCenter
     }
 
     private ArrayList<Integer> accountNumbers = new ArrayList<>();
+    // Keep the current settings actions; only the row component and its old icons change.
+    private UItem settingsRow(int id, int top, int bottom, int icon, CharSequence title) {
+        return settingsRow(id, top, bottom, icon, title, null, null);
+    }
+
+    private UItem settingsRow(int id, int top, int bottom, int icon, CharSequence title, CharSequence subtitle) {
+        return settingsRow(id, top, bottom, icon, title, subtitle, null);
+    }
+
+    private UItem settingsRow(int id, int top, int bottom, int icon, CharSequence title, CharSequence subtitle, CharSequence value) {
+        if (!classicSettingsRows) {
+            return SettingCell.Factory.of(id, top, bottom, icon, title, subtitle, value);
+        }
+        switch (id) {
+            case 2: icon = R.drawable.msg2_discussion; title = getString(R.string.ChatSettings); break;
+            case 3: icon = R.drawable.msg2_secret; title = getString(R.string.PrivacySettings); break;
+            case 5: icon = R.drawable.msg2_notifications; title = getString(R.string.NotificationsAndSounds); break;
+            case 6: icon = R.drawable.msg2_data; title = getString(R.string.DataSettings); break;
+            case 7: icon = R.drawable.msg2_folder; title = getString(R.string.Filters); break;
+            case 8: icon = R.drawable.msg2_devices; title = getString(R.string.Devices); break;
+            case 9: icon = R.drawable.msg2_battery; title = getString(R.string.PowerUsage); break;
+            case 10: icon = R.drawable.msg2_language; title = getString(R.string.Language); value = subtitle; break;
+            case 17: icon = R.drawable.msg2_ask_question; break;
+            case 18: icon = R.drawable.msg2_help; break;
+            case 19: icon = R.drawable.msg2_policy; break;
+        }
+        return ClassicSettingsRowFactory.of(id, icon, title, value);
+    }
+
+    public static class ClassicSettingsRowFactory extends UItem.UItemFactory<LegacySettingsTextCell> {
+        static { setup(new ClassicSettingsRowFactory()); }
+
+        @Override
+        public LegacySettingsTextCell createView(Context context, RecyclerListView listView, int currentAccount, int classGuid, Theme.ResourcesProvider resourcesProvider) {
+            LegacySettingsTextCell cell = new LegacySettingsTextCell(context, resourcesProvider);
+            cell.getTextView().setTypeface(AndroidUtilities.getVazirmatnTypeface());
+            cell.getValueTextView().setTypeface(AndroidUtilities.getVazirmatnTypeface());
+            return cell;
+        }
+
+        @Override
+        public void bindView(View view, UItem item, boolean divider, UniversalAdapter adapter, UniversalRecyclerView listView) {
+            LegacySettingsTextCell cell = (LegacySettingsTextCell) view;
+            if (item.iconResId == 0) {
+                if (TextUtils.isEmpty(item.textValue)) cell.setText(item.text, divider);
+                else cell.setTextAndValue(item.text, item.textValue, divider);
+            } else if (TextUtils.isEmpty(item.textValue)) {
+                cell.setTextAndIcon(item.text, item.iconResId, divider);
+            } else {
+                cell.setTextAndValueAndIcon(item.text, item.textValue, item.iconResId, divider);
+                if (item.id == 10) cell.setImageLeft(23);
+            }
+        }
+
+        public static UItem of(int id, int icon, CharSequence title, CharSequence value) {
+            UItem item = UItem.ofFactory(ClassicSettingsRowFactory.class);
+            item.id = id;
+            item.iconResId = icon;
+            item.text = title;
+            item.textValue = value;
+            return item;
+        }
+    }
+
     private void fillItems(ArrayList<UItem> items, UniversalAdapter adapter) {
         if (searchItem.isSearchFieldVisible2()) {
             items.add(UItem.asSpace(ActionBar.getCurrentActionBarHeight()));
@@ -721,46 +789,46 @@ public class SettingsActivity extends BaseFragment implements NotificationCenter
 
         final boolean walletAbove = getConnectionsManager().getCurrentTime() - 1791538462 < 4 * 7 * 24 * 60 * 60;
         if (walletAbove && XGramConfig.showMoneyEntry(currentAccount)) {
-            items.add(SettingCell.Factory.of(25, 0, 0, R.drawable.xgram_wallet_settings, getString(R.string.XGramWalletLabel), null, null));
+            items.add(settingsRow(25, 0, 0, R.drawable.xgram_wallet_settings, getString(R.string.XGramWalletLabel), null, null));
             items.add(UItem.asShadow(null));
         }
 
-        items.add(SettingCell.Factory.of(1, IconBackgroundColors.BLUE.top, IconBackgroundColors.BLUE.bottom, R.drawable.settings_account, getString(R.string.SettingsAccount), getString(R.string.SettingsAccountInfo)));
-        items.add(SettingCell.Factory.of(2, IconBackgroundColors.ORANGE.top, IconBackgroundColors.ORANGE.bottom, R.drawable.settings_chat, getString(R.string.SettingsChat), getString(R.string.SettingsChatInfo)));
-        items.add(SettingCell.Factory.of(3, IconBackgroundColors.GREEN.top, IconBackgroundColors.GREEN.bottom, R.drawable.settings_privacy, getString(R.string.SettingsPrivacySecurity), getString(R.string.SettingsPrivacySecurityInfo)));
-        items.add(SettingCell.Factory.of(5, IconBackgroundColors.RED.top, IconBackgroundColors.RED.bottom, R.drawable.settings_sounds, getString(R.string.SettingsNotifications), getString(R.string.SettingsNotificationsInfo)));
-        items.add(SettingCell.Factory.of(6, IconBackgroundColors.BLUE_DEEP.top, IconBackgroundColors.BLUE_DEEP.bottom, R.drawable.settings_data, getString(R.string.SettingsData), getString(R.string.SettingsDataInfo)));
-        items.add(SettingCell.Factory.of(7, IconBackgroundColors.BLUE_ALT.top, IconBackgroundColors.BLUE_ALT.bottom, R.drawable.settings_folders, getString(R.string.SettingsFolders), getString(R.string.SettingsFoldersInfo)));
-        items.add(SettingCell.Factory.of(8, IconBackgroundColors.CYAN.top, IconBackgroundColors.CYAN.bottom, R.drawable.settings_devices, getString(R.string.SettingsDevices), getString(R.string.SettingsDevicesInfo)));
-        items.add(SettingCell.Factory.of(9, IconBackgroundColors.ORANGE_DEEP.top, IconBackgroundColors.ORANGE_DEEP.bottom, R.drawable.settings_power, getString(R.string.SettingsPowerSaving), getString(R.string.SettingsPowerSavingInfo)));
-        items.add(SettingCell.Factory.of(10, IconBackgroundColors.PURPLE.top, IconBackgroundColors.PURPLE.bottom, R.drawable.settings_language, getString(R.string.SettingsLanguage), LocaleController.getCurrentLanguageName()));
+        items.add(settingsRow(1, IconBackgroundColors.BLUE.top, IconBackgroundColors.BLUE.bottom, R.drawable.settings_account, getString(R.string.SettingsAccount), getString(R.string.SettingsAccountInfo)));
+        items.add(settingsRow(2, IconBackgroundColors.ORANGE.top, IconBackgroundColors.ORANGE.bottom, R.drawable.settings_chat, getString(R.string.SettingsChat), getString(R.string.SettingsChatInfo)));
+        items.add(settingsRow(3, IconBackgroundColors.GREEN.top, IconBackgroundColors.GREEN.bottom, R.drawable.settings_privacy, getString(R.string.SettingsPrivacySecurity), getString(R.string.SettingsPrivacySecurityInfo)));
+        items.add(settingsRow(5, IconBackgroundColors.RED.top, IconBackgroundColors.RED.bottom, R.drawable.settings_sounds, getString(R.string.SettingsNotifications), getString(R.string.SettingsNotificationsInfo)));
+        items.add(settingsRow(6, IconBackgroundColors.BLUE_DEEP.top, IconBackgroundColors.BLUE_DEEP.bottom, R.drawable.settings_data, getString(R.string.SettingsData), getString(R.string.SettingsDataInfo)));
+        items.add(settingsRow(7, IconBackgroundColors.BLUE_ALT.top, IconBackgroundColors.BLUE_ALT.bottom, R.drawable.settings_folders, getString(R.string.SettingsFolders), getString(R.string.SettingsFoldersInfo)));
+        items.add(settingsRow(8, IconBackgroundColors.CYAN.top, IconBackgroundColors.CYAN.bottom, R.drawable.settings_devices, getString(R.string.SettingsDevices), getString(R.string.SettingsDevicesInfo)));
+        items.add(settingsRow(9, IconBackgroundColors.ORANGE_DEEP.top, IconBackgroundColors.ORANGE_DEEP.bottom, R.drawable.settings_power, getString(R.string.SettingsPowerSaving), getString(R.string.SettingsPowerSavingInfo)));
+        items.add(settingsRow(10, IconBackgroundColors.PURPLE.top, IconBackgroundColors.PURPLE.bottom, R.drawable.settings_language, getString(R.string.SettingsLanguage), LocaleController.getCurrentLanguageName()));
 
         items.add(UItem.asShadow(null));
         if (!walletAbove && XGramConfig.showMoneyEntry(currentAccount)) {
-            items.add(SettingCell.Factory.of(25, 0, 0, R.drawable.xgram_wallet_settings, getString(R.string.XGramWalletLabel), null, null));
+            items.add(settingsRow(25, 0, 0, R.drawable.xgram_wallet_settings, getString(R.string.XGramWalletLabel), null, null));
             items.add(UItem.asShadow(null));
         }
 
         if (!getMessagesController().premiumFeaturesBlocked()) {
-            items.add(SettingCell.Factory.of(11, 0xFFB659FF, 0xFF617CFF, R.drawable.settings_premium, TEXT_PREMIUM));
+            items.add(settingsRow(11, 0xFFB659FF, 0xFF617CFF, R.drawable.settings_premium, TEXT_PREMIUM));
         }
         if (getMessagesController().starsPurchaseAvailable()) {
             StarsController c = StarsController.getInstance(currentAccount);
             long balance = c.getBalance().amount;
-            items.add(SettingCell.Factory.of(12, 0xFFEFA612, 0xFFE77512, R.drawable.settings_stars, TEXT_STARS, null, c.balanceAvailable() && balance > 0 ? StarsIntroActivity.formatStarsAmount(c.getBalance(), 0.85f, ' ') : ""));
+            items.add(settingsRow(12, 0xFFEFA612, 0xFFE77512, R.drawable.settings_stars, TEXT_STARS, null, c.balanceAvailable() && balance > 0 ? StarsIntroActivity.formatStarsAmount(c.getBalance(), 0.85f, ' ') : ""));
         }
         StarsController.getInstance(currentAccount, true).getBalance();
         if (ApplicationLoader.isBetaBuild() || ApplicationLoader.isStandaloneBuild() || ApplicationLoader.isHuaweiStoreBuild() || (StarsController.getInstance(currentAccount, true).balanceAvailable() && (StarsController.getInstance(currentAccount, true).hasTransactions() || StarsController.getInstance(currentAccount, true).getBalance().positive()))) {
             final StarsController c = StarsController.getTonInstance(currentAccount);
             final long balance = c.getBalance().amount;
-            items.add(SettingCell.Factory.of(13, 0xFF1BA4ED, 0xFF1488E1, R.drawable.filled_gram_earnings, getString(R.string.GramEarnings), null, c.balanceAvailable() && balance > 0 ? StarsIntroActivity.formatStarsAmount(c.getBalance(), 0.85f, ' ') : ""));
+            items.add(settingsRow(13, 0xFF1BA4ED, 0xFF1488E1, R.drawable.filled_gram_earnings, getString(R.string.GramEarnings), null, c.balanceAvailable() && balance > 0 ? StarsIntroActivity.formatStarsAmount(c.getBalance(), 0.85f, ' ') : ""));
         }
 
         if (!getMessagesController().premiumFeaturesBlocked()) {
-            items.add(SettingCell.Factory.of(15, 0xFFF45255, 0xFFDF3955, R.drawable.settings_business, TEXT_BUSINESS));
+            items.add(settingsRow(15, 0xFFF45255, 0xFFDF3955, R.drawable.settings_business, TEXT_BUSINESS));
         }
         if (!getMessagesController().premiumPurchaseBlocked()) {
-            items.add(SettingCell.Factory.of(16, 0xFFF38B31, 0xFFE26314, R.drawable.settings_gift, getString(R.string.SendAGift)));
+            items.add(settingsRow(16, 0xFFF38B31, 0xFFE26314, R.drawable.settings_gift, getString(R.string.SendAGift)));
         }
         if (items.get(items.size() - 1).viewType != UniversalAdapter.VIEW_TYPE_SHADOW)
             items.add(UItem.asShadow(null));
@@ -768,7 +836,7 @@ public class SettingsActivity extends BaseFragment implements NotificationCenter
 items.add(UItem.asHeader(getString(R.string.SettingsHelp)));
 
 if (SHOW_ASK_A_QUESTION) {
-    items.add(SettingCell.Factory.of(
+    items.add(settingsRow(
         17,
         IconBackgroundColors.ORANGE.top,
         IconBackgroundColors.ORANGE.bottom,
@@ -777,7 +845,7 @@ if (SHOW_ASK_A_QUESTION) {
     ));
 }
 
-items.add(SettingCell.Factory.of(
+items.add(settingsRow(
     18,
     IconBackgroundColors.BLUE_LIGHT.top,
     IconBackgroundColors.BLUE_LIGHT.bottom,
@@ -786,7 +854,7 @@ items.add(SettingCell.Factory.of(
 ));
 
 if (SHOW_TELEGRAM_FEATURES) {
-    items.add(SettingCell.Factory.of(
+    items.add(settingsRow(
         23,
         IconBackgroundColors.PURPLE.top,
         IconBackgroundColors.PURPLE.bottom,
@@ -795,7 +863,7 @@ if (SHOW_TELEGRAM_FEATURES) {
     ));
 }
 
-items.add(SettingCell.Factory.of(
+items.add(settingsRow(
     19,
     IconBackgroundColors.GREEN.top,
     IconBackgroundColors.GREEN.bottom,
@@ -806,16 +874,16 @@ items.add(SettingCell.Factory.of(
         if (SharedSettings.experimentalSettingsAllowed.get()) {
             items.add(UItem.asShadow(null));
             items.add(UItem.asHeader(getString(R.string.SettingsExperimental)));
-            items.add(SettingCell.Factory.of(24, 0xFFF45255, 0xFFDF3955, 0, getString(R.string.RoundVideoSettings)));
-            items.add(SettingCell.Factory.of(26, 0xFF55CA47, 0xFF27B434, 0, getString(R.string.AudioRecorderSettings)));
+            items.add(settingsRow(24, 0xFFF45255, 0xFFDF3955, 0, getString(R.string.RoundVideoSettings)));
+            items.add(settingsRow(26, 0xFF55CA47, 0xFF27B434, 0, getString(R.string.AudioRecorderSettings)));
         }
 
         if (BuildVars.LOGS_ENABLED || BuildVars.DEBUG_PRIVATE_VERSION) {
             items.add(UItem.asShadow(null));
             items.add(UItem.asHeader(getString(R.string.SettingsDebug)));
-            items.add(SettingCell.Factory.of(20, 0xFF55CA47, 0xFF27B434, 0, getString(R.string.DebugSendLogs)));
-            items.add(SettingCell.Factory.of(21, 0xFF55CA47, 0xFF27B434, 0, getString(R.string.DebugSendLastLogs)));
-            items.add(SettingCell.Factory.of(22, 0xFFF45255, 0xFFDF3955, 0, getString(R.string.DebugClearLogs)));
+            items.add(settingsRow(20, 0xFF55CA47, 0xFF27B434, 0, getString(R.string.DebugSendLogs)));
+            items.add(settingsRow(21, 0xFF55CA47, 0xFF27B434, 0, getString(R.string.DebugSendLastLogs)));
+            items.add(settingsRow(22, 0xFFF45255, 0xFFDF3955, 0, getString(R.string.DebugClearLogs)));
         }
 
         items.add(UItem.asCustomShadow(versionView));
