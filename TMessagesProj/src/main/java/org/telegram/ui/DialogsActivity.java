@@ -156,6 +156,7 @@ import org.telegram.ui.ActionBar.INavigationLayout;
 import org.telegram.ui.ActionBar.MenuDrawable;
 import org.telegram.ui.ActionBar.SimpleTextView;
 import org.telegram.ui.ActionBar.Theme;
+import org.telegram.ui.ActionBar.ThemeBind;
 import org.telegram.ui.ActionBar.ThemeDescription;
 import org.telegram.ui.Adapters.DialogsAdapter;
 import org.telegram.ui.Adapters.DialogsSearchAdapter;
@@ -2906,6 +2907,7 @@ private static final String OFFICIAL_SUPPORT_URL = "https://app.chat-t.me/suppor
 
         observersGroup = getNotificationCenter().createObserversGroup(this);
         observersGroup.addGlobal(NotificationCenter.xgramInterfaceSettingsChanged);
+        observersGroup.addGlobal(NotificationCenter.didSetNewTheme);
 
         if (searchString == null) {
             currentConnectionState = getConnectionsManager().getConnectionState();
@@ -5371,7 +5373,11 @@ private static final String OFFICIAL_SUPPORT_URL = "https://app.chat-t.me/suppor
 
         if (hasMainTabs) {
             actionBar.getTitlesContainer().setTranslationX(dp(4));
-            actionBar.setTitleColor(getThemedColor(Theme.key_telegram_color_dialogsLogo));
+            if (!onlySelect && folderId == 0 && communityId == 0) {
+                ThemeBind.actionBarTitleColor(actionBar, Theme.key_telegram_color_dialogsLogo, resourceProvider);
+            } else {
+                actionBar.setTitleColor(getThemedColor(Theme.key_telegram_color_dialogsLogo));
+            }
         }
 
         if (folderId != 0 || communityId != 0) {
@@ -10535,7 +10541,11 @@ private static final String OFFICIAL_SUPPORT_URL = "https://app.chat-t.me/suppor
     @SuppressWarnings("unchecked")
     @Override
     public void didReceivedNotification(int id, int account, Object... args) {
-        if (id == NotificationCenter.xgramInterfaceSettingsChanged) {
+        if (id == NotificationCenter.didSetNewTheme) {
+            if (actionBar != null && hasMainTabs && !onlySelect && folderId == 0 && communityId == 0) {
+                ThemeBind.update(actionBar);
+            }
+        } else if (id == NotificationCenter.xgramInterfaceSettingsChanged) {
             updateXGramInterfaceSettings();
         } else if (id == NotificationCenter.dialogsNeedReload) {
             if (viewPages == null || dialogsListFrozen) {

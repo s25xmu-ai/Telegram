@@ -1477,7 +1477,8 @@ public class RecyclerListView extends RecyclerView implements IBlur3Capture {
 
         setEdgeEffectFactory(edgeEffectTrackerFactory);
         setGlowColor(getThemedColor(Theme.key_actionBarDefault));
-        selectorDrawable = Theme.getSelectorDrawable(getThemedColor(Theme.key_listSelector), false);
+        selectorDrawableColor = getThemedColor(Theme.key_listSelector);
+        selectorDrawable = Theme.getSelectorDrawable(selectorDrawableColor, false);
         selectorDrawable.setCallback(this);
 
         try {
@@ -1693,7 +1694,14 @@ public class RecyclerListView extends RecyclerView implements IBlur3Capture {
         drawSelectorBehind = value;
     }
 
+    private int selectorDrawableColor;
+
+    public int getSelectorDrawableColor() {
+        return selectorDrawableColor;
+    }
+
     public void setSelectorDrawableColor(int color) {
+        selectorDrawableColor = color;
         if (selectorDrawable != null) {
             selectorDrawable.setCallback(null);
         }
@@ -1934,7 +1942,8 @@ public class RecyclerListView extends RecyclerView implements IBlur3Capture {
     }
 
     public void setListSelectorColor(Integer color) {
-        Theme.setSelectorDrawableColor(selectorDrawable, color == null ? getThemedColor(hasSections() ? Theme.key_settings_listSelector : Theme.key_listSelector) : color, true);
+        selectorDrawableColor = color == null ? getThemedColor(hasSections() ? Theme.key_settings_listSelector : Theme.key_listSelector) : color;
+        Theme.setSelectorDrawableColor(selectorDrawable, selectorDrawableColor, true);
     }
 
     private GenericProvider<Integer, Integer> getSelectorColor;

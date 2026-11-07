@@ -610,6 +610,14 @@ public class ActionBar extends FrameLayout implements FactorAnimator.Target, The
         }
     }
 
+    int getTitleColorToSet() {
+        return titleColorToSet;
+    }
+
+    int getSubtitleColorInternal() {
+        return subtitleTextView != null ? subtitleTextView.getTextColor() : 0;
+    }
+
     public void setSubtitleColor(int color) {
         if (subtitleTextView == null) {
             createSubtitleTextView();
@@ -1167,6 +1175,15 @@ public class ActionBar extends FrameLayout implements FactorAnimator.Target, The
 
     public int getBackgroundColor() {
         return actionBarColor;
+    }
+
+    /** ThemeBind: the color an action mode view keeps (it is not a real background while the bar is blurred) */
+    int getActionModeColorFor(View view) {
+        return actionMode != null && actionMode == view ? actionModeColor : 0;
+    }
+
+    boolean isActionModeView(View view) {
+        return actionMode != null && actionMode == view;
     }
 
     public boolean isActionModeShowed() {

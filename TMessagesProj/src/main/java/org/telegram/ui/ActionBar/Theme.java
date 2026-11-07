@@ -10141,6 +10141,10 @@ chat_msgTextPaintThreeEmoji.setTypeface(vazir);
     public interface Colorable {
         public void updateColors();
         public default int[] getColorKeys() { return null; }
+        public default void addColorKeys(java.util.HashSet<Integer> colors) {
+            int[] keys = getColorKeys();
+            if (keys != null) for (int key : keys) colors.add(key);
+        }
     }
 
     private static final Paint PAINT_FILLING = new Paint(Paint.ANTI_ALIAS_FLAG);
