@@ -5977,7 +5977,10 @@ public class EmojiView extends FrameLayout implements
             searchButton.setColorFilter(new PorterDuffColorFilter(glassDesign ? getGlassIconColor(0.6f) : getThemedColor(Theme.key_chat_emojiPanelBackspace), PorterDuff.Mode.MULTIPLY));
         }
         if (mediaBanTooltip != null) {
-            ((ShapeDrawable) mediaBanTooltip.getBackground()).getPaint().setColor(getThemedColor(Theme.key_chat_gifSaveHintBackground));
+            if (mediaBanTooltip.getBackground() instanceof ShapeDrawable) {
+                ((ShapeDrawable) mediaBanTooltip.getBackground()).getPaint().setColor(getThemedColor(Theme.key_chat_gifSaveHintBackground));
+                mediaBanTooltip.invalidate();
+            }
             mediaBanTooltip.setTextColor(getThemedColor(Theme.key_chat_gifSaveHintText));
         }
         if (gifSearchAdapter != null) {
@@ -5993,6 +5996,7 @@ public class EmojiView extends FrameLayout implements
         }
         if (emojiTabs != null) {
             emojiTabs.updateColors();
+            ThemeBind.updateTree(emojiTabs, true);
         }
         for (int a = 0; a < stickerIcons.length; a++) {
             Theme.setEmojiDrawableColor(stickerIcons[a], glassDesign ? getGlassIconColor(0.4f) : getThemedColor(Theme.key_chat_emojiPanelIcon), false);
@@ -6167,6 +6171,8 @@ public class EmojiView extends FrameLayout implements
     }
 
     private NotificationCenter.ObserversGroup observersGroup;
+    private NotificationCenter.ObserversGroup visibleObserversGroup;
+    private boolean visibleObserversGroupHasRecents;
 
     @Override
     protected void onAttachedToWindow() {
@@ -6206,9 +6212,16 @@ public class EmojiView extends FrameLayout implements
             if (visibility != GONE) {
                 Emoji.sortEmoji();
                 emojiAdapter.notifyDataSetChanged();
-                NotificationCenter.getInstance(currentAccount).addObserver(this, NotificationCenter.stickersDidLoad);
+                if (visibleObserversGroup == null) {
+                    visibleObserversGroup = NotificationCenter.getInstance(currentAccount)
+                        .createWeakObserversGroup(this)
+                        .add(NotificationCenter.stickersDidLoad);
+                }
                 if (stickersGridAdapter != null) {
-                    NotificationCenter.getInstance(currentAccount).addObserver(this, NotificationCenter.recentDocumentsDidLoad);
+                    if (!visibleObserversGroupHasRecents) {
+                        visibleObserversGroupHasRecents = true;
+                        visibleObserversGroup.add(NotificationCenter.recentDocumentsDidLoad);
+                    }
                     updateStickerTabs(false);
                     reloadStickersAdapter();
                 /*if (gifGridView != null && delegate != null) {
@@ -6235,6 +6248,11 @@ public class EmojiView extends FrameLayout implements
         if (observersGroup != null) {
             observersGroup.removeAllObservers();
             observersGroup = null;
+        }
+        if (visibleObserversGroup != null) {
+            visibleObserversGroup.removeAllObservers();
+            visibleObserversGroup = null;
+            visibleObserversGroupHasRecents = false;
         }
     }
 
