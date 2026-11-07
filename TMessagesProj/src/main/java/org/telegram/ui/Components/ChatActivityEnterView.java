@@ -2821,9 +2821,9 @@ public class ChatActivityEnterView extends FrameLayout implements
             ScaleStateListAnimator.apply(deleteRichDraftButton);
             textFieldContainer.addView(deleteRichDraftButton, LayoutHelper.createFrame(36, 36, Gravity.BOTTOM | Gravity.LEFT, 4, 0, 0, DEFAULT_HEIGHT + 6));
         } else {
-            deleteRichDraftButton.setColorFilter(new PorterDuffColorFilter(getThemedColor(Theme.key_glass_defaultIcon), PorterDuff.Mode.SRC_IN));
-            deleteRichDraftButton.setBackground(Theme.createInsetRoundRectDrawable(getThemedColor(Theme.key_listSelector), dp(19), dp(1), dp(3)));
-            messageEditTextContainer.addView(deleteRichDraftButton, LayoutHelper.createFrame(DEFAULT_HEIGHT, DEFAULT_HEIGHT, Gravity.BOTTOM | Gravity.LEFT, 2, 0, 0, 0));
+            deleteRichDraftButton.setColorFilter(new PorterDuffColorFilter(getThemedColor(useClassicInputStyle() ? Theme.key_chat_messagePanelIcons : Theme.key_glass_defaultIcon), PorterDuff.Mode.SRC_IN));
+            deleteRichDraftButton.setBackground(useClassicInputStyle() ? Theme.createSelectorDrawable(getThemedColor(Theme.key_listSelector)) : Theme.createInsetRoundRectDrawable(getThemedColor(Theme.key_listSelector), dp(19), dp(1), dp(3)));
+            messageEditTextContainer.addView(deleteRichDraftButton, LayoutHelper.createFrame(useClassicInputStyle() ? 48 : DEFAULT_HEIGHT, useClassicInputStyle() ? 48 : DEFAULT_HEIGHT, Gravity.BOTTOM | Gravity.LEFT, useClassicInputStyle() ? 3 : 2, 0, 0, 0));
         }
 
         if (isChat) {
@@ -2931,7 +2931,7 @@ public class ChatActivityEnterView extends FrameLayout implements
                 attachButton.setColorFilter(new PorterDuffColorFilter(getThemedColor(useClassicInputStyle() ? Theme.key_chat_messagePanelIcons : Theme.key_glass_defaultIcon), PorterDuff.Mode.MULTIPLY));
                 attachButton.setImageResource(R.drawable.msg_input_attach2);
                 attachButton.setBackground(Theme.createSelectorDrawable(getThemedColor(Theme.key_listSelector)));
-                messageEditTextContainer.addView(attachButton, LayoutHelper.createFrame(useClassicInputStyle() ? 48 : DEFAULT_HEIGHT, useClassicInputStyle() ? 48 : DEFAULT_HEIGHT, Gravity.BOTTOM | (useClassicInputStyle() ? Gravity.LEFT : Gravity.RIGHT)));
+                messageEditTextContainer.addView(attachButton, LayoutHelper.createFrame(useClassicInputStyle() ? 48 : DEFAULT_HEIGHT, useClassicInputStyle() ? 48 : DEFAULT_HEIGHT, Gravity.BOTTOM | Gravity.RIGHT));
             }
             attachButton.setOnClickListener(v -> {
                 boolean pausedForTrim = !recordingAudioVideo &&
@@ -3602,7 +3602,7 @@ public class ChatActivityEnterView extends FrameLayout implements
         cancelBotButton.setScaleY(0.1f);
         cancelBotButton.setAlpha(0.0f);
         cancelBotButton.setBackgroundDrawable(Theme.createSelectorDrawable(getThemedColor(Theme.key_listSelector)));
-        sendButtonContainer.addView(cancelBotButton, LayoutHelper.createFrame(DEFAULT_HEIGHT, DEFAULT_HEIGHT, Gravity.RIGHT | Gravity.BOTTOM));
+        sendButtonContainer.addView(cancelBotButton, LayoutHelper.createFrame(useClassicInputStyle() ? 48 : DEFAULT_HEIGHT, useClassicInputStyle() ? 48 : DEFAULT_HEIGHT, Gravity.RIGHT | Gravity.BOTTOM));
         cancelBotButton.setOnClickListener(view -> {
             String text = messageEditText != null ? messageEditText.getText().toString() : "";
             int idx = text.indexOf(' ');
@@ -3825,7 +3825,7 @@ public class ChatActivityEnterView extends FrameLayout implements
 
         final Drawable drawable1 = getContext().getResources().getDrawable(R.drawable.input_calendar1).mutate();
         final Drawable drawable2 = getContext().getResources().getDrawable(R.drawable.input_calendar2).mutate();
-        drawable1.setColorFilter(new PorterDuffColorFilter(getThemedColor(Theme.key_glass_defaultIcon), PorterDuff.Mode.MULTIPLY));
+        drawable1.setColorFilter(new PorterDuffColorFilter(getThemedColor(useClassicInputStyle() ? Theme.key_chat_messagePanelIcons : Theme.key_glass_defaultIcon), PorterDuff.Mode.MULTIPLY));
         drawable2.setColorFilter(new PorterDuffColorFilter(getThemedColor(Theme.key_chat_recordedVoiceDot), PorterDuff.Mode.MULTIPLY));
         CombinedDrawable combinedDrawable = new CombinedDrawable(drawable1, drawable2);
 
@@ -3842,10 +3842,10 @@ public class ChatActivityEnterView extends FrameLayout implements
                     updateScheduledButtonSpacing();
                 } else {
                     super.setTranslationX(
-                        dp(-DEFAULT_HEIGHT) +
+                        dp(-(useClassicInputStyle() ? 48 : DEFAULT_HEIGHT)) +
                         innerTranslationX + attachLayoutPaddingTranslationX + attachLayoutTranslationX +
                         dp(giftButton != null && giftButton.getVisibility() == View.VISIBLE ? -DEFAULT_HEIGHT : 0) * (giftButton == null ? 0 : giftButton.getAlpha()) +
-                        dp(botButton != null && botButton.getVisibility() == VISIBLE ? -DEFAULT_HEIGHT : 0) * (botButton == null ? 0 : botButton.getAlpha())
+                        dp(botButton != null && botButton.getVisibility() == VISIBLE ? -(useClassicInputStyle() ? 48 : DEFAULT_HEIGHT) : 0) * (botButton == null ? 0 : botButton.getAlpha())
                     );
                 }
             }
@@ -3858,7 +3858,7 @@ public class ChatActivityEnterView extends FrameLayout implements
         if (iOSMessageInputFieldAvailable()) {
             attachLayout.addView(scheduledButton, 0, LayoutHelper.createLinear(DEFAULT_HEIGHT, DEFAULT_HEIGHT));
         } else {
-            messageEditTextContainer.addView(scheduledButton, 2, LayoutHelper.createFrame(DEFAULT_HEIGHT, DEFAULT_HEIGHT, Gravity.BOTTOM | Gravity.RIGHT));
+            messageEditTextContainer.addView(scheduledButton, 2, LayoutHelper.createFrame(useClassicInputStyle() ? 48 : DEFAULT_HEIGHT, useClassicInputStyle() ? 48 : DEFAULT_HEIGHT, Gravity.BOTTOM | Gravity.RIGHT));
         }
         scheduledButton.setOnClickListener(v -> {
             if (delegate != null) {
@@ -4043,7 +4043,7 @@ public class ChatActivityEnterView extends FrameLayout implements
             }
         };
         botButton.setImageDrawable(botButtonDrawable = new ReplaceableIconDrawable(getContext()));
-        botButtonDrawable.setColorFilter(new PorterDuffColorFilter(getThemedColor(Theme.key_glass_defaultIcon), PorterDuff.Mode.MULTIPLY));
+        botButtonDrawable.setColorFilter(new PorterDuffColorFilter(getThemedColor(useClassicInputStyle() ? Theme.key_chat_messagePanelIcons : Theme.key_glass_defaultIcon), PorterDuff.Mode.MULTIPLY));
         botButtonDrawable.setIcon(R.drawable.input_bot2, false);
         botButton.setScaleType(ImageView.ScaleType.CENTER);
         botButton.setBackground(Theme.createSelectorDrawable(getThemedColor(Theme.key_listSelector)));
@@ -4052,7 +4052,7 @@ public class ChatActivityEnterView extends FrameLayout implements
         if (iOSMessageInputFieldAvailable()) {
             attachLayout.addView(botButton, LayoutHelper.createFrame(DEFAULT_HEIGHT, DEFAULT_HEIGHT, Gravity.BOTTOM | Gravity.RIGHT, 0, 0, 30, 0));
         } else {
-            attachLayout.addView(botButton, 0, LayoutHelper.createLinear(DEFAULT_HEIGHT, DEFAULT_HEIGHT));
+            attachLayout.addView(botButton, 0, LayoutHelper.createLinear(useClassicInputStyle() ? 48 : DEFAULT_HEIGHT, useClassicInputStyle() ? 48 : DEFAULT_HEIGHT));
         }
         updateScheduledButtonSpacing();
         botButton.setOnClickListener(v -> {
@@ -4091,7 +4091,12 @@ public class ChatActivityEnterView extends FrameLayout implements
             return;
         }
 
-        doneButton = new SendButton(getContext(), R.drawable.input_done, resourcesProvider, true) {
+        doneButton = new SendButton(getContext(), R.drawable.input_done, resourcesProvider, !useClassicInputStyle()) {
+            @Override
+            public boolean shouldDrawBackground() {
+                return useClassicInputStyle();
+            }
+
             @Override
             public boolean isOpen() {
                 return true;
@@ -4102,11 +4107,14 @@ public class ChatActivityEnterView extends FrameLayout implements
                 return !doneButtonEnabled;
             }
         };
+        doneButton.center = useClassicInputStyle();
         doneButton.setContentDescription(getString(R.string.EditMessage));
         if (bounceable) {
             ScaleStateListAnimator.apply(doneButton);
         }
-        textFieldContainer.addView(doneButton, LayoutHelper.createFrame(DEFAULT_HEIGHT, DEFAULT_HEIGHT, Gravity.BOTTOM | Gravity.RIGHT));
+        textFieldContainer.addView(doneButton, useClassicInputStyle()
+            ? LayoutHelper.createFrame(38, 38, Gravity.BOTTOM | Gravity.RIGHT, 5, 5, 5, 5)
+            : LayoutHelper.createFrame(DEFAULT_HEIGHT, DEFAULT_HEIGHT, Gravity.BOTTOM | Gravity.RIGHT));
     }
 
     private void createExpandStickersButton() {
@@ -4139,13 +4147,13 @@ public class ChatActivityEnterView extends FrameLayout implements
             }
         };
         expandStickersButton.setScaleType(ImageView.ScaleType.CENTER);
-        expandStickersButton.setImageDrawable(stickersArrow = new AnimatedArrowDrawable(getThemedColor(iOSMessageInputFieldAvailable() ? Theme.key_actionBarActionModeDefaultIcon : Theme.key_glass_defaultIcon), false));
+        expandStickersButton.setImageDrawable(stickersArrow = new AnimatedArrowDrawable(getThemedColor(iOSMessageInputFieldAvailable() ? Theme.key_actionBarActionModeDefaultIcon : useClassicInputStyle() ? Theme.key_chat_messagePanelIcons : Theme.key_glass_defaultIcon), false));
         expandStickersButton.setVisibility(GONE);
         expandStickersButton.setScaleX(0.1f);
         expandStickersButton.setScaleY(0.1f);
         expandStickersButton.setAlpha(0.0f);
         expandStickersButton.setBackground(Theme.createSelectorDrawable(getThemedColor(Theme.key_listSelector)));
-        sendButtonContainer.addView(expandStickersButton, LayoutHelper.createFrame(DEFAULT_HEIGHT, DEFAULT_HEIGHT, Gravity.RIGHT | Gravity.BOTTOM));
+        sendButtonContainer.addView(expandStickersButton, LayoutHelper.createFrame(useClassicInputStyle() ? 48 : DEFAULT_HEIGHT, useClassicInputStyle() ? 48 : DEFAULT_HEIGHT, Gravity.RIGHT | Gravity.BOTTOM));
         expandStickersButton.setOnClickListener(v -> {
             if (expandStickersButton.getVisibility() != VISIBLE || expandStickersButton.getAlpha() != 1.0f || waitingForKeyboardOpen || (keyboardVisible && messageEditText != null && messageEditText.isFocused())) {
                 return;
@@ -4197,7 +4205,7 @@ public class ChatActivityEnterView extends FrameLayout implements
             panelParams.leftMargin = -panelLeftPadding;
             messageEditTextContainer.addView(recordedAudioPanel, panelParams);
         } else {
-            messageEditTextContainer.addView(recordedAudioPanel, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, DEFAULT_HEIGHT, Gravity.BOTTOM));
+            messageEditTextContainer.addView(recordedAudioPanel, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, useClassicInputStyle() ? 48 : DEFAULT_HEIGHT, Gravity.BOTTOM));
         }
 
         recordDeleteImageView = new RLottieImageView(getContext());
@@ -4207,7 +4215,7 @@ public class ChatActivityEnterView extends FrameLayout implements
         updateRecordedDeleteIconColors();
         recordDeleteImageView.setContentDescription(getString("Delete", R.string.Delete));
         recordDeleteImageView.setBackgroundDrawable(Theme.createSelectorDrawable(getThemedColor(Theme.key_listSelector)));
-        recordedAudioPanel.addView(recordDeleteImageView, LayoutHelper.createFrame(DEFAULT_HEIGHT, DEFAULT_HEIGHT));
+        recordedAudioPanel.addView(recordDeleteImageView, LayoutHelper.createFrame(useClassicInputStyle() ? 48 : DEFAULT_HEIGHT, useClassicInputStyle() ? 48 : DEFAULT_HEIGHT));
         recordDeleteImageView.setOnClickListener(v -> {
             if (runningAnimationAudio != null && runningAnimationAudio.isRunning()) {
                 return;
@@ -4217,7 +4225,7 @@ public class ChatActivityEnterView extends FrameLayout implements
 
         videoTimelineView = new VideoTimelineView(getContext());
         videoTimelineView.setVisibility(INVISIBLE);
-        videoTimelineView.useClip = !shouldDrawBackground;
+        videoTimelineView.useClip = !(useClassicInputStyle() || shouldDrawBackground);
         videoTimelineView.roundy = iOSMessageInputFieldAvailable();
         videoTimelineView.setRoundFrames(true);
         videoTimelineView.setDelegate(new VideoTimelineView.VideoTimelineViewDelegate() {
@@ -4257,7 +4265,7 @@ public class ChatActivityEnterView extends FrameLayout implements
 
         audioTimelineView = new RecordedAudioPlayerView(getContext(), resourcesProvider);
         audioTimelineView.roundy = iOSMessageInputFieldAvailable();
-        recordedAudioPanel.addView(audioTimelineView, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, 32, Gravity.CENTER_VERTICAL | Gravity.LEFT, iOSMessageInputFieldAvailable() ? 56 : DEFAULT_HEIGHT, 0, iOSMessageInputFieldAvailable() ? 8 : 4, 0));
+        recordedAudioPanel.addView(audioTimelineView, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, 32, Gravity.CENTER_VERTICAL | Gravity.LEFT, iOSMessageInputFieldAvailable() ? 56 : useClassicInputStyle() ? 48 : DEFAULT_HEIGHT, 0, iOSMessageInputFieldAvailable() ? 8 : 4, 0));
 
         updateFieldRight(lastAttachVisible);
     }
@@ -4784,7 +4792,7 @@ public class ChatActivityEnterView extends FrameLayout implements
             updateMessageTextParams();
         }
         if (attachButton != null) {
-            attachButton.setTranslationX(useClassicInputStyle() ? offset : attachLayoutPaddingTranslationX + attachLayoutTranslationX + offset);
+            attachButton.setTranslationX(attachLayoutPaddingTranslationX + attachLayoutTranslationX + offset);
         }
         audioVideoSendButton.setTranslationX(offset);
         if (botButton != null) {
@@ -8972,10 +8980,6 @@ private void showAiButton(boolean show_) {
                 layoutParams.rightMargin = dp(2);
             }
         }
-        if (useClassicInputStyle() && attachVisible != 0 && attachButton != null) {
-            // The attachment is on the left; the other optional controls remain on the right.
-            layoutParams.rightMargin = Math.max(dp(2), layoutParams.rightMargin - dp(48));
-        }
         layoutParams.rightMargin = Math.max(layoutParams.rightMargin, Math.max(0, sendButton.width() - dp(DEFAULT_HEIGHT)));
         if (doneButton != null && doneButton.getVisibility() == VISIBLE) {
             layoutParams.rightMargin = Math.max(layoutParams.rightMargin, Math.max(0, doneButton.width() - dp(DEFAULT_HEIGHT)));
@@ -9977,7 +9981,7 @@ private void showAiButton(boolean show_) {
         };
         recordPanel.setClipChildren(false);
         recordPanel.setVisibility(GONE);
-        messageEditTextContainer.addView(recordPanel, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, DEFAULT_HEIGHT));
+        messageEditTextContainer.addView(recordPanel, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, useClassicInputStyle() ? 48 : DEFAULT_HEIGHT));
         recordPanel.setOnTouchListener((v, event) -> true);
         recordPanel.addView(slideText = new SlideTextView(getContext()), LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.MATCH_PARENT, dotInAttachBubble ? Gravity.CENTER_VERTICAL : Gravity.NO_GRAVITY, dotInAttachBubble ? 40 : 45, 0, 0, 0));
 
@@ -10670,6 +10674,17 @@ private void showAiButton(boolean show_) {
         if (attachButton != null) {
             attachButton.setColorFilter(new PorterDuffColorFilter(iconColor, PorterDuff.Mode.MULTIPLY));
         }
+        if (useClassicInputStyle()) {
+            if (botButtonDrawable != null) {
+                botButtonDrawable.setColorFilter(new PorterDuffColorFilter(iconColor, PorterDuff.Mode.MULTIPLY));
+            }
+            if (scheduledButton != null && scheduledButton.getDrawable() instanceof CombinedDrawable) {
+                CombinedDrawable calendar = (CombinedDrawable) scheduledButton.getDrawable();
+                calendar.getBackground().setColorFilter(new PorterDuffColorFilter(iconColor, PorterDuff.Mode.MULTIPLY));
+                calendar.getIcon().setColorFilter(new PorterDuffColorFilter(getThemedColor(Theme.key_chat_recordedVoiceDot), PorterDuff.Mode.MULTIPLY));
+                scheduledButton.invalidate();
+            }
+        }
         aiButton.setColorFilter(new PorterDuffColorFilter(iconColor, PorterDuff.Mode.MULTIPLY));
         richButton.setColorFilter(new PorterDuffColorFilter(iconColor, PorterDuff.Mode.MULTIPLY));
         if (stickersArrow != null) {
@@ -10678,8 +10693,8 @@ private void showAiButton(boolean show_) {
         if (iOSMessageInputFieldAvailable() && !forcePreview && parentFragment != null) {
             deleteRichDraftButton.setColorFilter(new PorterDuffColorFilter(iconColor, PorterDuff.Mode.MULTIPLY));
         } else {
-            deleteRichDraftButton.setColorFilter(new PorterDuffColorFilter(getThemedColor(Theme.key_glass_defaultIcon), PorterDuff.Mode.SRC_IN));
-            deleteRichDraftButton.setBackground(Theme.createInsetRoundRectDrawable(getThemedColor(Theme.key_listSelector), dp(19), dp(1), dp(3)));
+            deleteRichDraftButton.setColorFilter(new PorterDuffColorFilter(getThemedColor(useClassicInputStyle() ? Theme.key_chat_messagePanelIcons : Theme.key_glass_defaultIcon), PorterDuff.Mode.SRC_IN));
+            deleteRichDraftButton.setBackground(useClassicInputStyle() ? Theme.createSelectorDrawable(getThemedColor(Theme.key_listSelector)) : Theme.createInsetRoundRectDrawable(getThemedColor(Theme.key_listSelector), dp(19), dp(1), dp(3)));
         }
         sendOutlineView.setColorFilter(getThemedColor(Theme.key_telegram_color), PorterDuff.Mode.SRC_IN);
     }
@@ -14839,19 +14854,6 @@ private void showAiButton(boolean show_) {
                 ((MarginLayoutParams) richDraftPreview.getLayoutParams()).leftMargin = dp(50);
             }
         }
-        if (useClassicInputStyle() && attachButton != null) {
-            // Preserve the space occupied by bot/sender controls, then place the
-            // attachment to the left of emoji and keep text clear of both.
-            MarginLayoutParams emojiParams = (MarginLayoutParams) emojiButton.getLayoutParams();
-            MarginLayoutParams attachParams = (MarginLayoutParams) attachButton.getLayoutParams();
-            attachParams.leftMargin = Math.max(0, emojiParams.leftMargin - dp(3));
-            emojiParams.leftMargin += dp(48);
-            if (deleteRichDraftButton != null && deleteRichDraftButton.getParent() == messageEditTextContainer) {
-                ((MarginLayoutParams) deleteRichDraftButton.getLayoutParams()).leftMargin += dp(48);
-            }
-            if (messageEditText != null) ((MarginLayoutParams) messageEditText.getLayoutParams()).leftMargin += dp(48);
-            if (richDraftPreview != null) ((MarginLayoutParams) richDraftPreview.getLayoutParams()).leftMargin += dp(48);
-        }
         updateBotCommandsMenuContainerTopPadding();
         super.onMeasure(widthMeasureSpec, heightMeasureSpec);
 
@@ -15106,7 +15108,7 @@ private void showAiButton(boolean show_) {
 
     private void updateAttachButtonTranslationX() {
         if (attachButton == null) return;
-        if (iOSMessageInputFieldAvailable() || useClassicInputStyle()) {
+        if (iOSMessageInputFieldAvailable()) {
             attachButton.setTranslationX(0);
             return;
         }
