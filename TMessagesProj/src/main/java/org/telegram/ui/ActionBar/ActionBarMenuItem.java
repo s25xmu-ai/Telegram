@@ -438,15 +438,24 @@ public class ActionBarMenuItem extends FrameLayout {
         showSubmenuByMove = value;
     }
 
+    // one immutable filter per color, shared by the icon and the clear button: called on every theme frame, allocates
+    // only when the color changes
+    private PorterDuffColorFilter iconColorFilter;
+    private int iconColorFilterColor;
+
     public void setIconColor(int color) {
-        if (iconView != null) {
-            iconView.setColorFilter(new PorterDuffColorFilter(color, PorterDuff.Mode.SRC_IN));
+        if (iconColorFilter == null || iconColorFilterColor != color) {
+            iconColorFilter = new PorterDuffColorFilter(color, PorterDuff.Mode.SRC_IN);
+            iconColorFilterColor = color;
+        }
+        if (iconView != null && iconView.getColorFilter() != iconColorFilter) {
+            iconView.setColorFilter(iconColorFilter);
         }
         if (textView != null) {
             textView.setTextColor(color);
         }
-        if (clearButton != null) {
-            clearButton.setColorFilter(new PorterDuffColorFilter(color, PorterDuff.Mode.SRC_IN));
+        if (clearButton != null && clearButton.getColorFilter() != iconColorFilter) {
+            clearButton.setColorFilter(iconColorFilter);
         }
     }
 
@@ -1528,7 +1537,7 @@ public class ActionBarMenuItem extends FrameLayout {
 
             searchFieldCaption = new TextView(getContext());
             searchFieldCaption.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 18);
-            searchFieldCaption.setTextColor(getThemedColor(Theme.key_actionBarDefaultSearch));
+            ThemeBind.textColor(searchFieldCaption, Theme.key_actionBarDefaultSearch, resourcesProvider);
             searchFieldCaption.setSingleLine(true);
             searchFieldCaption.setEllipsize(TextUtils.TruncateAt.END);
             searchFieldCaption.setVisibility(GONE);
@@ -1579,10 +1588,10 @@ public class ActionBarMenuItem extends FrameLayout {
             };
             searchField.setScrollContainer(false);
             searchField.setCursorWidth(1.5f);
-            searchField.setCursorColor(getThemedColor(Theme.key_actionBarDefaultSearch));
+            ThemeBind.cursorColor(searchField, Theme.key_actionBarDefaultSearch, resourcesProvider);
             searchField.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 18);
-            searchField.setHintTextColor(getThemedColor(Theme.key_actionBarDefaultSearchPlaceholder));
-            searchField.setTextColor(getThemedColor(Theme.key_actionBarDefaultSearch));
+            ThemeBind.hintTextColor(searchField, Theme.key_actionBarDefaultSearchPlaceholder, resourcesProvider);
+            ThemeBind.textColor(searchField, Theme.key_actionBarDefaultSearch, resourcesProvider);
             searchField.setSingleLine(true);
             searchField.setBackgroundResource(0);
             searchField.setPadding(0, 0, 0, 0);
@@ -1648,8 +1657,8 @@ public class ActionBarMenuItem extends FrameLayout {
 
             searchField.setImeOptions(EditorInfo.IME_FLAG_NO_FULLSCREEN | EditorInfo.IME_ACTION_SEARCH | EditorInfo.IME_FLAG_NAVIGATE_PREVIOUS | EditorInfo.IME_FLAG_NAVIGATE_NEXT);
             searchField.setTextIsSelectable(false);
-            searchField.setHighlightColor(getThemedColor(Theme.key_chat_inTextSelectionHighlight));
-            searchField.setHandlesColor(getThemedColor(Theme.key_chat_TextSelectionCursor));
+            ThemeBind.highlightColor(searchField, Theme.key_chat_inTextSelectionHighlight, resourcesProvider);
+            ThemeBind.editHandlesColor(searchField, Theme.key_chat_TextSelectionCursor, resourcesProvider);
 
             if (searchFieldHint != null) {
                 searchField.setHint(searchFieldHint);
@@ -2156,11 +2165,11 @@ public class ActionBarMenuItem extends FrameLayout {
             }
         }
         if (searchField != null) {
-            searchField.setCursorColor(getThemedColor(Theme.key_actionBarDefaultSearch));
-            searchField.setHintTextColor(getThemedColor(Theme.key_actionBarDefaultSearchPlaceholder));
-            searchField.setTextColor(getThemedColor(Theme.key_actionBarDefaultSearch));
-            searchField.setHighlightColor(getThemedColor(Theme.key_chat_inTextSelectionHighlight));
-            searchField.setHandlesColor(getThemedColor(Theme.key_chat_TextSelectionCursor));
+            ThemeBind.cursorColor(searchField, Theme.key_actionBarDefaultSearch, resourcesProvider);
+            ThemeBind.hintTextColor(searchField, Theme.key_actionBarDefaultSearchPlaceholder, resourcesProvider);
+            ThemeBind.textColor(searchField, Theme.key_actionBarDefaultSearch, resourcesProvider);
+            ThemeBind.highlightColor(searchField, Theme.key_chat_inTextSelectionHighlight, resourcesProvider);
+            ThemeBind.editHandlesColor(searchField, Theme.key_chat_TextSelectionCursor, resourcesProvider);
         }
     }
 
@@ -2254,7 +2263,7 @@ public class ActionBarMenuItem extends FrameLayout {
     }
 
     @SuppressLint("ViewConstructor")
-    public static class SearchFilterView extends FrameLayout implements FactorAnimator.Target {
+    public static class SearchFilterView extends FrameLayout implements FactorAnimator.Target, Theme.Colorable {
         private final BoolAnimator animatorIsSelected = new BoolAnimator(0, this, CubicBezierInterpolator.EASE_OUT_QUINT, 380);
 
         Drawable thumbDrawable;
@@ -2327,6 +2336,7 @@ public class ActionBarMenuItem extends FrameLayout {
             }*/
         }
 
+        @Override
         public void updateColors() {
             final float selectedProgress = animatorIsSelected.getFloatValue();
 
@@ -2338,23 +2348,50 @@ public class ActionBarMenuItem extends FrameLayout {
 
             mBackgroundColor = ColorUtils.blendARGB(defaultBackgroundColor, selectedBackgroundColor, selectedProgress);
             titleView.setTextColor(ColorUtils.blendARGB(textDefaultColor, textSelectedColor, selectedProgress));
-            closeIconView.setColorFilter(textSelectedColor);
+            if (closeIconView.getColorFilter() != appliedCloseIconFilter || closeIconColor != textSelectedColor) {
+                closeIconView.setColorFilter(textSelectedColor);
+                appliedCloseIconFilter = closeIconView.getColorFilter();
+                closeIconColor = textSelectedColor;
+            }
 
             closeIconView.setAlpha(selectedProgress);
             closeIconView.setScaleX(0.82f * selectedProgress);
             closeIconView.setScaleY(0.82f * selectedProgress);
 
-            if (thumbDrawable != null) {
-                Theme.setCombinedDrawableColor(thumbDrawable, getThemedColor(Theme.key_featuredStickers_addButton), false);
-                Theme.setCombinedDrawableColor(thumbDrawable, getThemedColor(Theme.key_featuredStickers_buttonText), true);
+            final int accentColor = getThemedColor(Theme.key_featuredStickers_addButton);
+            final int buttonTextColor = getThemedColor(Theme.key_featuredStickers_buttonText);
+            if (thumbDrawable != null && (thumbDrawable != coloredThumbDrawable || accentColor != thumbAccentColor || buttonTextColor != thumbButtonTextColor)) {
+                Theme.setCombinedDrawableColor(thumbDrawable, accentColor, false);
+                Theme.setCombinedDrawableColor(thumbDrawable, buttonTextColor, true);
+                coloredThumbDrawable = thumbDrawable;
+                thumbAccentColor = accentColor;
+                thumbButtonTextColor = buttonTextColor;
             }
             avatarImageView.setAlpha(1f - selectedProgress);
 
             if (data != null && (data.filterType == FiltersView.FILTER_TYPE_ARCHIVE)) {
-                setData(data);
+                if (archiveDrawable != null) {
+                    // recolor in place (same colors setData would apply)
+                    if (accentColor != archiveAccentColor || buttonTextColor != archiveButtonTextColor) {
+                        Theme.setCombinedDrawableColor(archiveDrawable, accentColor, false);
+                        Theme.setCombinedDrawableColor(archiveDrawable, buttonTextColor, true);
+                        archiveAccentColor = accentColor;
+                        archiveButtonTextColor = buttonTextColor;
+                        avatarImageView.invalidate();
+                    }
+                } else {
+                    setData(data);
+                }
             }
             invalidate();
         }
+
+        private CombinedDrawable archiveDrawable;
+        private int archiveAccentColor, archiveButtonTextColor;
+        private Drawable coloredThumbDrawable;
+        private int thumbAccentColor, thumbButtonTextColor;
+        private android.graphics.ColorFilter appliedCloseIconFilter;
+        private int closeIconColor;
 
         public boolean isSelectedForDelete() {
             return animatorIsSelected.getValue();
@@ -2393,6 +2430,9 @@ public class ActionBarMenuItem extends FrameLayout {
                 Theme.setCombinedDrawableColor(combinedDrawable, getThemedColor(Theme.key_featuredStickers_addButton), false);
                 Theme.setCombinedDrawableColor(combinedDrawable, getThemedColor(Theme.key_featuredStickers_buttonText), true);
                 avatarImageView.setImageDrawable(combinedDrawable);
+                archiveDrawable = combinedDrawable;
+                archiveAccentColor = getThemedColor(Theme.key_featuredStickers_addButton);
+                archiveButtonTextColor = getThemedColor(Theme.key_featuredStickers_buttonText);
             } else {
                 avatarImageView.setImageDrawable(thumbDrawable);
             }
@@ -2589,9 +2629,9 @@ public class ActionBarMenuItem extends FrameLayout {
                 textView.setTag(R.id.fit_width_tag, 1);
                 textView.setPadding(AndroidUtilities.dp(13), 0, AndroidUtilities.dp(13), AndroidUtilities.dp(8));
                 textView.setTextSize(TypedValue.COMPLEX_UNIT_DIP, textSizeDp);
-                textView.setTextColor(Theme.getColor(Theme.key_actionBarDefaultSubmenuItem));
+                ThemeBind.textColor(textView, Theme.key_actionBarDefaultSubmenuItem);
                 textView.setMovementMethod(LinkMovementMethod.getInstance());
-                textView.setLinkTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteLinkText));
+                ThemeBind.linkTextColor(textView, Theme.key_windowBackgroundWhiteLinkText);
                 textView.setText(text);
                 textView.setMaxWidth(dp(200));
                 parent.popupLayout.addView(textView, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT, 0, 0, 0, 8, 0, 0));

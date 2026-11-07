@@ -478,7 +478,7 @@ public class ActionBar extends FrameLayout implements FactorAnimator.Target, The
         subtitleTextView = new SimpleTextView(getContext());
         subtitleTextView.setGravity(Gravity.LEFT);
         subtitleTextView.setVisibility(GONE);
-        subtitleTextView.setTextColor(getThemedColor(Theme.key_actionBarDefaultSubtitle));
+        ThemeBind.textColor(subtitleTextView, Theme.key_actionBarDefaultSubtitle, resourcesProvider);
         addView(subtitleTextView, 0, LayoutHelper.createFrame(LayoutHelper.WRAP_CONTENT, LayoutHelper.WRAP_CONTENT, Gravity.LEFT | Gravity.TOP));
     }
 
@@ -489,7 +489,7 @@ public class ActionBar extends FrameLayout implements FactorAnimator.Target, The
         additionalSubtitleTextView = new SimpleTextView(getContext());
         additionalSubtitleTextView.setGravity(Gravity.LEFT);
         additionalSubtitleTextView.setVisibility(GONE);
-        additionalSubtitleTextView.setTextColor(getThemedColor(Theme.key_actionBarDefaultSubtitle));
+        ThemeBind.textColor(additionalSubtitleTextView, Theme.key_actionBarDefaultSubtitle, resourcesProvider);
         addView(additionalSubtitleTextView, 0, LayoutHelper.createFrame(LayoutHelper.WRAP_CONTENT, LayoutHelper.WRAP_CONTENT, Gravity.LEFT | Gravity.TOP));
     }
 
@@ -533,7 +533,7 @@ public class ActionBar extends FrameLayout implements FactorAnimator.Target, The
         if (titleColorToSet != 0) {
             titleTextView[i].setTextColor(titleColorToSet);
         } else {
-            titleTextView[i].setTextColor(getThemedColor(Theme.key_actionBarDefaultTitle));
+            ThemeBind.textColor(titleTextView[i], Theme.key_actionBarDefaultTitle, resourcesProvider);
         }
         titleTextView[i].setEmojiColor(titleTextView[i].getTextColor());
         titleTextView[i].setTypeface(AndroidUtilities.bold());
@@ -602,9 +602,11 @@ public class ActionBar extends FrameLayout implements FactorAnimator.Target, The
             createTitleTextView(0);
         }
         titleColorToSet = color;
+        ThemeBind.clear(titleTextView[0]);
         titleTextView[0].setTextColor(color);
         titleTextView[0].setEmojiColor(color);
         if (titleTextView[1] != null) {
+            ThemeBind.clear(titleTextView[1]);
             titleTextView[1].setTextColor(color);
             titleTextView[1].setEmojiColor(color);
         }
@@ -622,6 +624,7 @@ public class ActionBar extends FrameLayout implements FactorAnimator.Target, The
         if (subtitleTextView == null) {
             createSubtitleTextView();
         }
+        ThemeBind.clear(subtitleTextView);
         subtitleTextView.setTextColor(color);
     }
 
@@ -788,7 +791,7 @@ public class ActionBar extends FrameLayout implements FactorAnimator.Target, The
         actionMode.isActionMode = true;
         actionMode.setClickable(true);
         if (!glassMode) {
-            actionMode.setBackgroundColor(getThemedColor(Theme.key_actionBarActionModeDefault));
+            ThemeBind.backgroundColor(actionMode, Theme.key_actionBarActionModeDefault, resourcesProvider);
         }
         addView(actionMode, indexOfChild(backButtonImageView));
         actionMode.setPadding(0, occupyStatusBar ? AndroidUtilities.statusBarHeight : 0, 0, 0);
@@ -1121,7 +1124,7 @@ public class ActionBar extends FrameLayout implements FactorAnimator.Target, The
     public void showActionModeTop() {
         if (occupyStatusBar && actionModeTop == null) {
             actionModeTop = new View(getContext());
-            actionModeTop.setBackgroundColor(getThemedColor(Theme.key_actionBarActionModeDefaultTop));
+            ThemeBind.backgroundColor(actionModeTop, Theme.key_actionBarActionModeDefaultTop, resourcesProvider);
             addView(actionModeTop);
             FrameLayout.LayoutParams layoutParams = (FrameLayout.LayoutParams) actionModeTop.getLayoutParams();
             layoutParams.height = AndroidUtilities.statusBarHeight;
@@ -1133,6 +1136,7 @@ public class ActionBar extends FrameLayout implements FactorAnimator.Target, The
 
     public void setActionModeTopColor(int color) {
         if (actionModeTop != null) {
+            ThemeBind.clear(actionModeTop);
             actionModeTop.setBackgroundColor(color);
         }
     }
@@ -1151,6 +1155,7 @@ public class ActionBar extends FrameLayout implements FactorAnimator.Target, The
 
     public void setActionModeColor(int color) {
         if (actionMode != null) {
+            ThemeBind.clear(actionMode);
             actionMode.setBackgroundColor(color);
         }
     }
@@ -2371,6 +2376,12 @@ public class ActionBar extends FrameLayout implements FactorAnimator.Target, The
         if (additionalSubTitleOverlayContainer != null) {
             additionalSubTitleOverlayContainer.updateColors();
         }
+    }
+
+    @Override
+    public void addColorKeys(java.util.HashSet<Integer> colors) {
+        colors.add(adaptive_lowerColorKey);
+        colors.add(adaptive_topColorKey);
     }
 
     private ActionBarAnimatedSubtitleOverlayContainer additionalSubTitleOverlayContainer;
