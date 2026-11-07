@@ -805,7 +805,7 @@ items.add(SettingCell.Factory.of(
 
         if (SharedSettings.experimentalSettingsAllowed.get()) {
             items.add(UItem.asShadow(null));
-            items.add(UItem.asHeader("Experimental"));
+            items.add(UItem.asHeader(getString(R.string.SettingsExperimental)));
             items.add(SettingCell.Factory.of(24, 0xFFF45255, 0xFFDF3955, 0, getString(R.string.RoundVideoSettings)));
             items.add(SettingCell.Factory.of(26, 0xFF55CA47, 0xFF27B434, 0, getString(R.string.AudioRecorderSettings)));
         }
