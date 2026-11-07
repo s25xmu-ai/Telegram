@@ -57,6 +57,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.view.ViewOutlineProvider;
 import android.view.ViewPropertyAnimator;
+import android.view.Window;
 import android.view.accessibility.AccessibilityEvent;
 import android.view.accessibility.AccessibilityNodeInfo;
 import android.view.animation.DecelerateInterpolator;
@@ -2481,7 +2482,7 @@ public class ChatAttachAlertPhotoLayout extends ChatAttachAlert.AttachAlertLayou
         }
         AndroidUtilities.hideKeyboard(this);
         AndroidUtilities.setLightNavigationBar(parentAlert, false);
-        parentAlert.getWindow().addFlags(FLAG_KEEP_SCREEN_ON);
+        setAlertKeepScreenOn(true);
         if (animated) {
             setCameraOpenProgress(0);
             cameraAnimationInProgress = true;
@@ -2830,6 +2831,23 @@ public class ChatAttachAlertPhotoLayout extends ChatAttachAlert.AttachAlertLayou
 
     float additionCloseCameraY;
 
+    private void setAlertKeepScreenOn(boolean keep) {
+        Window window = parentAlert.getWindow();
+        if (window == null) {
+            return;
+        }
+        View decorView = window.peekDecorView();
+        if (decorView != null && !decorView.isAttachedToWindow()) {
+            // The activity and alert window may be gone after a fold or multi-window change.
+            return;
+        }
+        if (keep) {
+            window.addFlags(FLAG_KEEP_SCREEN_ON);
+        } else {
+            window.clearFlags(FLAG_KEEP_SCREEN_ON);
+        }
+    }
+
     public void closeCamera(boolean animated) {
         if (takingPhoto || cameraView == null) {
             return;
@@ -2871,7 +2889,7 @@ public class ChatAttachAlertPhotoLayout extends ChatAttachAlert.AttachAlertLayou
                 public void onAnimationEnd(Animator animator) {
                     notificationsLocker.unlock();
                     cameraExpanded = false;
-                    parentAlert.getWindow().clearFlags(FLAG_KEEP_SCREEN_ON);
+                    setAlertKeepScreenOn(false);
                     setCameraOpenProgress(0f);
                     cameraAnimationInProgress = false;
                     if (gridView != null) {
@@ -2902,7 +2920,7 @@ public class ChatAttachAlertPhotoLayout extends ChatAttachAlert.AttachAlertLayou
             animatorSet.start();
         } else {
             cameraExpanded = false;
-            parentAlert.getWindow().clearFlags(FLAG_KEEP_SCREEN_ON);
+            setAlertKeepScreenOn(false);
             setCameraOpenProgress(0f);
             animateCameraValues[0] = 0;
             setCameraOpenProgress(0);
@@ -2953,7 +2971,8 @@ public class ChatAttachAlertPhotoLayout extends ChatAttachAlert.AttachAlertLayou
         float startWidth = animateCameraValues[1];
         float startHeight = animateCameraValues[2];
         boolean isPortrait = AndroidUtilities.displaySize.x < AndroidUtilities.displaySize.y;
-        float endWidth = parentAlert.getContainer().getWidth() - parentAlert.getLeftInset() - parentAlert.getRightInset();
+        // The expanded camera starts at x = 0 and covers the side insets too.
+        float endWidth = parentAlert.getContainer().getWidth();
         float endHeight = parentAlert.getContainer().getHeight();
 
         float fromX = cameraViewLocation[0];
@@ -4116,7 +4135,9 @@ public class ChatAttachAlertPhotoLayout extends ChatAttachAlert.AttachAlertLayou
         boolean isPortrait = width < height;
         if (view == cameraView) {
             if (cameraOpened && !cameraAnimationInProgress) {
-                cameraView.measure(View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY), View.MeasureSpec.makeMeasureSpec(height, View.MeasureSpec.EXACTLY));
+                // The measured width excludes insets, but the camera is laid out from x = 0.
+                final int fullWidth = width + parentAlert.getLeftInset() + parentAlert.getRightInset();
+                cameraView.measure(View.MeasureSpec.makeMeasureSpec(fullWidth, View.MeasureSpec.EXACTLY), View.MeasureSpec.makeMeasureSpec(height, View.MeasureSpec.EXACTLY));
                 return true;
             }
         } else if (view == cameraPanel) {
@@ -4566,11 +4587,11 @@ public class ChatAttachAlertPhotoLayout extends ChatAttachAlert.AttachAlertLayou
 
         @Override
         public int getItemCount() {
+            hasCamera = false;
+            hasCameraSpaceRow = false;
             if (!mediaEnabled) {
                 return 1;
             }
-            hasCamera = false;
-            hasCameraSpaceRow = false;
 
             if (noGalleryPermissions && this == adapter) {
                 return 2;

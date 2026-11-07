@@ -11870,9 +11870,7 @@ public class SendMessagesHelper extends BaseController implements NotificationCe
             String rotation = mediaMetadataRetriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_ROTATION);
             if (rotation != null) {
                 int val = Utilities.parseInt(rotation);
-                if (videoEditedInfo != null) {
-                    videoEditedInfo.rotationValue = val;
-                } else if (val == 90 || val == 270) {
+                if (videoEditedInfo == null && (val == 90 || val == 270)) {
                     int temp = attributeVideo.w;
                     attributeVideo.w = attributeVideo.h;
                     attributeVideo.h = temp;
@@ -12183,7 +12181,6 @@ public class SendMessagesHelper extends BaseController implements NotificationCe
                         if (videoEditedInfo.cropState != null) {
                             w = videoEditedInfo.cropState.transformWidth;
                             h = videoEditedInfo.cropState.transformHeight;
-                            rotation += videoEditedInfo.cropState.transformRotation;
                         } else {
                             w = videoEditedInfo.resultWidth;
                             h = videoEditedInfo.resultHeight;
