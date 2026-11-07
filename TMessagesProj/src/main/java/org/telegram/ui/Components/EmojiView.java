@@ -126,6 +126,7 @@ import org.telegram.ui.ActionBar.BaseFragment;
 import org.telegram.ui.ActionBar.BottomSheet;
 import org.telegram.ui.ActionBar.SimpleTextView;
 import org.telegram.ui.ActionBar.Theme;
+import org.telegram.ui.ActionBar.ThemeBind;
 import org.telegram.ui.Cells.ContextLinkCell;
 import org.telegram.ui.Cells.EmptyCell;
 import org.telegram.ui.Cells.FeaturedStickerSetInfoCell;
@@ -891,7 +892,7 @@ public class EmojiView extends FrameLayout implements
             searchEditText.setSingleLine(true);
             searchEditText.setImeOptions(EditorInfo.IME_ACTION_SEARCH | EditorInfo.IME_FLAG_NO_EXTRACT_UI);
             searchEditText.setHint(getString(R.string.Search));
-            searchEditText.setCursorColor(getThemedColor(Theme.key_featuredStickers_addedIcon));
+            ThemeBind.cursorColor(searchEditText, Theme.key_featuredStickers_addedIcon, EmojiView.this.resourcesProvider);
             searchEditText.setCursorSize(dp(20));
             searchEditText.setCursorWidth(1.5f);
             searchEditText.setTranslationY(dp(-2));
@@ -926,7 +927,7 @@ public class EmojiView extends FrameLayout implements
             if (shouldDrawBackground) {
                 inputBoxGradient = new View(context);
                 Drawable gradientDrawable = context.getResources().getDrawable(R.drawable.gradient_right).mutate();
-                gradientDrawable.setColorFilter(new PorterDuffColorFilter(Theme.blendOver(getThemedColor(Theme.key_chat_emojiPanelBackground), getThemedColor(Theme.key_chat_emojiSearchBackground)), PorterDuff.Mode.MULTIPLY));
+                ThemeBind.drawableColorFilter(this, gradientDrawable, ThemeBind.blendOver(Theme.key_chat_emojiPanelBackground, Theme.key_chat_emojiSearchBackground), EmojiView.this.resourcesProvider, PorterDuff.Mode.MULTIPLY);
                 inputBoxGradient.setBackground(gradientDrawable);
                 inputBoxGradient.setAlpha(0f);
                 inputBox.addView(inputBoxGradient, LayoutHelper.createFrame(18, LayoutHelper.MATCH_PARENT, Gravity.LEFT));
@@ -940,7 +941,7 @@ public class EmojiView extends FrameLayout implements
                     return Theme.getColor(Theme.key_chat_emojiSearchIcon, resourcesProvider);
                 }
             });
-            clear.setBackground(Theme.createSelectorDrawable(Theme.getColor(Theme.key_listSelector, resourcesProvider), Theme.RIPPLE_MASK_CIRCLE_20DP, AndroidUtilities.dp(15)));
+            ThemeBind.selectorBackground(clear, Theme.createSelectorDrawable(Theme.getColor(Theme.key_listSelector, resourcesProvider), Theme.RIPPLE_MASK_CIRCLE_20DP, AndroidUtilities.dp(15)), null, ThemeBind.of(Theme.key_listSelector), resourcesProvider);
             clear.setAlpha(0f);
             clear.setOnClickListener(e -> {
                 searchEditText.setText("");
@@ -981,7 +982,7 @@ public class EmojiView extends FrameLayout implements
                 categoriesListView.isGlassDesign = glassDesign;
                 categoriesListView.setDontOccupyWidth((int) (searchEditText.getPaint().measureText(searchEditText.getHint() + "")) + dp(16));
                 if (shouldDrawBackground) {
-                    categoriesListView.setBackgroundColor(Theme.blendOver(getThemedColor(Theme.key_chat_emojiPanelBackground), getThemedColor(Theme.key_chat_emojiSearchBackground)));
+                    ThemeBind.backgroundColor(categoriesListView, ThemeBind.blendOver(Theme.key_chat_emojiPanelBackground, Theme.key_chat_emojiSearchBackground), EmojiView.this.resourcesProvider);
                 }
                 categoriesListView.setOnScrollIntoOccupiedWidth(scrolled -> {
                     searchEditText.setTranslationX(-Math.max(0, scrolled));
@@ -5927,6 +5928,13 @@ public class EmojiView extends FrameLayout implements
             searchField.box.invalidate();
             searchField.searchEditText.setHintTextColor(glassDesign ? getGlassIconColor(0.45f) : getThemedColor(Theme.key_chat_emojiSearchIcon));
             searchField.searchEditText.setTextColor(glassDesign ? getGlassIconColor(0.8f) : getThemedColor(Theme.key_windowBackgroundWhiteBlackText));
+            // Refresh the 13.2.1 bindings even before global ThemeBind traversal is enabled.
+            ThemeBind.update(searchField);
+            ThemeBind.update(searchField.searchEditText);
+            ThemeBind.update(searchField.clear);
+            if (searchField.categoriesListView != null) {
+                ThemeBind.update(searchField.categoriesListView);
+            }
         }
         if (dotPaint != null) {
             dotPaint.setColor(getThemedColor(Theme.key_chat_emojiPanelNewTrending));
