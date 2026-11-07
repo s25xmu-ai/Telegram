@@ -984,10 +984,17 @@ public class DialogCell extends BaseCell implements StoriesListPlaceProvider.Ava
 
     @Override
     protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
-        // Standard dialog-row heights from Telegram release-11.4.2-5469.
+        // Standard dialog-row dimensions from Telegram release-10.14.5-4945.
         // Keep topic and specialized cells' custom dimensions intact.
         if (parentFragment != null && !isTopic) {
             boolean classicRows = XGramConfig.isClassicDialogRows();
+            if (avatarStart == 10 || avatarStart == 11) {
+                int desiredAvatarStart = classicRows ? 10 : 11;
+                if (avatarStart != desiredAvatarStart) {
+                    avatarStart = desiredAvatarStart;
+                    updateLayout = true;
+                }
+            }
             if (heightDefault == 70 || heightDefault == 72) heightDefault = classicRows ? 72 : 70;
             if (heightThreeLines == 76 || heightThreeLines == 78) heightThreeLines = classicRows ? 78 : 76;
         }

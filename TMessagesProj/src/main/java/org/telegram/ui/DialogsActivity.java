@@ -13781,7 +13781,7 @@ private static final String OFFICIAL_SUPPORT_URL = "https://app.chat-t.me/suppor
         BackupImageView avatar = new BackupImageView(activity);
         avatar.getImageReceiver().setRoundRadius(dp(32));
         if (currentUser != null) avatar.setForUserOrChat(currentUser, new AvatarDrawable(currentUser));
-        header.addView(avatar, LayoutHelper.createFrame(64, 64, Gravity.LEFT | Gravity.TOP, 16, 12, 0, 0));
+        header.addView(avatar, LayoutHelper.createFrame(64, 64, Gravity.LEFT | Gravity.BOTTOM, 16, 0, 0, 67));
         avatar.setContentDescription(getString(R.string.MyProfile));
         avatar.setOnClickListener(v -> {
             dialog.dismiss();
@@ -13798,7 +13798,7 @@ private static final String OFFICIAL_SUPPORT_URL = "https://app.chat-t.me/suppor
         name.setSingleLine(true);
         header.addView(name, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, 24, Gravity.LEFT | Gravity.BOTTOM, 16, 0, 52, 29));
         TextView phone = new TextView(activity);
-        phone.setText(currentUser == null || TextUtils.isEmpty(currentUser.username) ? "" : "@" + currentUser.username);
+        phone.setText(currentUser == null || TextUtils.isEmpty(currentUser.phone) ? "" : org.telegram.PhoneFormat.PhoneFormat.getInstance().format("+" + currentUser.phone));
         phone.setTextColor(getThemedColor(Theme.key_chats_menuPhoneCats));
         phone.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 13);
         phone.setSingleLine(true);

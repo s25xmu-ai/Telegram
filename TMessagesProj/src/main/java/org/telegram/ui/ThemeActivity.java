@@ -161,8 +161,7 @@ public class ThemeActivity extends BaseFragment implements NotificationCenter.No
     private int nextMediaTapRow;
     private int sendByEnterRow;
     private int xgramUIHeaderRow, xgramUISectionRow, xgramHomeBarRow, xgramClassicUIRow;
-    private int xgramIOSInputRow;
-    private int xgramIOSMenuRow;
+    private int xgramIOSUIRow;
     private int saveToGalleryOption1Row;
     private int saveToGalleryOption2Row;
     private int saveToGallerySectionRow;
@@ -601,8 +600,7 @@ public class ThemeActivity extends BaseFragment implements NotificationCenter.No
         xgramUISectionRow = -1;
         xgramHomeBarRow = -1;
         xgramClassicUIRow = -1;
-        xgramIOSInputRow = -1;
-        xgramIOSMenuRow = -1;
+        xgramIOSUIRow = -1;
         saveToGalleryOption1Row = -1;
         saveToGalleryOption2Row = -1;
         saveToGallerySectionRow = -1;
@@ -724,8 +722,7 @@ public class ThemeActivity extends BaseFragment implements NotificationCenter.No
             xgramUIHeaderRow = rowCount++;
             xgramHomeBarRow = rowCount++;
             xgramClassicUIRow = rowCount++;
-            xgramIOSInputRow = rowCount++;
-            xgramIOSMenuRow = rowCount++;
+            xgramIOSUIRow = rowCount++;
             xgramUISectionRow = rowCount++;
         } else {
             nightDisabledRow = rowCount++;  // TYPE_THEME_TYPE
@@ -1156,18 +1153,8 @@ public class ThemeActivity extends BaseFragment implements NotificationCenter.No
                 if (view instanceof TextCheckCell) {
                     ((TextCheckCell) view).setChecked(value);
                 }
-            } else if (position == xgramIOSInputRow) {
-                boolean value = !XGramConfig.isIOSMessageInputField();
-                XGramConfig.setIOSMessageInputField(value);
-                if (view instanceof TextCheckCell) {
-                    ((TextCheckCell) view).setChecked(value);
-                }
-            } else if (position == xgramIOSMenuRow) {
-                boolean value = !XGramConfig.isIOSMessageMenu();
-                XGramConfig.setIOSMessageMenu(value);
-                if (view instanceof TextCheckCell) {
-                    ((TextCheckCell) view).setChecked(value);
-                }
+            } else if (position == xgramIOSUIRow) {
+                presentFragment(new IOSUISettingsActivity());
             } else if (position == raiseToSpeakRow) {
                 SharedConfig.toggleRaiseToSpeak();
                 if (view instanceof TextCheckCell) {
@@ -2561,6 +2548,8 @@ public class ThemeActivity extends BaseFragment implements NotificationCenter.No
                         cell.setTextAndValue(getString(R.string.SearchEngine), SearchEngine.getCurrent().name, updateSearchEngine, false);
                     } else if (position == xgramClassicUIRow) {
                         cell.setText(getString(R.string.XGramClassicUI), true);
+                    } else if (position == xgramIOSUIRow) {
+                        cell.setText(getString(R.string.XGramIOSUI), false);
                     } else if (position == bluetoothScoRow) {
                         cell.setTextAndValue(getString(R.string.MicrophoneForVoiceMessages), getString(SharedConfig.recordViaSco ? R.string.MicrophoneForVoiceMessagesSco : R.string.MicrophoneForVoiceMessagesBuiltIn), updateRecordViaSco, false);
                         updateRecordViaSco = false;
@@ -2654,10 +2643,6 @@ public class ThemeActivity extends BaseFragment implements NotificationCenter.No
                         textCheckCell.setTextAndCheck(getString("SendByEnter", R.string.SendByEnter), preferences.getBoolean("send_by_enter", false), true);
                     } else if (position == xgramHomeBarRow) {
                         textCheckCell.setTextAndValueAndCheck(getString(R.string.XGramHomeBottomBar), getString(R.string.XGramHomeBottomBarInfo), XGramConfig.isHomeBottomBarVisible(), true, true);
-                    } else if (position == xgramIOSInputRow) {
-                        textCheckCell.setTextAndCheck(getString(R.string.XGramIOSInputField), XGramConfig.isIOSMessageInputField(), true);
-                    } else if (position == xgramIOSMenuRow) {
-                        textCheckCell.setTextAndCheck(getString(R.string.XGramIOSMessageMenu), XGramConfig.isIOSMessageMenu(), true);
                     } else if (position == raiseToSpeakRow) {
                         textCheckCell.setTextAndValueAndCheck(getString("RaiseToSpeak", R.string.RaiseToSpeak), getString("RaiseToSpeakInfo", R.string.RaiseToSpeakInfo), SharedConfig.raiseToSpeak, true, true);
                     } else if (position == raiseToListenRow) {
@@ -2783,7 +2768,7 @@ public class ThemeActivity extends BaseFragment implements NotificationCenter.No
 
         @Override
         public int getItemViewType(int position) {
-            if (position == xgramClassicUIRow || position == scheduleFromRow || position == distanceRow ||
+            if (position == xgramClassicUIRow || position == xgramIOSUIRow || position == scheduleFromRow || position == distanceRow ||
                     position == scheduleToRow || position == scheduleUpdateLocationRow ||
                     position == contactsReimportRow || position == contactsSortRow ||
                     position == bluetoothScoRow || position == searchEngineRow) {
@@ -2805,7 +2790,7 @@ public class ThemeActivity extends BaseFragment implements NotificationCenter.No
                 return TYPE_HEADER;
             } else if (position == automaticBrightnessRow) {
                 return TYPE_BRIGHTNESS;
-            } else if (position == scheduleLocationRow || position == sendByEnterRow || position == xgramHomeBarRow || position == xgramIOSInputRow || position == xgramIOSMenuRow ||
+            } else if (position == scheduleLocationRow || position == sendByEnterRow || position == xgramHomeBarRow ||
                     position == raiseToSpeakRow || position == raiseToListenRow || position == pauseOnRecordRow ||
                     position == directShareRow || position == chatBlurRow || position == pauseOnMediaRow || position == nextMediaTapRow || position == sensitiveContentRow) {
                 return TYPE_TEXT_CHECK;

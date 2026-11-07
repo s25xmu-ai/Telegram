@@ -665,7 +665,8 @@ public class ChatAvatarContainer extends FrameLayout implements FactorAnimator.T
     protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
         final int width = MeasureSpec.getSize(widthMeasureSpec);
         final int availableWidth = width - dp((avatarImageView.getVisibility() == VISIBLE ? 54 : 0) + 16);
-        avatarImageView.measure(MeasureSpec.makeMeasureSpec(dp(avatarSizeInDp) - 2, MeasureSpec.EXACTLY), MeasureSpec.makeMeasureSpec(dp(avatarSizeInDp) - 2, MeasureSpec.EXACTLY));
+        int avatarSize = dp(avatarSizeInDp) - (classicHeaderLayout ? 0 : 2);
+        avatarImageView.measure(MeasureSpec.makeMeasureSpec(avatarSize, MeasureSpec.EXACTLY), MeasureSpec.makeMeasureSpec(avatarSize, MeasureSpec.EXACTLY));
         titleTextView.measure(MeasureSpec.makeMeasureSpec(availableWidth, MeasureSpec.AT_MOST), MeasureSpec.makeMeasureSpec(dp(24 + 8), MeasureSpec.AT_MOST));
         if (subtitleTextView != null) {
             subtitleTextView.measure(MeasureSpec.makeMeasureSpec(availableWidth, MeasureSpec.AT_MOST), MeasureSpec.makeMeasureSpec(dp(20), MeasureSpec.AT_MOST));
@@ -754,6 +755,8 @@ public class ChatAvatarContainer extends FrameLayout implements FactorAnimator.T
     }
 
     private boolean glassMode;
+    private boolean classicHeaderLayout;
+    public void setClassicHeaderLayout() { classicHeaderLayout = true; }
     public void setGlassMode() {
         if (titleTextView != null) {
             titleTextView.setTextSizePx(dp(17.5f));
@@ -767,11 +770,13 @@ public class ChatAvatarContainer extends FrameLayout implements FactorAnimator.T
     @Override
     protected void onLayout(boolean changed, int left, int top, int right, int bottom) {
         final int actionBarHeight = ActionBar.getCurrentActionBarHeight();
-        final int viewTop = (actionBarHeight - avatarImageView.getMeasuredHeight() - 2) / 2 + (occupyStatusBar ? AndroidUtilities.statusBarHeight : 0);
+        final int viewTop = (actionBarHeight - avatarImageView.getMeasuredHeight() - (classicHeaderLayout ? 0 : 2)) / 2 + (occupyStatusBar ? AndroidUtilities.statusBarHeight : 0);
         final int subtitleTop = viewTop + dp(glassMode ? 23.66f : 24);
 
-        avatarImageView.layout(1 + leftPadding, 1 + viewTop, 1 + leftPadding + avatarImageView.getMeasuredWidth(), 1 + viewTop + avatarImageView.getMeasuredHeight());
-        int l = leftPadding + (avatarImageView.getVisibility() == VISIBLE ? dp(glassMode ? 49.66f : 55) : dp(glassMode ? 13 : 1)) + rightAvatarPadding;
+        boolean classicLayout = classicHeaderLayout;
+        int avatarLeft = leftPadding + (classicLayout ? 0 : 1);
+        avatarImageView.layout(avatarLeft, 1 + viewTop, avatarLeft + avatarImageView.getMeasuredWidth(), 1 + viewTop + avatarImageView.getMeasuredHeight());
+        int l = leftPadding + (avatarImageView.getVisibility() == VISIBLE ? dp(classicLayout ? 54 : glassMode ? 49.66f : 55) : dp(classicLayout ? 0 : glassMode ? 13 : 1)) + rightAvatarPadding;
         SimpleTextView titleTextLargerCopyView = this.titleTextLargerCopyView.get();
         if (getSubtitleTextView().getVisibility() != GONE) {
             titleTextView.layout(l, viewTop + dp(1.66f) - titleTextView.getPaddingTop(), l + titleTextView.getMeasuredWidth(), viewTop + titleTextView.getTextHeight() + dp(1.66f) - titleTextView.getPaddingTop() + titleTextView.getPaddingBottom());

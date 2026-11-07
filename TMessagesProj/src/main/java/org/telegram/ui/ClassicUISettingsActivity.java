@@ -37,8 +37,10 @@ public class ClassicUISettingsActivity extends BaseFragment {
         rows.setOnClickListener(v -> { boolean value = !XGramConfig.isClassicDialogRows(); XGramConfig.setClassicDialogRows(value); rows.setChecked(value); });
         TextCheckCell messageMenu = addToggle(context, list, R.string.XGramClassicMessageMenu, XGramConfig.isClassicMessageMenu(), true);
         messageMenu.setOnClickListener(v -> { boolean value = !XGramConfig.isClassicMessageMenu(); XGramConfig.setClassicMessageMenu(value); messageMenu.setChecked(value); });
-        TextCheckCell input = addToggle(context, list, R.string.XGramClassicMessageInput, XGramConfig.isClassicMessageInput(), false);
+        TextCheckCell input = addToggle(context, list, R.string.XGramClassicMessageInput, XGramConfig.isClassicMessageInput(), true);
         input.setOnClickListener(v -> { boolean value = !XGramConfig.isClassicMessageInput(); XGramConfig.setClassicMessageInput(value); input.setChecked(value); });
+        TextCheckCell header = addToggle(context, list, R.string.XGramClassicChatHeaderLayout, XGramConfig.isClassicChatHeaderLayout(), false);
+        header.setOnClickListener(v -> { boolean value = !XGramConfig.isClassicChatHeaderLayout(); XGramConfig.setClassicChatHeaderLayout(value); header.setChecked(value); });
         TextView info = new TextView(context);
         info.setTextSize(14);
         info.setTypeface(AndroidUtilities.getVazirmatnTypeface());

@@ -4229,7 +4229,8 @@ public class ChatActivity extends BaseFragment implements
                 openSearchWithText(isSupportedTags() ? "" : null);
             }
         };
-        avatarContainer.setGlassMode();
+        if (XGramConfig.isClassicChatHeaderLayout()) avatarContainer.setClassicHeaderLayout();
+        else avatarContainer.setGlassMode();
         avatarContainer.allowShorterStatus = true;
         avatarContainer.premiumIconHiddable = true;
         avatarContainer.allowDrawStories = dialog_id < 0 && !isTopic;
