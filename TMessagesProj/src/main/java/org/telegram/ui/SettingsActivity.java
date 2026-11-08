@@ -1324,8 +1324,18 @@ items.add(settingsRow(
                 arrowView.setColorFilter(new PorterDuffColorFilter(arrowColor, PorterDuff.Mode.SRC_IN));
             }
             emojiStatusDrawable.setColor(Theme.getColor(Theme.key_profile_verifiedBackground, resourcesProvider));
-            botDrawable.setColor(Theme.getColor(Theme.key_profile_verifiedBackground, resourcesProvider));
-            textView.invalidate();
+            updateBotDrawableColor();
+        }
+
+        private void updateBotDrawableColor() {
+            try {
+                if (botDrawable != null) {
+                    botDrawable.setColor(Theme.getColor(Theme.key_profile_verifiedBackground, resourcesProvider));
+                    if (textView != null) textView.invalidate();
+                }
+            } catch (Exception e) {
+                FileLog.e(e);
+            }
         }
 
         @Override
@@ -1451,14 +1461,17 @@ items.add(settingsRow(
             textLayout.setOrientation(VERTICAL);
 
             titleView = new TextView(context);
+            titleView.setTypeface(AndroidUtilities.getVazirmatnTypeface());
             titleView.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 16);
             textLayout.addView(titleView, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT, 0, 0, 0, 0));
 
             subtitleView = new TextView(context);
+            subtitleView.setTypeface(AndroidUtilities.getVazirmatnTypeface());
             subtitleView.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 13);
             textLayout.addView(subtitleView, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT, 0, 4, 0, 0));
 
             valueView = new TextView(context);
+            valueView.setTypeface(AndroidUtilities.getVazirmatnTypeface());
             valueView.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 16);
             if (LocaleController.isRTL) {
                 addView(valueView, LayoutHelper.createLinear(LayoutHelper.WRAP_CONTENT, LayoutHelper.WRAP_CONTENT, Gravity.CENTER_VERTICAL, 20, 0, 0, 0));

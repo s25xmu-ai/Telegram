@@ -125,6 +125,7 @@ public class UniversalAdapter extends AdapterWithDiffUtils {
     private final int classGuid;
     private final boolean dialog;
     private boolean applyBackground = true;
+    private boolean compactTextCells;
     protected Utilities.Callback2<ArrayList<UItem>, UniversalAdapter> fillItems;
     private final Theme.ResourcesProvider resourcesProvider;
 
@@ -331,6 +332,10 @@ public class UniversalAdapter extends AdapterWithDiffUtils {
         updateReorderSections();
     }
 
+    public void setCompactTextCells(boolean compact) {
+        compactTextCells = compact;
+    }
+
     public boolean shouldApplyBackground(int viewType) {
         if (!applyBackground) return false;
         if (viewType >= UItem.factoryViewTypeStartsWith) {
@@ -421,6 +426,7 @@ public class UniversalAdapter extends AdapterWithDiffUtils {
                 break;
             case VIEW_TYPE_TEXT:
                 view = new TextCell(context, resourcesProvider);
+                ((TextCell) view).setCompactLayout(compactTextCells);
                 break;
             case VIEW_TYPE_CHECK:
             case VIEW_TYPE_CHECKRIPPLE:

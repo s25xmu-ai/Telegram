@@ -1566,6 +1566,7 @@ public class ItemOptions {
 
         if (blurForMenu && scrimBlur3SourceBitmap != null) {
             setGapBackgroundColor(Theme.multAlpha(Theme.getColor(Theme.key_actionBarDefaultSubmenuItem, resourcesProvider), 0.06f));
+            bindGapBackgroundColor(ThemeBind.multAlpha(Theme.key_actionBarDefaultSubmenuItem, 0.06f));
             BlurredBackgroundDrawable bg = new BlurredBackgroundDrawableViewFactory(scrimBlur3SourceBitmap)
                 .create(layout, true)
                 .setColorProvider(BlurredBackgroundProviderImpl.scrimMenuBackground(resourcesProvider))
@@ -1782,6 +1783,24 @@ public class ItemOptions {
             }
         }
         return this;
+    }
+
+    private void bindGapBackgroundColor(ThemeBind.Spec spec) {
+        if (layout == null) return;
+        for (int j = 0; j < layout.getChildCount(); ++j) {
+            View child = j == layout.getChildCount() - 1 ? lastLayout : layout.getChildAt(j);
+            if (child instanceof ActionBarPopupWindow.ActionBarPopupWindowLayout) {
+                ActionBarPopupWindow.ActionBarPopupWindowLayout popup = (ActionBarPopupWindow.ActionBarPopupWindowLayout) child;
+                for (int i = 0; i < popup.getItemsCount(); ++i) {
+                    View item = popup.getItemAt(i);
+                    if (item instanceof ActionBarPopupWindow.GapView) {
+                        ThemeBind.backgroundColor(item, spec, resourcesProvider);
+                    }
+                }
+            } else if (child instanceof ActionBarPopupWindow.GapView) {
+                ThemeBind.backgroundColor(child, spec, resourcesProvider);
+            }
+        }
     }
 
     private Integer textColor, iconColor;
@@ -2300,8 +2319,8 @@ public class ItemOptions {
         if (canAddNewAlbum && onAlbumAdd != null) {
             final ActionBarMenuSubItem subitem = new ActionBarMenuSubItem(options.getContext(), 2, false, false, options.resourcesProvider);
             subitem.setPadding(dp(18), 0, dp(18), 0);
-            subitem.setColors(Theme.getColor(Theme.key_actionBarDefaultSubmenuItem, options.resourcesProvider), Theme.getColor(Theme.key_actionBarDefaultSubmenuItemIcon, options.resourcesProvider));
-            subitem.setSelectorColor(Theme.multAlpha(Theme.getColor(Theme.key_actionBarDefaultSubmenuItem, options.resourcesProvider), .12f));
+            subitem.setColorKeys(Theme.key_actionBarDefaultSubmenuItem, Theme.key_actionBarDefaultSubmenuItemIcon);
+            subitem.setSelectorColorKey(Theme.key_actionBarDefaultSubmenuItem, .12f);
             subitem.setTextAndIcon(getString(R.string.StoriesAlbumNewAlbum), R.drawable.menu_album_add);
             subitem.setOnClickListener(v -> {
                 onAlbumAdd.run();
@@ -2316,8 +2335,8 @@ public class ItemOptions {
             final ActionBarMenuSubItem subitem = new ActionBarMenuSubItem(options.getContext(), 2, false, false, options.resourcesProvider);
             subitem.setChecked(checked);
             subitem.setPadding(dp(18), 0, dp(18), 0);
-            subitem.setColors(Theme.getColor(Theme.key_actionBarDefaultSubmenuItem, options.resourcesProvider), Theme.getColor(Theme.key_actionBarDefaultSubmenuItemIcon, options.resourcesProvider));
-            subitem.setSelectorColor(Theme.multAlpha(Theme.getColor(Theme.key_actionBarDefaultSubmenuItem, options.resourcesProvider), .12f));
+            subitem.setColorKeys(Theme.key_actionBarDefaultSubmenuItem, Theme.key_actionBarDefaultSubmenuItemIcon);
+            subitem.setSelectorColorKey(Theme.key_actionBarDefaultSubmenuItem, .12f);
             if (album.icon_photo != null && album.icon_photo.sizes != null) {
                 TLRPC.PhotoSize currentPhotoObjectThumb = FileLoader.getClosestPhotoSizeWithSize(album.icon_photo.sizes, 50);
                 TLRPC.PhotoSize currentPhotoObject = FileLoader.getClosestPhotoSizeWithSize(album.icon_photo.sizes, dp(24), false, currentPhotoObjectThumb, true);

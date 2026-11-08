@@ -60,9 +60,9 @@ public class TextCell extends FrameLayout {
     private ImageView valueImageView;
     public int leftPadding;
     private boolean needDivider;
-    public int offsetFromImage = 58;
+    public int offsetFromImage = 71;
     public int heightDp = 50;
-    public int imageLeft = 16;
+    public int imageLeft = 21;
     private boolean inDialogs;
     private boolean prioritizeTitleOverValue;
     private Theme.ResourcesProvider resourcesProvider;
@@ -336,7 +336,7 @@ public class TextCell extends FrameLayout {
     private CharSequence valueText;
 
     public void setText(CharSequence text, boolean divider) {
-        imageLeft = 16;
+        imageLeft = getDefaultImageLeft();
         textView.setText(text);
         textView.setRightDrawable(null);
         valueTextView.setText(valueText = null, false);
@@ -361,7 +361,7 @@ public class TextCell extends FrameLayout {
     }
 
     public void setTextAndIcon(CharSequence text, int resId, boolean divider) {
-        imageLeft = 16;
+        imageLeft = getDefaultImageLeft();
         offsetFromImage = getOffsetFromImage(false);
         textView.setText(text);
         textView.setRightDrawable(null);
@@ -380,8 +380,8 @@ public class TextCell extends FrameLayout {
     }
 
     public void setTextAndColorfulIcon(CharSequence text, int resId, int color, boolean divider) {
-        imageLeft = 16;
-        offsetFromImage = 58;
+        imageLeft = getDefaultImageLeft();
+        offsetFromImage = getOffsetFromImage(false);
         textView.setText(text);
         textView.setRightDrawable(null);
         valueTextView.setText(valueText = null, false);
@@ -396,7 +396,7 @@ public class TextCell extends FrameLayout {
     }
 
     public void setTextAndIcon(CharSequence text, Drawable drawable, boolean divider) {
-        offsetFromImage = 58;
+        offsetFromImage = getOffsetFromImage(false);
         imageLeft = 18;
         textView.setText(text);
         textView.setRightDrawable(null);
@@ -419,7 +419,7 @@ public class TextCell extends FrameLayout {
     }
 
     public void setTextAndValueAndIcon(CharSequence text, CharSequence value, Drawable drawable, boolean divider) {
-        offsetFromImage = 58;
+        offsetFromImage = getOffsetFromImage(false);
         imageLeft = 18;
         textView.setText(text);
         textView.setRightDrawable(null);
@@ -454,7 +454,7 @@ public class TextCell extends FrameLayout {
     }
 
     public void setTextAndValue(CharSequence text, CharSequence value, boolean animated, boolean divider) {
-        imageLeft = 16;
+        imageLeft = getDefaultImageLeft();
         offsetFromImage = getOffsetFromImage(false);
         textView.setText(text);
         textView.setRightDrawable(null);
@@ -479,7 +479,7 @@ public class TextCell extends FrameLayout {
     }
 
     public void setTextAndValueAndColorfulIcon(String text, CharSequence value, boolean animated, int resId, int colorTop, int colorBottom, boolean divider) {
-        imageLeft = 21;
+        imageLeft = getDefaultImageLeft();
         offsetFromImage = getOffsetFromImage(false);
         textView.setText(text);
         textView.setRightDrawable(null);
@@ -499,7 +499,7 @@ public class TextCell extends FrameLayout {
     }
 
     public void setTextAndCheckAndColorfulIcon(CharSequence text, boolean checked, int resId, int color, boolean divider) {
-        imageLeft = 21;
+        imageLeft = getDefaultImageLeft();
         offsetFromImage = getOffsetFromImage(false);
         textView.setText(text);
         textView.setRightDrawable(null);
@@ -524,7 +524,7 @@ public class TextCell extends FrameLayout {
     }
 
     public void setTextAndSpoilersValueAndIcon(String text, CharSequence value, int resId, boolean divider) {
-        imageLeft = 16;
+        imageLeft = getDefaultImageLeft();
         offsetFromImage = getOffsetFromImage(false);
         textView.setText(text);
         textView.setRightDrawable(null);
@@ -548,7 +548,7 @@ public class TextCell extends FrameLayout {
     }
 
     public void setTextAndSpoilersValueAndColorfulIcon(String text, CharSequence value, int resId, int color, boolean divider) {
-        imageLeft = 16;
+        imageLeft = getDefaultImageLeft();
         offsetFromImage = getOffsetFromImage(false);
         textView.setText(text);
         textView.setRightDrawable(null);
@@ -572,7 +572,7 @@ public class TextCell extends FrameLayout {
     }
 
     public void setTextAndValueAndIcon(CharSequence text, CharSequence value, boolean animated, int resId, boolean divider) {
-        imageLeft = 16;
+        imageLeft = getDefaultImageLeft();
         offsetFromImage = getOffsetFromImage(false);
         textView.setText(text);
         textView.setRightDrawable(null);
@@ -638,7 +638,7 @@ public class TextCell extends FrameLayout {
     }
 
     public void setTextAndCheck(CharSequence text, boolean checked, boolean divider) {
-        imageLeft = 16;
+        imageLeft = getDefaultImageLeft();
         offsetFromImage = getOffsetFromImage(false);
         textView.setText(text);
         textView.setRightDrawable(null);
@@ -656,7 +656,7 @@ public class TextCell extends FrameLayout {
     }
 
     public void setTextAndCheckAndIcon(CharSequence text, boolean checked, int resId, boolean divider) {
-        imageLeft = 16;
+        imageLeft = getDefaultImageLeft();
         offsetFromImage = getOffsetFromImage(false);
         textView.setText(text);
         textView.setRightDrawable(null);
@@ -678,7 +678,7 @@ public class TextCell extends FrameLayout {
     }
 
     public void setTextAndCheckAndIcon(String text, boolean checked, Drawable resDrawable, boolean divider) {
-        imageLeft = 16;
+        imageLeft = getDefaultImageLeft();
         offsetFromImage = getOffsetFromImage(false);
         textView.setText(text);
         textView.setRightDrawable(null);
@@ -700,7 +700,7 @@ public class TextCell extends FrameLayout {
     }
 
     public void setTextAndValueDrawable(CharSequence text, Drawable drawable, boolean divider) {
-        imageLeft = 16;
+        imageLeft = getDefaultImageLeft();
         offsetFromImage = getOffsetFromImage(false);
         textView.setText(text);
         textView.setRightDrawable(null);
@@ -722,7 +722,7 @@ public class TextCell extends FrameLayout {
     }
 
     public void setTextAndSticker(CharSequence text, TLRPC.Document document, boolean divider) {
-        imageLeft = 16;
+        imageLeft = getDefaultImageLeft();
         offsetFromImage = getOffsetFromImage(false);
         textView.setText(text);
         textView.setRightDrawable(null);
@@ -741,7 +741,7 @@ public class TextCell extends FrameLayout {
     }
 
     public void setTextAndSticker(CharSequence text, String localPath, boolean divider) {
-        imageLeft = 16;
+        imageLeft = getDefaultImageLeft();
         offsetFromImage = getOffsetFromImage(false);
         textView.setText(text);
         textView.setRightDrawable(null);
@@ -828,8 +828,18 @@ public class TextCell extends FrameLayout {
         invalidate();
     }
 
+    private boolean compactLayout;
+
+    public void setCompactLayout(boolean compact) {
+        compactLayout = compact;
+    }
+
+    protected int getDefaultImageLeft() {
+        return compactLayout ? 16 : 21;
+    }
+
     protected int getOffsetFromImage(boolean colourful) {
-        return colourful ? 52 : 58;
+        return compactLayout ? (colourful ? 52 : 58) : (colourful ? 65 : 71);
     }
 
     @Override
@@ -839,7 +849,8 @@ public class TextCell extends FrameLayout {
             if (paint == null) {
                 paint = Theme.dividerPaint;
             }
-            canvas.drawLine(LocaleController.isRTL ? 0 : dp(imageView.getVisibility() == VISIBLE ? (inDialogs ? 72 : 58) : 20), getMeasuredHeight() - 1, getMeasuredWidth() - (LocaleController.isRTL ? dp(imageView.getVisibility() == VISIBLE ? (inDialogs ? 72 : 58) : 20) : 0), getMeasuredHeight() - 1, paint);
+            final int dividerLeft = dp(imageView.getVisibility() == VISIBLE ? (inDialogs ? 72 : offsetFromImage) : leftPadding);
+            canvas.drawLine(LocaleController.isRTL ? 0 : dividerLeft, getMeasuredHeight() - 1, getMeasuredWidth() - (LocaleController.isRTL ? dividerLeft : 0), getMeasuredHeight() - 1, paint);
         }
     }
 
