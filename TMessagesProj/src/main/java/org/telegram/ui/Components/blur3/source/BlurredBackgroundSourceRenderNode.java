@@ -10,6 +10,7 @@ import android.graphics.Shader;
 import android.os.Build;
 
 import androidx.annotation.RequiresApi;
+import androidx.annotation.NonNull;
 
 import org.telegram.ui.Components.blur3.DownscaleScrollableNoiseSuppressor;
 import org.telegram.ui.Components.blur3.RenderNodeWithHash;
@@ -194,10 +195,14 @@ public class BlurredBackgroundSourceRenderNode implements BlurredBackgroundSourc
         }
     }
 
+    public void registerDrawable(@NonNull BlurredBackgroundDrawableRenderNode drawable) {
+        drawables.add(drawable);
+    }
+
     @Override
     public BlurredBackgroundDrawable createDrawable() {
         BlurredBackgroundDrawableRenderNode d = new BlurredBackgroundDrawableRenderNode(this);
-        drawables.add(d);
+        registerDrawable(d);
         return d;
     }
 }

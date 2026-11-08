@@ -29,6 +29,7 @@ import android.graphics.PorterDuff;
 import android.graphics.PorterDuffColorFilter;
 import android.graphics.Rect;
 import android.graphics.RectF;
+import android.os.Build;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.VectorDrawable;
@@ -72,6 +73,9 @@ import org.telegram.ui.Components.SnowflakesEffect;
 import org.telegram.ui.Components.blur3.BlurredBackgroundDrawableViewFactory;
 import org.telegram.ui.Components.blur3.drawable.BlurredBackgroundDrawable;
 import org.telegram.ui.Components.blur3.drawable.color.BlurredBackgroundColorProvider;
+import org.telegram.ui.Components.blur3.source.BlurredBackgroundSourceCrossfade;
+import org.telegram.ui.Components.blur3.source.BlurredBackgroundSource;
+import org.telegram.ui.Components.blur3.source.BlurredBackgroundSourceRenderNode;
 import org.telegram.ui.MainTabsLayout;
 
 import java.util.ArrayList;
@@ -266,6 +270,7 @@ public class ActionBar extends FrameLayout implements FactorAnimator.Target, The
     private BlurredBackgroundColorProvider glassColorProvider;
     private BlurredBackgroundDrawableViewFactory menuGlassFactory;
     private BlurredBackgroundColorProvider menuGlassColorProvider;
+    private BlurredBackgroundSourceCrossfade menuGlassSource;
     private int menuRise;
     private SimpleActionBarMenuOverlay openMenuOverlay;
     private ActionBarMenuItem openMenuItem;
@@ -277,6 +282,15 @@ public class ActionBar extends FrameLayout implements FactorAnimator.Target, The
     public void setMenuGlass(BlurredBackgroundDrawableViewFactory factory, BlurredBackgroundColorProvider colors) {
         menuGlassFactory = factory;
         menuGlassColorProvider = colors;
+        menuGlassSource = null;
+        final BlurredBackgroundSource from = glassFactory != null ? glassFactory.getSource() : null;
+        final BlurredBackgroundSource to = factory != null ? factory.getSource() : null;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && from != to
+                && from instanceof BlurredBackgroundSourceRenderNode && to instanceof BlurredBackgroundSourceRenderNode) {
+            menuGlassSource = new BlurredBackgroundSourceCrossfade(
+                (BlurredBackgroundSourceRenderNode) from, (BlurredBackgroundSourceRenderNode) to);
+            menuGlassFactory = factory.withSource(menuGlassSource);
+        }
     }
 
     public void setMenuRise(int rise) {
@@ -319,7 +333,7 @@ public class ActionBar extends FrameLayout implements FactorAnimator.Target, The
 
     @Override
     public void setMenuGlassFrostedProgress(float progress) {
-        // The existing glass engine has no source crossfade; the menu uses its frosted source.
+        if (menuGlassSource != null) menuGlassSource.setProgress(progress);
     }
 
     @Override

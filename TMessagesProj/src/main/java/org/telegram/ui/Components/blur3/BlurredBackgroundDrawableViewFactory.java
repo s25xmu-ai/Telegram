@@ -31,6 +31,24 @@ public class BlurredBackgroundDrawableViewFactory {
         setSourceRootView(watcher, parent);
     }
 
+    public BlurredBackgroundSource getSource() {
+        return source;
+    }
+
+    /** Reuse the capture configuration when a glass source is wrapped for an animation. */
+    public BlurredBackgroundDrawableViewFactory withSource(BlurredBackgroundSource source) {
+        final BlurredBackgroundDrawableViewFactory copy = new BlurredBackgroundDrawableViewFactory(source);
+        copy.outsetX = outsetX;
+        copy.outsetY = outsetY;
+        copy.viewPositionWatcher = viewPositionWatcher;
+        copy.parent = parent;
+        copy.engine = engine;
+        copy.linkedViews = linkedViews;
+        copy.linkedDrawables = linkedDrawables;
+        copy.isLiquidGlassEffectAllowed = isLiquidGlassEffectAllowed;
+        return copy;
+    }
+
     public void setSourceRootView(ViewPositionWatcher watcher, ViewGroup parent) {
         this.viewPositionWatcher = watcher;
         this.parent = parent;
