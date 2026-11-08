@@ -38,6 +38,7 @@ public class GraySectionCell extends FrameLayout implements Theme.Colorable {
     private FrameLayout.LayoutParams rightTextViewLayoutParams;
     private final Theme.ResourcesProvider resourcesProvider;
     private int layerHeight = 32;
+    private int textColorKey = Theme.key_graySectionText;
 
     public GraySectionCell(Context context) {
         this(context, null);
@@ -56,7 +57,7 @@ public class GraySectionCell extends FrameLayout implements Theme.Colorable {
         textView = new AnimatedEmojiSpan.TextViewEmojis(getContext());
         textView.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 14);
         textView.setTypeface(AndroidUtilities.bold());
-        textView.setTextColor(getThemedColor(Theme.key_graySectionText));
+        textView.setTextColor(getThemedColor(textColorKey));
         textView.setGravity((LocaleController.isRTL ? Gravity.RIGHT : Gravity.LEFT) | Gravity.CENTER_VERTICAL);
         addView(textView, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.MATCH_PARENT, (LocaleController.isRTL ? Gravity.RIGHT : Gravity.LEFT) | Gravity.TOP, padding, 0, padding, 0));
 
@@ -68,8 +69,9 @@ public class GraySectionCell extends FrameLayout implements Theme.Colorable {
         };
         rightTextView.setPadding(dp(2), 0, dp(2), 0);
         rightTextView.setAnimationProperties(.9f, 0, 420, CubicBezierInterpolator.EASE_OUT_QUINT);
+        rightTextView.setTypeface(AndroidUtilities.getVazirmatnTypeface());
         rightTextView.setTextSize(dp(14));
-        rightTextView.setTextColor(getThemedColor(Theme.key_graySectionText));
+        rightTextView.setTextColor(getThemedColor(textColorKey));
         rightTextView.setGravity(LocaleController.isRTL ? Gravity.LEFT : Gravity.RIGHT);
         addView(rightTextView, rightTextViewLayoutParams = LayoutHelper.createFrame(LayoutHelper.WRAP_CONTENT, LayoutHelper.MATCH_PARENT, (LocaleController.isRTL ? Gravity.LEFT : Gravity.RIGHT) | Gravity.TOP, padding, 0, padding, 0));
 
@@ -84,8 +86,8 @@ public class GraySectionCell extends FrameLayout implements Theme.Colorable {
 
     public void updateColors() {
         setBackgroundColor(noBackground ? 0 : getThemedColor(Theme.key_graySection));
-        textView.setTextColor(getThemedColor(Theme.key_graySectionText));
-        rightTextView.setTextColor(getThemedColor(Theme.key_graySectionText));
+        textView.setTextColor(getThemedColor(textColorKey));
+        rightTextView.setTextColor(getThemedColor(textColorKey));
     }
 
     @Override
@@ -101,9 +103,9 @@ public class GraySectionCell extends FrameLayout implements Theme.Colorable {
     }
 
     public void setTextColor(int key) {
-        int color = getThemedColor(key);
-        textView.setTextColor(color);
-        rightTextView.setTextColor(color);
+        textColorKey = key;
+        textView.setTextColor(getThemedColor(key));
+        rightTextView.setTextColor(getThemedColor(key));
     }
 
     public CharSequence getText() {
