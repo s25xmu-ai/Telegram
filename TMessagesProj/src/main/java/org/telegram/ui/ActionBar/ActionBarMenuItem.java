@@ -37,6 +37,7 @@ import android.transition.Visibility;
 import android.util.TypedValue;
 import android.view.ActionMode;
 import android.view.Gravity;
+import android.view.HapticFeedbackConstants;
 import android.view.KeyEvent;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -352,26 +353,32 @@ public class ActionBarMenuItem extends FrameLayout {
 
     @Override
     public boolean onTouchEvent(MotionEvent event) {
+        final SimpleActionBarMenuOverlay overlay = getShownSubMenuOverlay();
+        final boolean overlayShown = overlay != null && overlay.isOpened();
+        final boolean overlayMenu = getSubMenuOverlayHost() != null;
         final boolean popupShown = popupWindow != null && popupWindow.isShowing();
         if (event.getActionMasked() == MotionEvent.ACTION_DOWN) {
             subMenuOpenedByGesture = false;
-            if (longClickEnabled && hasSubMenu() && !popupShown) {
+            if ((longClickEnabled || overlayMenu) && hasSubMenu() && !popupShown && !overlayShown) {
                 cancelShowMenuByLongPress();
                 showMenuRunnable = () -> {
                     showMenuRunnable = null;
                     if (getParent() != null) {
                         getParent().requestDisallowInterceptTouchEvent(true);
                     }
+                    if (overlayMenu) {
+                        performHapticFeedback(HapticFeedbackConstants.LONG_PRESS);
+                    }
                     toggleSubMenu();
                     subMenuOpenedByGesture = true;
                 };
-                AndroidUtilities.runOnUIThread(showMenuRunnable, 200);
+                AndroidUtilities.runOnUIThread(showMenuRunnable, overlayMenu ? ViewConfiguration.getLongPressTimeout() : 200);
             }
         } else if (event.getActionMasked() == MotionEvent.ACTION_MOVE) {
             if (showMenuRunnable != null && !isInside(event, ViewConfiguration.get(getContext()).getScaledTouchSlop())) {
                 cancelShowMenuByLongPress();
             }
-            if (showSubmenuByMove && hasSubMenu() && !popupShown) {
+            if (showSubmenuByMove && !overlayMenu && hasSubMenu() && !popupShown) {
                 if (event.getY() > getHeight()) {
                     if (getParent() != null) {
                         getParent().requestDisallowInterceptTouchEvent(true);
@@ -380,10 +387,10 @@ public class ActionBarMenuItem extends FrameLayout {
                     subMenuOpenedByGesture = true;
                     return true;
                 }
-            } else if ((showSubmenuByMove || subMenuOpenedByGesture) && popupShown) {
+            } else if ((showSubmenuByMove || subMenuOpenedByGesture) && (popupShown || overlayShown)) {
                 selectMenuViewUnder(event);
             }
-        } else if (event.getActionMasked() == MotionEvent.ACTION_UP && popupShown) {
+        } else if (event.getActionMasked() == MotionEvent.ACTION_UP && (popupShown || overlayShown)) {
             cancelShowMenuByLongPress();
             if (selectedMenuView != null) {
                 View selected = selectedMenuView;
@@ -399,9 +406,10 @@ public class ActionBarMenuItem extends FrameLayout {
                     } else if (delegate != null) {
                         delegate.onItemClick((Integer) tag);
                     }
-                    popupWindow.dismiss(allowCloseAnimation);
+                    if (overlayShown) overlay.close(true);
+                    else if (popupWindow != null) popupWindow.dismiss(allowCloseAnimation);
                 }
-            } else if (showSubmenuByMove) {
+            } else if (showSubmenuByMove && !overlayShown) {
                 popupWindow.dismiss();
             }
             if (subMenuOpenedByGesture) {
@@ -533,12 +541,12 @@ public class ActionBarMenuItem extends FrameLayout {
         popupLayout.addView(view);
         view.setTag(id);
         view.setOnClickListener(view1 -> {
-            if (popupWindow != null && popupWindow.isShowing()) {
+            if (isSubMenuShowing()) {
                 if (processedPopupClick) {
                     return;
                 }
                 processedPopupClick = true;
-                popupWindow.dismiss(allowCloseAnimation);
+                dismissSubMenuOnClick();
             }
             if (parentMenu != null) {
                 parentMenu.onItemClick((Integer) view1.getTag());
@@ -576,15 +584,15 @@ public class ActionBarMenuItem extends FrameLayout {
         textView.setLayoutParams(layoutParams);
 
         textView.setOnClickListener(view -> {
-            if (popupWindow != null && popupWindow.isShowing()) {
+            if (isSubMenuShowing()) {
                 if (processedPopupClick) {
                     return;
                 }
                 processedPopupClick = true;
-                if (!allowCloseAnimation) {
+                if (!allowCloseAnimation && popupWindow != null) {
                     popupWindow.setAnimationStyle(R.style.PopupAnimation);
                 }
-                popupWindow.dismiss(allowCloseAnimation);
+                dismissSubMenuOnClick();
             }
             if (parentMenu != null) {
                 parentMenu.onItemClick((Integer) view.getTag());
@@ -661,13 +669,13 @@ public class ActionBarMenuItem extends FrameLayout {
         layoutParams.height = AndroidUtilities.dp(48);
         cell.setLayoutParams(layoutParams);
         cell.setOnClickListener(view -> {
-            if (popupWindow != null && popupWindow.isShowing()) {
+            if (isSubMenuShowing()) {
                 if (dismiss) {
                     if (processedPopupClick) {
                         return;
                     }
                     processedPopupClick = true;
-                    popupWindow.dismiss(allowCloseAnimation);
+                    dismissSubMenuOnClick();
                 }
             }
             if (parentMenu != null) {
@@ -827,7 +835,83 @@ public class ActionBarMenuItem extends FrameLayout {
         }
     }
 
+    /* Sub menu in the overlay of the screen, growing out of the glass of the header */
+
+    @Nullable
+    private Utilities.Callback0Return<SimpleActionBarMenuOverlay> subMenuOverlayProvider;
+
+    /**
+     * Brings the sub items up to date, as before the menu is shown: for a copy of them in a menu of another button
+     * (the topics sidebar's).
+     */
+    public void prepareSubMenu() {
+        layoutLazyItems();
+        if (subMenuDelegate != null) {
+            subMenuDelegate.onShowSubMenu();
+        }
+    }
+
+    /**
+     * The sub menu opens in the overlay of the screen and grows out of the glass of the header, as the menus of the
+     * simple headers, instead of a popup window (a sub menu with a view on top of it stays a popup window).
+     */
+    public void setSubMenuOverlayProvider(@Nullable Utilities.Callback0Return<SimpleActionBarMenuOverlay> provider) {
+        subMenuOverlayProvider = provider;
+    }
+
+    @Nullable
+    SimpleActionBarMenuOverlay getSubMenuOverlay() {
+        return subMenuOverlayProvider != null ? subMenuOverlayProvider.run() : null;
+    }
+
+    @Nullable
+    MenuOverlayHost getSubMenuOverlayHost() {
+        return subMenuOverlayProvider != null && parentMenu != null ? parentMenu.parentActionBar : null;
+    }
+
+    boolean canOpenSubMenuOverlay() {
+        return !(parentMenu != null && parentMenu.isActionMode && parentMenu.parentActionBar != null && !parentMenu.parentActionBar.isActionModeShowed());
+    }
+
+    /** Opens or closes the sub menu in the overlay; false when it has none, then the popup window is used. */
+    private boolean toggleSubMenuInOverlay() {
+        final MenuOverlayHost host = getSubMenuOverlayHost();
+        final SimpleActionBarMenuOverlay overlay = host != null ? getSubMenuOverlay() : null;
+        if (overlay == null || popupWindow != null && popupWindow.isShowing()) {
+            return false;
+        }
+        layoutLazyItems();
+        if (!hasSubMenu() || !canOpenSubMenuOverlay()) {
+            return true;
+        }
+        if (overlay.isShown(this) && overlay.isOpened()) {
+            overlay.close(true);
+            return true;
+        }
+        processedPopupClick = false;
+        if (subMenuDelegate != null) {
+            subMenuDelegate.onShowSubMenu();
+        }
+        overlay.open(host, this, getPopupLayout());
+        return true;
+    }
+
+    @Nullable
+    private SimpleActionBarMenuOverlay getShownSubMenuOverlay() {
+        final MenuOverlayHost host = getSubMenuOverlayHost();
+        final SimpleActionBarMenuOverlay overlay = host != null ? host.getOpenMenuOverlay() : null;
+        return overlay != null && overlay.isShown(this) ? overlay : null;
+    }
+
+    void onOverlayMenuClosed() {
+        onDismiss();
+        if (subMenuDelegate != null) {
+            subMenuDelegate.onHideSubMenu();
+        }
+    }
+
     public void toggleSubMenu(View topView, View fromView) {
+        if (topView == null && toggleSubMenuInOverlay()) return;
         if (popupWindow == null || !popupWindow.isShowing()) {
             layoutLazyItems();
         }
@@ -1280,10 +1364,19 @@ public class ActionBarMenuItem extends FrameLayout {
     }
 
     public boolean isSubMenuShowing() {
-        return popupWindow != null && popupWindow.isShowing();
+        final SimpleActionBarMenuOverlay overlay = getShownSubMenuOverlay();
+        return overlay != null ? overlay.isOpened() : popupWindow != null && popupWindow.isShowing();
+    }
+
+    protected void dismissSubMenuOnClick() {
+        final SimpleActionBarMenuOverlay overlay = getShownSubMenuOverlay();
+        if (overlay != null) overlay.close(true);
+        else if (popupWindow != null) popupWindow.dismiss(allowCloseAnimation);
     }
 
     public void closeSubMenu() {
+        final SimpleActionBarMenuOverlay overlay = getShownSubMenuOverlay();
+        if (overlay != null) { overlay.close(true); return; }
         if (popupWindow != null && popupWindow.isShowing()) {
             popupWindow.dismiss();
         }
@@ -2568,13 +2661,13 @@ public class ActionBarMenuItem extends FrameLayout {
                 layoutParams.height = AndroidUtilities.dp(48);
                 cell.setLayoutParams(layoutParams);
                 cell.setOnClickListener(view -> {
-                    if (parent.popupWindow != null && parent.popupWindow.isShowing()) {
+                    if (parent.isSubMenuShowing()) {
                         if (dismiss) {
                             if (parent.processedPopupClick) {
                                 return;
                             }
                             parent.processedPopupClick = true;
-                            parent.popupWindow.dismiss(parent.allowCloseAnimation);
+                            parent.dismissSubMenuOnClick();
                         }
                     }
                     if (parent.parentMenu != null) {

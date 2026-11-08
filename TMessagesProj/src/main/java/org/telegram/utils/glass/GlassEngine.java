@@ -199,6 +199,7 @@ public class GlassEngine {
     /* * */
 
     private final RectF tmpPositionRect = new RectF();
+    private final android.graphics.Rect tmpReservedRect = new android.graphics.Rect();
 
     private int lastRootWidth, lastRootHeight;
 
@@ -246,6 +247,13 @@ public class GlassEngine {
             }
 
             tmpPositionRect.set(state.drawableBoundsRelativeRoot);
+            if (state.drawable.getReservedBounds(tmpReservedRect)) {
+                tmpPositionRect.union(
+                    tmpReservedRect.left + state.viewPositionRelativeRoot.left,
+                    tmpReservedRect.top + state.viewPositionRelativeRoot.top,
+                    tmpReservedRect.right + state.viewPositionRelativeRoot.left,
+                    tmpReservedRect.bottom + state.viewPositionRelativeRoot.top);
+            }
             tmpPositionRect.inset(-state.drawable.getOutsetX(), -state.drawable.getOutsetY());
             if (!state.drawableBoundsRelativeRootWithOutset.equals(tmpPositionRect)) {
                 state.drawableBoundsRelativeRootWithOutset.set(tmpPositionRect);

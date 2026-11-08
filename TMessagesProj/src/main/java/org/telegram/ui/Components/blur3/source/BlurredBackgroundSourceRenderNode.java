@@ -3,6 +3,7 @@ package org.telegram.ui.Components.blur3.source;
 import android.graphics.Canvas;
 import android.graphics.RecordingCanvas;
 import android.graphics.RectF;
+import android.graphics.Rect;
 import android.graphics.RenderEffect;
 import android.graphics.RenderNode;
 import android.graphics.Shader;
@@ -147,6 +148,7 @@ public class BlurredBackgroundSourceRenderNode implements BlurredBackgroundSourc
 
     public int getVisiblePositions(List<RectF> positions, int index, int expand) {
         int count = 0;
+        final Rect reserved = new Rect();
 
         for (BlurredBackgroundDrawableRenderNode d : drawables) {
             if (d.hasDisplayList() && d.getAlpha() > 0 && !d.getPaddedBounds().isEmpty()) {
@@ -158,6 +160,10 @@ public class BlurredBackgroundSourceRenderNode implements BlurredBackgroundSourc
                     positions.add(rectf);
                 }
                 d.getPositionRelativeSource(rectf);
+                if (d.getReservedBounds(reserved)) {
+                    rectf.union(reserved.left + d.getSourceOffsetX(), reserved.top + d.getSourceOffsetY(),
+                        reserved.right + d.getSourceOffsetX(), reserved.bottom + d.getSourceOffsetY());
+                }
                 rectf.inset(-expand, -expand);
 
                 index++;

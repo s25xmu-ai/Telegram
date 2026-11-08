@@ -28,6 +28,7 @@ import android.graphics.Paint;
 import android.graphics.PorterDuff;
 import android.graphics.PorterDuffColorFilter;
 import android.graphics.Rect;
+import android.graphics.RectF;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.VectorDrawable;
@@ -79,7 +80,7 @@ import me.vkryl.android.animator.BoolAnimator;
 import me.vkryl.android.animator.FactorAnimator;
 import me.vkryl.android.animator.ReplaceAnimator;
 
-public class ActionBar extends FrameLayout implements FactorAnimator.Target, Theme.Colorable {
+public class ActionBar extends FrameLayout implements FactorAnimator.Target, Theme.Colorable, MenuOverlayHost {
 
     public static class ActionBarMenuOnItemClick {
         public void onItemClick(int id) {
@@ -223,6 +224,8 @@ public class ActionBar extends FrameLayout implements FactorAnimator.Target, The
         setClipChildren(false);
         glassMode = true;
         glassModeIsForum = isForum;
+        glassFactory = factory;
+        glassColorProvider = colorProvider;
 
         glassDrawable = factory.create(this)
             .setColorProvider(colorProvider)
@@ -254,6 +257,123 @@ public class ActionBar extends FrameLayout implements FactorAnimator.Target, The
         }
         if (backButtonImageView != null) {
             backButtonImageView.setTranslationX(dp(2));
+        }
+    }
+
+    /* Menus in the overlay of the screen (see ActionBarMenuItem#setSubMenuOverlayProvider) */
+
+    private BlurredBackgroundDrawableViewFactory glassFactory;
+    private BlurredBackgroundColorProvider glassColorProvider;
+    private BlurredBackgroundDrawableViewFactory menuGlassFactory;
+    private BlurredBackgroundColorProvider menuGlassColorProvider;
+    private int menuRise;
+    private SimpleActionBarMenuOverlay openMenuOverlay;
+    private ActionBarMenuItem openMenuItem;
+    private final RectF menuItemRect = new RectF();
+
+    /**
+     * Choose the menu's frosted glass source and colors; without a factory it uses the button glass.
+     */
+    public void setMenuGlass(BlurredBackgroundDrawableViewFactory factory, BlurredBackgroundColorProvider colors) {
+        menuGlassFactory = factory;
+        menuGlassColorProvider = colors;
+    }
+
+    public void setMenuRise(int rise) {
+        menuRise = rise;
+    }
+
+    @Override
+    public int getMenuRise() {
+        return menuRise;
+    }
+
+    @Override
+    public BlurredBackgroundDrawable createMenuGlass(View owner) {
+        final BlurredBackgroundDrawableViewFactory factory = menuGlassFactory != null ? menuGlassFactory : glassFactory;
+        if (factory == null) {
+            return null;
+        }
+        return factory.create(owner).setColorProvider(glassColorProvider).setRadius(dp(23)).setPadding(dp(6));
+    }
+
+    @Override
+    public BlurredBackgroundColorProvider getMenuGlassColorProvider() {
+        return menuGlassColorProvider != null ? menuGlassColorProvider : glassColorProvider;
+    }
+
+    @Override
+    public int getButtonsGlassBackgroundColor() {
+        return glassColorProvider != null ? glassColorProvider.getBackgroundColor() : 0;
+    }
+
+    @Override
+    public BlurredBackgroundColorProvider getButtonsGlassColorProvider() {
+        return glassColorProvider;
+    }
+
+    @Override
+    public boolean hasMenuGlassStroke() {
+        return true;
+    }
+
+    @Override
+    public void setMenuGlassFrostedProgress(float progress) {
+        // The existing glass engine has no source crossfade; the menu uses its frosted source.
+    }
+
+    @Override
+    public boolean getMenuItemGlassRect(ActionBarMenuItem item, RectF out) {
+        final int p = dp(6);
+        if (item.getParent() == menu && glassDrawableMenu != null && !doNotDrawGlassMenu && !glassOnlyBack
+                && searchFactor == 0 && getActionModeFactor() == 0 && !glassDrawableMenu.getBounds().isEmpty()) {
+            out.set(glassDrawableMenu.getBounds());
+            out.inset(p, p);
+            return true;
+        }
+        final int s = dp(46);
+        final float half = s / 2f;
+        final View itemMenu = (View) item.getParent();
+        final float cx = (itemMenu != null ? itemMenu.getX() : 0) + item.getX() + item.getWidth() / 2f;
+        final float cy = getHeight() - extraHeight - (getCurrentActionBarHeight() + s) / 2f + half;
+        out.set(cx - half, cy - half, cx + half, cy + half);
+        return false;
+    }
+
+    @Override
+    public View getMenuView() {
+        return menu;
+    }
+
+    @Override
+    public void setMenuOverlay(SimpleActionBarMenuOverlay overlay, ActionBarMenuItem item) {
+        openMenuOverlay = overlay;
+        openMenuItem = item;
+        invalidate();
+    }
+
+    @Override
+    public SimpleActionBarMenuOverlay getOpenMenuOverlay() {
+        return openMenuOverlay;
+    }
+
+    @Override
+    public Theme.ResourcesProvider getMenuResourcesProvider() {
+        return resourcesProvider;
+    }
+
+    /** A menu growing out of the pill of the buttons takes over its glass and its buttons. */
+    private boolean isMenuPillInOverlay() {
+        return openMenuItem != null && openMenuItem.getParent() == menu && getMenuItemGlassRect(openMenuItem, menuItemRect);
+    }
+
+    public boolean isMenuOverlayOpened() {
+        return openMenuOverlay != null && openMenuOverlay.isOpened();
+    }
+
+    public void closeMenuOverlay(boolean animated) {
+        if (openMenuOverlay != null) {
+            openMenuOverlay.close(animated);
         }
     }
 
@@ -397,6 +517,10 @@ public class ActionBar extends FrameLayout implements FactorAnimator.Target, The
             return false;
         }
         if (drawBackButton && child == backButtonImageView) {
+            return true;
+        }
+
+        if (child == menu && openMenuItem != null && isMenuPillInOverlay()) {
             return true;
         }
 
@@ -2307,7 +2431,9 @@ public class ActionBar extends FrameLayout implements FactorAnimator.Target, The
         if (glassDrawableMenu != null && menuWidth > 0 && !glassOnlyBack && !doNotDrawGlassMenu) {
             glassDrawableMenu.setBounds(getWidth() - Math.max(s, menuWidth) - p * 2, t, getWidth(), b);
             glassDrawableMenu.setAlpha(hasForcedMenuWidth ? 255 : (int) (255 * animatorHasMenuItems.getFloatValue()));
-            glassDrawableMenu.draw(canvas);
+            if (!isMenuPillInOverlay()) {
+                glassDrawableMenu.draw(canvas);
+            }
         }
 
         if (blurredBackground && actionBarColor != Color.TRANSPARENT) {

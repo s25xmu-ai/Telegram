@@ -4656,6 +4656,11 @@ public class ChatActivity extends BaseFragment implements
                 glassBackgroundDrawableFactory,
                 BlurredBackgroundProviderImpl.topPanelChatActivity(themeDelegate),
                 ChatObject.isForum(currentChat));
+            if (headerItem != null && !inPreviewMode && !isInsideContainer && parentChatActivity == null) {
+                actionBar.setMenuGlass(glassBackgroundDrawableFactoryFrosted, BlurredBackgroundProviderImpl.messageMenuBackground(resourceProvider));
+                actionBar.setMenuRise(dp(8));
+                headerItem.setSubMenuOverlayProvider(this::getSimpleMenuOverlay);
+            }
         }
 
         if (chatMode == MODE_PINNED) {
@@ -18546,7 +18551,7 @@ public class ChatActivity extends BaseFragment implements
         }
 
         private boolean isFullSizeIgnoreInsetsChild(View child) {
-            return child != null && (child == backgroundView
+            return child != null && (child instanceof org.telegram.ui.ActionBar.SimpleActionBarMenuOverlay || child == backgroundView
                 || child == blurredView || child == searchViewPager
                 || child == fireworksOverlay || child == chatActivityFadeView
                 || child == messagesSearchListContainer
@@ -35006,6 +35011,7 @@ public class ChatActivity extends BaseFragment implements
 
     @Override
     public boolean onBackPressed(boolean invoked) {
+        if (closeSimpleMenuOverlayOnBack(invoked)) return false;
         final Bulletin bulletin = Bulletin.getVisibleBulletin();
         if (bulletin != null && bulletin.getLayout() instanceof Bulletin.LottieLayoutWithReactions) {
             if (invoked) {

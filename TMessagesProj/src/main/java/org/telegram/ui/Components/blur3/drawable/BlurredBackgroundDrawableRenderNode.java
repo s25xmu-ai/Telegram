@@ -215,6 +215,11 @@ public class BlurredBackgroundDrawableRenderNode extends BlurredBackgroundDrawab
     }
 
     @Override
+    protected void onReservedBoundsChanged() {
+        source.dispatchOnDrawablesRelativePositionChange();
+    }
+
+    @Override
     protected void onSourceRelativePositionChanged(RectF position) {
         super.onSourceRelativePositionChanged(position);
         source.dispatchOnDrawablesRelativePositionChange();

@@ -53,6 +53,30 @@ public abstract class BlurredBackgroundDrawable extends Drawable {
         shadowLayerDy = dpf2(1 / 3f);
     }
 
+    // Capture the full path of an expanding glass menu during its animation.
+    private final Rect reservedBounds = new Rect();
+
+    public final void setReservedBounds(int left, int top, int right, int bottom) {
+        if (reservedBounds.left != left || reservedBounds.top != top || reservedBounds.right != right || reservedBounds.bottom != bottom) {
+            reservedBounds.set(left, top, right, bottom);
+            onReservedBoundsChanged();
+        }
+    }
+
+    public final void clearReservedBounds() {
+        if (!reservedBounds.isEmpty()) {
+            reservedBounds.setEmpty();
+            onReservedBoundsChanged();
+        }
+    }
+
+    protected void onReservedBoundsChanged() {}
+
+    public final boolean getReservedBounds(@NonNull Rect out) {
+        out.set(reservedBounds);
+        return !reservedBounds.isEmpty();
+    }
+
     protected float sourceOffsetX;
     protected float sourceOffsetY;
 

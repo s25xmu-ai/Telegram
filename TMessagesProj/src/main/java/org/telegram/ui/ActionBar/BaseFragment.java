@@ -554,6 +554,7 @@ public abstract class BaseFragment {
 
     @CallSuper
     public void onPause() {
+        if (simpleMenuOverlay != null) simpleMenuOverlay.close(false);
         if (actionBar != null) {
             actionBar.onPause();
         }
@@ -599,7 +600,33 @@ public abstract class BaseFragment {
 
     }
 
+    private SimpleActionBarMenuOverlay simpleMenuOverlay;
+
+    @Nullable
+    public SimpleActionBarMenuOverlay getSimpleMenuOverlay() {
+        if (!(fragmentView instanceof FrameLayout)) return null;
+        ViewGroup root = (ViewGroup) fragmentView;
+        if (simpleMenuOverlay == null || simpleMenuOverlay.getParent() != root) {
+            if (simpleMenuOverlay != null) {
+                simpleMenuOverlay.close(false);
+                AndroidUtilities.removeFromParent(simpleMenuOverlay);
+            }
+            simpleMenuOverlay = new SimpleActionBarMenuOverlay(root.getContext());
+            root.addView(simpleMenuOverlay, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        }
+        return simpleMenuOverlay;
+    }
+
+    protected boolean closeSimpleMenuOverlayOnBack(boolean invoked) {
+        if (simpleMenuOverlay != null && simpleMenuOverlay.isOpened()) {
+            if (invoked) simpleMenuOverlay.close(true);
+            return true;
+        }
+        return false;
+    }
+
     public boolean onBackPressed(boolean invoked) {
+        if (closeSimpleMenuOverlayOnBack(invoked)) return false;
         if (hasShownSheet()) {
             if (invoked) closeSheet();
             return false;
