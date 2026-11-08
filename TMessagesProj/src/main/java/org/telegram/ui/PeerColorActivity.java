@@ -1187,60 +1187,6 @@ public class PeerColorActivity extends BaseFragment implements NotificationCente
                 clearRow = rowCount++;
                 shadowRow = rowCount++;
             }
-            final StarsController.GiftsList giftsList = type == PAGE_NAME ? giftsWithPeerColor : gifts;
-            if ((type == PAGE_PROFILE || type == PAGE_NAME) && giftsList != null) {
-                giftsTabsRow = rowCount++;
-                if (selectedTabGift == null) {
-                    for (int i = 0; i < giftsList.gifts.size(); ++i) {
-                        TL_stars.SavedStarGift savedGift = giftsList.gifts.get(i);
-                        if (savedGift.gift instanceof TL_stars.TL_starGiftUnique) {
-                            uniqueGifts.add((TL_stars.TL_starGiftUnique) savedGift.gift);
-                        }
-                    }
-                    giftsStartRow = rowCount;
-                    rowCount += uniqueGifts.size();
-                    giftsCount += uniqueGifts.size();
-                    giftsEndRow = rowCount;
-                    if (gifts.loading || !gifts.endReached) {
-                        giftsLoadingStartRow = rowCount;
-                        final int spanCountLeft = 3 - (giftsCount % 3);
-                        final int loadingCells = giftsCount <= 0 ? 9 : spanCountLeft <= 0 ? 3 : spanCountLeft;
-                        rowCount += loadingCells;
-                        giftsCount += loadingCells;
-                        giftsLoadingEndRow = rowCount;
-                    } else if (uniqueGifts.isEmpty()) {
-                        giftsEmptyRowGap = rowCount++;
-                        giftsEmptyRow = rowCount++;
-                    }
-                    if (giftsList != null && seesLoading()) {
-                        giftsList.load();
-                    }
-                } else if (selectedTabGift != null && resaleGifts != null) {
-                    final long selfId = UserConfig.getInstance(currentAccount).getClientUserId();
-                    for (int i = 0; i < resaleGifts.gifts.size(); ++i) {
-                        TL_stars.TL_starGiftUnique g = resaleGifts.gifts.get(i);
-                        if (DialogObject.getPeerDialogId(g.owner_id) != selfId && DialogObject.getPeerDialogId(g.host_id) != selfId) {
-                            uniqueGifts.add(g);
-                        }
-                    }
-                    giftsStartRow = rowCount;
-                    rowCount += uniqueGifts.size();
-                    giftsCount += uniqueGifts.size();
-                    giftsEndRow = rowCount;
-                    if (resaleGifts.loading || !resaleGifts.endReached) {
-                        giftsLoadingStartRow = rowCount;
-                        final int spanCountLeft = 3 - (giftsCount % 3);
-                        final int loadingCells = giftsCount <= 0 ? 9 : spanCountLeft <= 0 ? 3 : spanCountLeft;
-                        rowCount += loadingCells;
-                        giftsCount += loadingCells;
-                        giftsLoadingEndRow = rowCount;
-                    }
-                    if (resaleGifts != null && seesLoading()) {
-                        resaleGifts.load();
-                    }
-                }
-                giftsInfoRow = rowCount++;
-            }
             buttonRow = rowCount++;
             if (giftTabsView != null) {
                 giftTabsView.post(this::updateGiftTabsPosition);
@@ -1264,7 +1210,7 @@ public class PeerColorActivity extends BaseFragment implements NotificationCente
                 final AmountUtils.Amount stars = gift.getResellAmount(AmountUtils.Currency.STARS);
                 if (gift.resale_ton_only) {
                     final AmountUtils.Amount ton = gift.getResellAmount(AmountUtils.Currency.TON);
-                    buttonState.text = StarsIntroActivity.replaceStars(true, LocaleController.formatString(R.string.ResellGiftBuyTON, ton.asFormatString()));
+                    buttonState.text = StarsIntroActivity.whiteGram(true, StarsIntroActivity.replaceStars(true, LocaleController.formatString(R.string.ResellGiftBuyTON, ton.asFormatString())));
                     buttonState.subText = StarsIntroActivity.replaceStars(formatPluralStringComma("ResellGiftBuyEq", (int) stars.asDecimal()));
                 } else {
                     buttonState.text = StarsIntroActivity.replaceStars(formatPluralStringComma("ResellGiftBuy", (int) stars.asDecimal()));
@@ -2389,7 +2335,7 @@ public class PeerColorActivity extends BaseFragment implements NotificationCente
                 }
             }
             setContentDescription(button);
-            buttonText = new Text(button, 16);
+            buttonText = new Text(button, 16, AndroidUtilities.getVazirmatnTypeface());
             updateColors();
         }
 

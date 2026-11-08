@@ -62,6 +62,7 @@ import org.telegram.messenger.MessagesController;
 import org.telegram.messenger.NotificationCenter;
 import org.telegram.messenger.R;
 import org.telegram.messenger.SharedConfig;
+import org.telegram.messenger.XGramConfig;
 import org.telegram.messenger.Utilities;
 import org.telegram.messenger.time.SunDate;
 import org.telegram.tgnet.TLRPC;
@@ -159,6 +160,8 @@ public class ThemeActivity extends BaseFragment implements NotificationCenter.No
     private int raiseToListenRow;
     private int nextMediaTapRow;
     private int sendByEnterRow;
+    private int xgramUIHeaderRow, xgramUISectionRow, xgramHomeBarRow, xgramClassicUIRow;
+    private int xgramIOSUIRow;
     private int saveToGalleryOption1Row;
     private int saveToGalleryOption2Row;
     private int saveToGallerySectionRow;
@@ -593,6 +596,11 @@ public class ThemeActivity extends BaseFragment implements NotificationCenter.No
         raiseToListenRow = -1;
         nextMediaTapRow = -1;
         sendByEnterRow = -1;
+        xgramUIHeaderRow = -1;
+        xgramUISectionRow = -1;
+        xgramHomeBarRow = -1;
+        xgramClassicUIRow = -1;
+        xgramIOSUIRow = -1;
         saveToGalleryOption1Row = -1;
         saveToGalleryOption2Row = -1;
         saveToGallerySectionRow = -1;
@@ -671,9 +679,6 @@ public class ThemeActivity extends BaseFragment implements NotificationCenter.No
             bubbleRadiusRow = rowCount++;
             bubbleRadiusInfoRow = rowCount++;
 
-            chatListHeaderRow = rowCount++;
-            chatListRow = rowCount++;
-            chatListInfoRow = rowCount++;
 
             if (!HIDE_APP_ICON_SECTION) {
                 appIconHeaderRow = rowCount++;
@@ -713,6 +718,12 @@ public class ThemeActivity extends BaseFragment implements NotificationCenter.No
             sendByEnterRow = rowCount++;
             distanceRow = rowCount++;
             otherSectionRow = rowCount++;
+
+            xgramUIHeaderRow = rowCount++;
+            xgramHomeBarRow = rowCount++;
+            xgramClassicUIRow = rowCount++;
+            xgramIOSUIRow = rowCount++;
+            xgramUISectionRow = rowCount++;
         } else {
             nightDisabledRow = rowCount++;  // TYPE_THEME_TYPE
             nightScheduledRow = rowCount++; // TYPE_THEME_TYPE
@@ -1134,6 +1145,16 @@ public class ThemeActivity extends BaseFragment implements NotificationCenter.No
                 if (view instanceof TextCheckCell) {
                     ((TextCheckCell) view).setChecked(!send);
                 }
+            } else if (position == xgramClassicUIRow) {
+                presentFragment(new ClassicUISettingsActivity());
+            } else if (position == xgramHomeBarRow) {
+                boolean value = !XGramConfig.isHomeBottomBarVisible();
+                XGramConfig.setHomeBottomBarVisible(value);
+                if (view instanceof TextCheckCell) {
+                    ((TextCheckCell) view).setChecked(value);
+                }
+            } else if (position == xgramIOSUIRow) {
+                presentFragment(new IOSUISettingsActivity());
             } else if (position == raiseToSpeakRow) {
                 SharedConfig.toggleRaiseToSpeak();
                 if (view instanceof TextCheckCell) {
@@ -2525,6 +2546,10 @@ public class ThemeActivity extends BaseFragment implements NotificationCenter.No
                         updateDistance = false;
                     } else if (position == searchEngineRow) {
                         cell.setTextAndValue(getString(R.string.SearchEngine), SearchEngine.getCurrent().name, updateSearchEngine, false);
+                    } else if (position == xgramClassicUIRow) {
+                        cell.setText(getString(R.string.XGramClassicUI), true);
+                    } else if (position == xgramIOSUIRow) {
+                        cell.setText(getString(R.string.XGramIOSUI), false);
                     } else if (position == bluetoothScoRow) {
                         cell.setTextAndValue(getString(R.string.MicrophoneForVoiceMessages), getString(SharedConfig.recordViaSco ? R.string.MicrophoneForVoiceMessagesSco : R.string.MicrophoneForVoiceMessagesBuiltIn), updateRecordViaSco, false);
                         updateRecordViaSco = false;
@@ -2594,6 +2619,8 @@ public class ThemeActivity extends BaseFragment implements NotificationCenter.No
                         headerCell.setText(getString(R.string.AppIcon));
                     } else if (position == otherHeaderRow) {
                         headerCell.setText(getString("OtherSettings", R.string.OtherSettings));
+                    } else if (position == xgramUIHeaderRow) {
+                        headerCell.setText(getString(R.string.XGramUISettings));
                     } else if (position == mediaSoundHeaderRow) {
                         headerCell.setText(getString("MediaAndSoundSettings", R.string.MediaAndSoundSettings));
                     }
@@ -2614,6 +2641,8 @@ public class ThemeActivity extends BaseFragment implements NotificationCenter.No
                     } else if (position == sendByEnterRow) {
                         SharedPreferences preferences = MessagesController.getGlobalMainSettings();
                         textCheckCell.setTextAndCheck(getString("SendByEnter", R.string.SendByEnter), preferences.getBoolean("send_by_enter", false), true);
+                    } else if (position == xgramHomeBarRow) {
+                        textCheckCell.setTextAndValueAndCheck(getString(R.string.XGramHomeBottomBar), getString(R.string.XGramHomeBottomBarInfo), XGramConfig.isHomeBottomBarVisible(), true, true);
                     } else if (position == raiseToSpeakRow) {
                         textCheckCell.setTextAndValueAndCheck(getString("RaiseToSpeak", R.string.RaiseToSpeak), getString("RaiseToSpeakInfo", R.string.RaiseToSpeakInfo), SharedConfig.raiseToSpeak, true, true);
                     } else if (position == raiseToListenRow) {
@@ -2739,7 +2768,7 @@ public class ThemeActivity extends BaseFragment implements NotificationCenter.No
 
         @Override
         public int getItemViewType(int position) {
-            if (position == scheduleFromRow || position == distanceRow ||
+            if (position == xgramClassicUIRow || position == xgramIOSUIRow || position == scheduleFromRow || position == distanceRow ||
                     position == scheduleToRow || position == scheduleUpdateLocationRow ||
                     position == contactsReimportRow || position == contactsSortRow ||
                     position == bluetoothScoRow || position == searchEngineRow) {
@@ -2749,7 +2778,7 @@ public class ThemeActivity extends BaseFragment implements NotificationCenter.No
             } else if (position == themeInfoRow || position == nightTypeInfoRow || position == scheduleFromToInfoRow ||
                     position == settings2Row || position == newThemeInfoRow || position == chatListInfoRow || position == bubbleRadiusInfoRow ||
                     position == saveToGallerySectionRow || position == appIconShadowRow || position == lastShadowRow || position == stickersSectionRow ||
-                    position == mediaSoundSectionRow || position == otherSectionRow) {
+                    position == mediaSoundSectionRow || position == otherSectionRow || position == xgramUISectionRow) {
                 return TYPE_SHADOW;
             } else if (position == nightDisabledRow || position == nightScheduledRow || position == nightAutomaticRow || position == nightSystemDefaultRow) {
                 return TYPE_THEME_TYPE;
@@ -2757,11 +2786,11 @@ public class ThemeActivity extends BaseFragment implements NotificationCenter.No
                     position == settingsRow || position == themeHeaderRow || position == textSizeHeaderRow ||
                     position == chatListHeaderRow || position == bubbleRadiusHeaderRow || position == swipeGestureHeaderRow ||
                     position == selectThemeHeaderRow || position == appIconHeaderRow || position == mediaSoundHeaderRow ||
-                    position == otherHeaderRow) {
+                    position == otherHeaderRow || position == xgramUIHeaderRow) {
                 return TYPE_HEADER;
             } else if (position == automaticBrightnessRow) {
                 return TYPE_BRIGHTNESS;
-            } else if (position == scheduleLocationRow || position == sendByEnterRow ||
+            } else if (position == scheduleLocationRow || position == sendByEnterRow || position == xgramHomeBarRow ||
                     position == raiseToSpeakRow || position == raiseToListenRow || position == pauseOnRecordRow ||
                     position == directShareRow || position == chatBlurRow || position == pauseOnMediaRow || position == nextMediaTapRow || position == sensitiveContentRow) {
                 return TYPE_TEXT_CHECK;

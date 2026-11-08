@@ -59,6 +59,7 @@ public class ProfileActionsView extends View {
     private final List<Action> actions = new ArrayList<>();
     private final Paint paint = new Paint();
     private final Paint shaderPaint = new Paint();
+    private final Paint photoDimPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private float parentExpanded;
 
     public boolean isAnimatingCallAction = false;
@@ -193,6 +194,8 @@ public class ProfileActionsView extends View {
     private void createColorShader() {
         if (color == 0) return;
         if (!hasColorById) {
+            radialGradient = null;
+            shaderPaint.setShader(null);
             paint.setColor(color);
 //            paint.setAlpha(40);
             return;
@@ -216,10 +219,14 @@ public class ProfileActionsView extends View {
 
     @Override
     protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
+        final int oldWidth = getMeasuredWidth();
         setMeasuredDimension(
                 MeasureSpec.getSize(widthMeasureSpec),
                 MeasureSpec.makeMeasureSpec((int) (targetHeight + top + ypadding), MeasureSpec.EXACTLY)
         );
+        if (oldWidth != getMeasuredWidth() && hasColorById) {
+            createColorShader();
+        }
     }
 
     public void updatePosition(float y, float newHeight) {
@@ -289,6 +296,12 @@ public class ProfileActionsView extends View {
         firstAction = newFirstAction;
         lastAction = newLastAction;
 
+        // Match the upstream photo fallback when the captured blur is unavailable.
+        // The transparent dark layer lets the actual photo underneath show through.
+        final boolean hasPhotoRenderNode = renderNode != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q
+                && renderNode.hasDisplayList() && canvas.isHardwareAccelerated();
+        final float fallbackPhotoProgress = hasPhotoRenderNode ? 0f : Utilities.clamp01(parentExpanded);
+
         float fraction = Utilities.clamp01(height / targetHeight);
         float alphaFraction1 = Utilities.clamp01((fraction - 0.2f) / 0.8f);
         if (alphaFraction1 <= 0f) {
@@ -304,8 +317,14 @@ public class ProfileActionsView extends View {
                         action.rect.width() / 2.0f * (1.0f - action.getScale()),
                         action.rect.height() / 2.0f * (1.0f - action.getScale())
                     );
+                    final float actionAlpha = action.getAlpha() * alphaFraction1;
+                    if (fallbackPhotoProgress > 0f) {
+                        photoDimPaint.setColor(Color.BLACK);
+                        photoDimPaint.setAlpha((int) (255 * 0.5f * fallbackPhotoProgress * actionAlpha));
+                        canvas.drawRoundRect(AndroidUtilities.rectTmp, r, r, photoDimPaint);
+                    }
                     int wasAlpha = paint.getAlpha();
-                    int newAlpha = (int) (action.getAlpha() * alphaFraction1 * wasAlpha);
+                    int newAlpha = (int) (actionAlpha * (1f - fallbackPhotoProgress) * wasAlpha);
                     paint.setAlpha((int) (newAlpha * (radialGradient != null ? 0.1f : 1f)));
 
                     if (SharedConfig.shadowsInSections && isButtonColorLight() && parentExpanded < 0.5f) {
@@ -317,7 +336,7 @@ public class ProfileActionsView extends View {
                     canvas.drawRoundRect(AndroidUtilities.rectTmp, r, r, paint);
                     if (radialGradient != null) {
                         int wasAlpha2 = shaderPaint.getAlpha();
-                        shaderPaint.setAlpha((int) (action.getAlpha() * alphaFraction1 * wasAlpha2));
+                        shaderPaint.setAlpha((int) (actionAlpha * (1f - fallbackPhotoProgress) * wasAlpha2));
                         matrix.setTranslate(AndroidUtilities.rectTmp.left, AndroidUtilities.rectTmp.top);
                         radialGradient.setLocalMatrix(matrix);
                         canvas.drawRoundRect(AndroidUtilities.rectTmp, r, r, shaderPaint);
@@ -411,9 +430,6 @@ public class ProfileActionsView extends View {
 
         final boolean isButtonColorLight = isButtonColorLight();
         float useFilledWhiteIcon = !isButtonColorLight ? 1 : MathUtils.clamp((parentExpanded - 0.75f) / 0.25f, 0, 1);
-        if (isButtonColorLight && Build.VERSION.SDK_INT < Build.VERSION_CODES.S) {
-            useFilledWhiteIcon = 0f;
-        }
 
         final int textColor = ColorUtils.blendARGB(Color.BLACK, Color.WHITE, useFilledWhiteIcon);
         if (lastColorFilter == null || lastColorFilterColor != textColor) {
@@ -730,9 +746,10 @@ public class ProfileActionsView extends View {
                     insertIfAvailable(out, KEY_VOICE_CHAT);
                     insertIfNotAvailable(out, KEY_STREAM, KEY_VOICE_CHAT);
                 }
+                insertIfAvailable(out, KEY_DISCUSS);
                 insertIfAvailable(out, KEY_NOTIFICATION);
                 if (!join) {
-                    insertIfAvailable(out, KEY_DISCUSS);
+//                    insertIfAvailable(out, KEY_DISCUSS);
                     insertIfNotAvailable2(out, KEY_GIFT, KEY_DISCUSS, KEY_STORY);
                 }
                 insertIfNotAvailable(out, KEY_SHARE, KEY_STORY);
@@ -744,6 +761,7 @@ public class ProfileActionsView extends View {
                 }
                 break;
             case MODE_GROUP:
+                insertIfAvailable(out, KEY_OPEN_CHANNEL);
             case MODE_FORUM:
                 if (join) {
                     insertIfAvailable(out, KEY_JOIN);
@@ -893,6 +911,9 @@ public class ProfileActionsView extends View {
             case KEY_NOTIFICATION:
                 newAction = new Action();
                 updateNotification(newAction, false);
+                break;
+            case KEY_OPEN_CHANNEL:
+                newAction = new Action(ActionButton.OPEN_CHANNEL);
                 break;
         }
 
@@ -1088,6 +1109,8 @@ public class ProfileActionsView extends View {
                 to.left = to.right;
             } else if ((key == KEY_GIFT || key == KEY_DISCUSS) && mode == MODE_CHANNEL) {
                 to.left = to.right;
+            } else if (key == KEY_OPEN_CHANNEL && mode == MODE_GROUP) {
+                to.left = to.right;
             } else {
                 to.left = to.right = to.centerX();
             }
@@ -1148,6 +1171,9 @@ public class ProfileActionsView extends View {
                     fromLeft = true;
                     fromRight = false;
                 } else if (fromLeft && lastAction != null && !lastAction.isDeleting) {
+                    fromLeft = false;
+                    fromRight = true;
+                } else if (key == KEY_OPEN_CHANNEL && mode == MODE_GROUP) {
                     fromLeft = false;
                     fromRight = true;
                 }
@@ -1231,7 +1257,9 @@ public class ProfileActionsView extends View {
         SET_PHOTO(R.string.ProfileActionsEditPhoto2, R.drawable.filled_profile_photo, R.drawable.outline_profile_photo),
         EDIT_USERNAME(R.string.ProfileActionsEditUsername, R.drawable.filled_profile_edit_24, R.drawable.outline_profile_edit_24),
         EDIT_INFO(R.string.ProfileActionsEditInfo, R.drawable.filled_profile_edit_24, R.drawable.outline_profile_edit_24),
-        SETTINGS(R.string.Settings, R.drawable.filled_profile_settings, R.drawable.outline_profile_settings),;
+        SETTINGS(R.string.Settings, R.drawable.filled_profile_settings, R.drawable.outline_profile_settings),
+        OPEN_CHANNEL(R.string.ProfileChannel, R.drawable.msg_folders_channels, R.drawable.msg_folders_channels),
+        QR_BUTTON(R.string.QrCode, R.drawable.msg_qrcode, R.drawable.msg_qrcode);
 
         final @StringRes int title;
         final @DrawableRes int filledIcon;
@@ -1353,4 +1381,16 @@ public class ProfileActionsView extends View {
         }
         return accessibilityNodeProvider;
     }
+
+    /** XGram (from Cherrygram) start */
+    public static final int KEY_OPEN_CHANNEL = 1390;
+    public static final int KEY_QR_BUTTON = 1391;
+
+    public void addQRButton() {
+        final Action action = new Action(ActionButton.QR_BUTTON);
+        action.key = KEY_QR_BUTTON;
+        actions.add(action);
+    }
+    /** XGram (from Cherrygram) finish */
+
 }

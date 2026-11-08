@@ -5,6 +5,8 @@ import static org.telegram.messenger.AndroidUtilities.lerp;
 import static org.telegram.messenger.AndroidUtilities.replaceSingleTag;
 import static org.telegram.messenger.LocaleController.formatString;
 import static org.telegram.messenger.LocaleController.getString;
+import static org.telegram.ui.PremiumPreviewFragment.applyNewSpan;
+import static org.telegram.ui.PremiumPreviewFragment.applyNewSpanTimed;
 import static org.telegram.ui.Stars.StarGiftSheet.replaceUnderstood;
 
 import android.animation.Animator;
@@ -29,6 +31,7 @@ import android.graphics.Paint;
 import android.graphics.PixelFormat;
 import android.graphics.PorterDuff;
 import android.graphics.PorterDuffColorFilter;
+import android.graphics.PorterDuffXfermode;
 import android.graphics.Rect;
 import android.graphics.RectF;
 import android.graphics.Shader;
@@ -43,6 +46,7 @@ import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.MotionEvent;
 import android.view.View;
+import android.view.ViewGroup;
 import android.webkit.CookieManager;
 import android.webkit.WebStorage;
 import android.webkit.WebView;
@@ -57,13 +61,13 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.collection.LongSparseArray;
 import androidx.core.graphics.Insets;
+import androidx.core.math.MathUtils;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 import androidx.recyclerview.widget.RecyclerView;
 
-import com.google.common.collect.Lists;
-
 import org.telegram.PhoneFormat.PhoneFormat;
+import org.telegram.messenger.XGramConfig;
 import org.telegram.messenger.AndroidUtilities;
 import org.telegram.messenger.ApplicationLoader;
 import org.telegram.messenger.AuthTokensHelper;
@@ -84,9 +88,15 @@ import org.telegram.messenger.NotificationCenter;
 import org.telegram.messenger.R;
 import org.telegram.messenger.SharedConfig;
 import org.telegram.messenger.SharedPrefsHelper;
+import org.telegram.ui.Cells.TextCell;
+import org.telegram.ui.Cells.LegacySettingsTextCell;
+import org.telegram.ui.Wallet.GramWallet;
+import org.telegram.ui.Wallet.WalletActivity;
+import org.telegram.utils.settings.SharedSettings;
 import org.telegram.messenger.UserConfig;
 import org.telegram.messenger.UserObject;
 import org.telegram.messenger.browser.Browser;
+import org.telegram.messenger.utils.GradientProtectionDrawable;
 import org.telegram.tgnet.ConnectionsManager;
 import org.telegram.tgnet.TLRPC;
 import org.telegram.ui.ActionBar.ActionBar;
@@ -97,6 +107,7 @@ import org.telegram.ui.ActionBar.BaseFragment;
 import org.telegram.ui.ActionBar.INavigationLayout;
 import org.telegram.ui.ActionBar.SimpleTextView;
 import org.telegram.ui.ActionBar.Theme;
+import org.telegram.ui.ActionBar.ThemeBind;
 import org.telegram.ui.Cells.SettingsSearchCell;
 import org.telegram.ui.Components.AlertsCreator;
 import org.telegram.ui.Components.AnimatedEmojiDrawable;
@@ -116,6 +127,7 @@ import org.telegram.ui.Components.LinkSpanDrawable;
 import org.telegram.ui.Components.Paint.PersistColorPalette;
 import org.telegram.ui.Components.Premium.boosts.UserSelectorBottomSheet;
 import org.telegram.ui.Components.RadialProgressView;
+import org.telegram.ui.Components.ProfileGooeyView;
 import org.telegram.ui.Components.RecyclerListView;
 import org.telegram.ui.Components.ScaleStateListAnimator;
 import org.telegram.ui.Components.ShareAlert;
@@ -124,10 +136,14 @@ import org.telegram.ui.Components.TextHelper;
 import org.telegram.ui.Components.UItem;
 import org.telegram.ui.Components.UniversalAdapter;
 import org.telegram.ui.Components.UniversalRecyclerView;
+import org.telegram.ui.Components.blur3.BlurredBackgroundDrawableViewFactory;
 import org.telegram.ui.Components.blur3.DownscaleScrollableNoiseSuppressor;
 import org.telegram.ui.Components.blur3.ViewGroupPartRenderer;
 import org.telegram.ui.Components.blur3.capture.IBlur3Capture;
 import org.telegram.ui.Components.blur3.source.BlurredBackgroundSourceRenderNode;
+import org.telegram.ui.Components.blur3.source.BlurredBackgroundSourceColor;
+import org.telegram.ui.Components.blur3.drawable.color.impl.BlurredBackgroundProviderImpl;
+import org.telegram.ui.Components.chat.ViewPositionWatcher;
 import org.telegram.ui.Components.voip.VoIPHelper;
 import org.telegram.ui.Stars.StarsController;
 import org.telegram.ui.Stars.StarsIntroActivity;
@@ -136,15 +152,15 @@ import org.telegram.ui.Stories.recorder.DualCameraView;
 import org.telegram.ui.TON.TONIntroActivity;
 import org.telegram.ui.bots.BotBiometry;
 import org.telegram.ui.bots.BotDownloads;
+import org.telegram.ui.QrShare.QrShareActivity;
 import org.telegram.ui.bots.BotLocation;
 import org.telegram.ui.bots.BotWebViewSheet;
 import org.telegram.ui.bots.SetupEmojiStatusSheet;
 
 import java.io.File;
 import java.util.ArrayList;
-import java.util.Arrays;
+import java.util.HashSet;
 import java.util.Collections;
-import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 
@@ -183,6 +199,8 @@ public class SettingsActivity extends BaseFragment implements NotificationCenter
     private ImageLocation uploadingImageLocation;
 
     private FrameLayout topView;
+    private FrameLayout avatarTouchView;
+    private ProfileGooeyView avatarGooey;
     private FrameLayout avatarContainer;
     private AvatarDrawable avatarDrawable;
     private BackupImageView avatarView;
@@ -234,11 +252,24 @@ public class SettingsActivity extends BaseFragment implements NotificationCenter
     @Override
     public void clearViews() {
         if (ignoreClearViews) return;
+        if (actionBar != null) actionBar.closeMenuOverlay(false);
         super.clearViews();
     }
 
+    private boolean classicSettingsRows;
+    private boolean classicSettingsHeader;
+    private BlurredBackgroundSourceColor settingsGlassFallback;
+
     @Override
     public View createView(Context context) {
+        classicSettingsRows = XGramConfig.isClassicSettingsRows();
+        classicSettingsHeader = XGramConfig.isClassicSettingsHeader();
+        settingsGlassFallback = null;
+        avatarTouchView = null;
+        avatarGooey = null;
+        avatarContainer = null;
+        cameraButton = null;
+        avatarHideShown = -1;
         contentView = new SizeNotifierFrameLayout(context) {
             @Override
             protected void dispatchDraw(Canvas canvas) {
@@ -269,6 +300,7 @@ public class SettingsActivity extends BaseFragment implements NotificationCenter
                     }
                     iBlur3Invalidated = false;
                 }
+                updateAvatarHide();
                 super.dispatchDraw(canvas);
                 if (!hasMainTabs) {
                     AndroidUtilities.drawNavigationBarProtection(canvas, this, getThemedColor(Theme.key_windowBackgroundWhite), navigationBarHeight);
@@ -301,14 +333,24 @@ public class SettingsActivity extends BaseFragment implements NotificationCenter
         };
 
         actionBar.setBackButtonImage(R.drawable.ic_ab_back);
+        leftButtonIsBack = true; // the view may be rebuilt (theme, language): checkUi_menuItems swaps it to QR again
         actionBar.setAllowOverlayTitle(true);
         actionBar.setUseContainerForTitles();
         actionBar.setTitle(getString(R.string.Settings));
+        actionBar.setAdditionalTextLeft(-dp(4));
         actionBar.setActionBarMenuOnItemClick(new ActionBar.ActionBarMenuOnItemClick() {
             @Override
             public void onItemClick(int id) {
                 if (id == -1) {
-                    finishFragment();
+                    if (hasMainTabs) {
+                        // no back on the main tab: the left button opens the QR code (with the search open, the action bar closes it instead)
+                        final Bundle args = new Bundle();
+                        args.putLong("user_id", getUserConfig().getClientUserId());
+                        args.putBoolean(QrShareActivity.ARG_IMMEDIATE, true);
+                        presentFragment(new QrShareActivity(args));
+                    } else {
+                        finishFragment();
+                    }
                 } else if (id == 2) {
                     presentSettingFragment(new LogoutActivity());
                 }
@@ -365,6 +407,7 @@ public class SettingsActivity extends BaseFragment implements NotificationCenter
             @Override
             public void onScrolled(@NonNull RecyclerView recyclerView, int dx, int dy) {
                 updateActionBarVisible();
+                updateAvatarHide();
                 if (listView.scrollingByUser) {
                     AndroidUtilities.hideKeyboard(fragmentView);
                 }
@@ -374,6 +417,13 @@ public class SettingsActivity extends BaseFragment implements NotificationCenter
                     blur3_InvalidateBlur();
                 }
             }
+
+            @Override
+            public void onScrollStateChanged(@NonNull RecyclerView recyclerView, int newState) {
+                if (newState == RecyclerView.SCROLL_STATE_IDLE) {
+                    snapAvatarHide();
+                }
+            }
         });
         iBlur3Capture = new ViewGroupPartRenderer(listView, contentView, listView::drawChild);
         listView.addEdgeEffectListener(() -> listView.postOnAnimation(this::blur3_InvalidateBlur));
@@ -381,19 +431,83 @@ public class SettingsActivity extends BaseFragment implements NotificationCenter
 
         actionBarBackground = new View(context) {
             private final Paint blurScrimPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+            private final Paint fadeMaskPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+            private final Paint fadeOverlayPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+            private final Paint fadeFallbackPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+            private int lastHeight = -1, lastColor;
+            {
+                fadeMaskPaint.setXfermode(new PorterDuffXfermode(PorterDuff.Mode.DST_IN));
+            }
+
+            private LinearGradient gradient(int height, int length, int color) {
+                int[] colors = new int[8];
+                GradientProtectionDrawable.fillColors(GradientProtectionDrawable.DEFAULT_INTERPOLATOR, color, colors);
+                return new LinearGradient(0, Math.max(0, height - length), 0, height, colors, null, Shader.TileMode.CLAMP);
+            }
+
             @Override
             protected void onDraw(@NonNull Canvas canvas) {
-                int top = actionBar.getHeight();
-                AndroidUtilities.rectTmp2.set(0, 0, getMeasuredWidth(), top);
-                blurScrimPaint.setColor(Theme.getColor(Theme.key_actionBarDefault, resourceProvider));
-                contentView.drawBlurRect(canvas, 0, AndroidUtilities.rectTmp2, blurScrimPaint, true);
-                if (getParentLayout() != null) {
-                    getParentLayout().drawHeaderShadow(canvas, top);
+                final int top = Math.min(actionBar.getHeight(), getHeight());
+                if (top <= 0) return;
+                final int width = getMeasuredWidth();
+                AndroidUtilities.rectTmp2.set(0, 0, width, top);
+                if (classicSettingsHeader) {
+                    blurScrimPaint.setColor(Theme.getColor(Theme.key_actionBarDefault, resourceProvider));
+                    contentView.drawBlurRect(canvas, 0, AndroidUtilities.rectTmp2, blurScrimPaint, true);
+                    if (getParentLayout() != null) getParentLayout().drawHeaderShadow(canvas, top);
+                    return;
+                }
+
+                // Match the v13 header's 32dp blur mask, 56dp tint, and 48dp static fallback.
+                final int color = getThemedColor(Theme.key_windowBackgroundWhite);
+                if (lastHeight != top || lastColor != color) {
+                    lastHeight = top;
+                    lastColor = color;
+                    fadeMaskPaint.setShader(gradient(top, dp(32), Color.WHITE));
+                    fadeOverlayPaint.setShader(gradient(top, dp(56), Theme.multAlpha(color, 160f / 255f)));
+                    fadeFallbackPaint.setShader(gradient(top, dp(48), Theme.multAlpha(color, 210f / 255f)));
+                }
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && SharedConfig.chatBlurEnabled()
+                        && iBlur3SourceGlassFrosted != null && canvas.isHardwareAccelerated()) {
+                    final int layer = canvas.saveLayer(0, 0, width, top, null);
+                    iBlur3SourceGlassFrosted.draw(canvas, 0, 0, width, top);
+                    canvas.drawRect(0, 0, width, top, fadeMaskPaint);
+                    canvas.restoreToCount(layer);
+                    canvas.drawRect(0, 0, width, top, fadeOverlayPaint);
+                } else {
+                    // A single gradient avoids an extra blur layer on older or low-power devices.
+                    canvas.drawRect(0, 0, width, top, fadeFallbackPaint);
                 }
             }
         };
-        contentView.addView(actionBarBackground, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, 200, Gravity.TOP));
+        contentView.addView(actionBarBackground, new FrameLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT,
+            classicSettingsHeader ? dp(200) : AndroidUtilities.statusBarHeight + ActionBar.getCurrentActionBarHeight(),
+            Gravity.TOP));
         contentView.addView(actionBar, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT, Gravity.FILL_HORIZONTAL | Gravity.TOP));
+
+        // The v13 settings header has separate glass buttons, but no glass behind its title.
+        // Keep the legacy header independent of the newer settings rows.
+        if (!classicSettingsHeader) {
+            final ViewPositionWatcher watcher = new ViewPositionWatcher(contentView);
+            final BlurredBackgroundDrawableViewFactory buttonsFactory;
+            final BlurredBackgroundDrawableViewFactory menuFactory;
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                buttonsFactory = new BlurredBackgroundDrawableViewFactory(watcher, contentView, iBlur3SourceGlass);
+                menuFactory = new BlurredBackgroundDrawableViewFactory(watcher, contentView, iBlur3SourceGlassFrosted);
+            } else {
+                settingsGlassFallback = new BlurredBackgroundSourceColor();
+                buttonsFactory = new BlurredBackgroundDrawableViewFactory(watcher, contentView, settingsGlassFallback);
+                menuFactory = buttonsFactory;
+            }
+            buttonsFactory.setLiquidGlassEffectAllowed(LiteMode.isEnabled(LiteMode.FLAG_LIQUID_GLASS));
+            menuFactory.setLiquidGlassEffectAllowed(LiteMode.isEnabled(LiteMode.FLAG_LIQUID_GLASS));
+            actionBar.setupGlass(buttonsFactory, BlurredBackgroundProviderImpl.simpleActionBar(resourceProvider));
+            actionBar.setDrawGlassTitle(false);
+            actionBar.setMenuGlass(menuFactory, BlurredBackgroundProviderImpl.simpleActionBar(resourceProvider));
+            actionBar.setMenuRise(dp(8));
+            otherItem.setSubMenuOverlayProvider(this::getSimpleMenuOverlay);
+        }
 
         imageUpdater = new ImageUpdater(true, ImageUpdater.FOR_TYPE_USER, true);
         imageUpdater.setOpenWithFrontfaceCamera(true);
@@ -402,9 +516,15 @@ public class SettingsActivity extends BaseFragment implements NotificationCenter
 
         topView = new FrameLayout(context);
 
-        avatarContainer = new FrameLayout(context);
-        topView.addView(avatarContainer, LayoutHelper.createFrame(120, 120, Gravity.CENTER_HORIZONTAL | Gravity.TOP, 0, 23 - 12, 0, 0));
-        avatarContainer.setOnClickListener(v -> {
+        avatarTouchView = new FrameLayout(context) {
+            @Override
+            public void setScaleX(float scaleX) {
+                super.setScaleX(scaleX);
+                updateAvatarHide();
+            }
+        };
+        topView.addView(avatarTouchView, LayoutHelper.createFrame(120, 120, Gravity.CENTER_HORIZONTAL | Gravity.TOP, 0, 23 - 12, 0, 0));
+        avatarTouchView.setOnClickListener(v -> {
             TLRPC.User user = MessagesController.getInstance(currentAccount).getUser(UserConfig.getInstance(currentAccount).getClientUserId());
             if (user == null) {
                 user = UserConfig.getInstance(currentAccount).getCurrentUser();
@@ -418,12 +538,31 @@ public class SettingsActivity extends BaseFragment implements NotificationCenter
 
             }, 0);
         });
-        ScaleStateListAnimator.apply(avatarContainer);
+        ScaleStateListAnimator.apply(avatarTouchView);
+        if (classicSettingsHeader) {
+            avatarGooey = null;
+            avatarContainer = avatarTouchView;
+        } else {
+            topView.addOnLayoutChangeListener((v, l, t, r, b, ol, ot, or, ob) -> updateAvatarHide());
+            avatarGooey = new ProfileGooeyView(context) {
+                @Override
+                public boolean dispatchTouchEvent(MotionEvent ev) {
+                    return false;
+                }
+            };
+            avatarContainer = new FrameLayout(context);
+            avatarContainer.setPivotX(0);
+            avatarContainer.setPivotY(0);
+            avatarGooey.addView(avatarContainer, LayoutHelper.createFrame(90, 90, Gravity.TOP | Gravity.LEFT));
+            contentView.addView(avatarGooey, contentView.indexOfChild(listView) + 1, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.MATCH_PARENT));
+        }
 
         avatarDrawable = new AvatarDrawable();
         avatarView = new BackupImageView(context);
         avatarView.setRoundRadius(dp(90));
-        avatarContainer.addView(avatarView, LayoutHelper.createFrame(90, 90, Gravity.CENTER_HORIZONTAL | Gravity.TOP, 0, 15, 0, 0));
+        avatarContainer.addView(avatarView, classicSettingsHeader
+            ? LayoutHelper.createFrame(90, 90, Gravity.CENTER_HORIZONTAL | Gravity.TOP, 0, 15, 0, 0)
+            : LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.MATCH_PARENT));
 
         avatarProgressView = new RadialProgressView(context) {
             private Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
@@ -444,21 +583,29 @@ public class SettingsActivity extends BaseFragment implements NotificationCenter
         avatarProgressView.setSize(AndroidUtilities.dp(26));
         avatarProgressView.setProgressColor(0xffffffff);
         avatarProgressView.setNoProgress(false);
-        avatarContainer.addView(avatarProgressView, LayoutHelper.createFrame(90, 90, Gravity.CENTER_HORIZONTAL | Gravity.TOP, 0, 15, 0, 0));
+        avatarContainer.addView(avatarProgressView, classicSettingsHeader
+            ? LayoutHelper.createFrame(90, 90, Gravity.CENTER_HORIZONTAL | Gravity.TOP, 0, 15, 0, 0)
+            : LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.MATCH_PARENT));
         showAvatarProgress(false, false);
 
         cameraButton = new FrameLayout(context);
-        cameraButton.setBackground(Theme.createCircleDrawable(dp(32), getThemedColor(Theme.key_windowBackgroundGray)));
+        ThemeBind.fillBackground(cameraButton, Theme.createCircleDrawable(dp(32), getThemedColor(Theme.key_windowBackgroundGray)), ThemeBind.of(Theme.key_windowBackgroundGray), getResourceProvider());
         cameraButton.setPadding(dp(2), dp(2), dp(2), dp(2));
         cameraBackground = new FrameLayout(context);
-        cameraBackground.setBackground(Theme.createCircleDrawable(dp(30), getThemedColor(Theme.key_featuredStickers_addButton)));
+        ThemeBind.fillBackground(cameraBackground, Theme.createCircleDrawable(dp(30), getThemedColor(Theme.key_featuredStickers_addButton)), ThemeBind.of(Theme.key_featuredStickers_addButton), getResourceProvider());
         cameraImageView = new ImageView(context);
         cameraImageView.setScaleType(ImageView.ScaleType.CENTER_INSIDE);
         cameraImageView.setImageResource(R.drawable.filled_premium_camera);
         cameraBackground.addView(cameraImageView, LayoutHelper.createFrame(22, 22, Gravity.CENTER));
         cameraButton.addView(cameraBackground, LayoutHelper.createFrame(30, 30));
-        avatarContainer.addView(cameraButton, LayoutHelper.createFrame(34, 34, Gravity.CENTER_HORIZONTAL | Gravity.TOP, 32, 75, 0, 0));
-        ScaleStateListAnimator.apply(cameraButton);
+        if (classicSettingsHeader) {
+            avatarContainer.addView(cameraButton, LayoutHelper.createFrame(34, 34, Gravity.CENTER_HORIZONTAL | Gravity.TOP, 32, 75, 0, 0));
+            ScaleStateListAnimator.apply(cameraButton);
+        } else {
+            cameraButton.setPivotX(0);
+            cameraButton.setPivotY(0);
+            contentView.addView(cameraButton, contentView.indexOfChild(avatarGooey) + 1, LayoutHelper.createFrame(34, 34, Gravity.LEFT | Gravity.TOP));
+        }
 
         titleView = new TextView(context);
         titleView.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 22);
@@ -477,10 +624,10 @@ public class SettingsActivity extends BaseFragment implements NotificationCenter
 
         versionView = new TextView(context);
         versionView.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 14);
-        versionView.setTextColor(getThemedColor(Theme.key_windowBackgroundWhiteGrayText4));
+        ThemeBind.textColor(versionView, Theme.key_windowBackgroundWhiteGrayText4, getResourceProvider());
         versionView.setPadding(dp(21), dp(10), dp(21), dp(10));
         versionView.setGravity(Gravity.CENTER);
-        versionView.setBackground(Theme.createSelectorDrawable(getThemedColor(Theme.key_listSelector), Theme.RIPPLE_MASK_ALL));
+        ThemeBind.selectorBackground(versionView, Theme.createSelectorDrawable(getThemedColor(Theme.key_listSelector), Theme.RIPPLE_MASK_ALL), null, ThemeBind.of(Theme.key_listSelector), getResourceProvider());
         versionView.setOnClickListener(v -> {
             versionViewPressCount++;
             if (versionViewPressCount < 2 && !BuildVars.DEBUG_PRIVATE_VERSION) {
@@ -558,6 +705,9 @@ public class SettingsActivity extends BaseFragment implements NotificationCenter
 
 
     public void updateColors() {
+        if (settingsGlassFallback != null) {
+            settingsGlassFallback.setColor(getThemedColor(Theme.key_windowBackgroundWhite));
+        }
         actionBar.setTitleColor(getThemedColor(Theme.key_windowBackgroundWhiteBlackText));
         actionBar.setItemsColor(getThemedColor(Theme.key_windowBackgroundWhiteBlackText), false);
         contentView.setBackgroundColor(getThemedColor(Theme.key_windowBackgroundGray));
@@ -622,7 +772,152 @@ public class SettingsActivity extends BaseFragment implements NotificationCenter
         }
     }
 
+    @Override
+    public void onResume() {
+        super.onResume();
+        if (listView.adapter != null) {
+            listView.adapter.notifyDataSetChanged();
+        }
+    }
+
+    // The modern header follows its position in the list and hides into the camera cutout.
+    private float avatarHideCenterY, avatarHideScale, avatarHideShown = -1;
+    private float avatarListY, avatarShownY, avatarHiddenY;
+
+    private void updateAvatarHide() {
+        if (avatarGooey == null || avatarContainer == null || avatarTouchView == null || cameraButton == null || fragmentView == null) {
+            return;
+        }
+        float y = avatarTouchView.getHeight() / 2f;
+        float alpha = 1f;
+        View view = avatarTouchView;
+        while (view != null && view != fragmentView && view.getParent() instanceof View) {
+            y += view.getY();
+            alpha *= view.getAlpha();
+            view = (View) view.getParent();
+        }
+        if (view != fragmentView || !avatarTouchView.isAttachedToWindow() || avatarTouchView.getHeight() == 0) {
+            if (avatarHideShown != 0) {
+                avatarHideShown = 0;
+                avatarGooey.setHideProgress(1f);
+                cameraButton.setAlpha(0f);
+            }
+            return;
+        }
+        final float shownY = y - getListItemTop(topView) + listView.getPaddingTop();
+        final float hiddenY = avatarGooey.getHiddenAvatarCenterY(-dp(16));
+        final float shown = MathUtils.clamp((y - hiddenY) / Math.max(1, shownY - hiddenY), 0f, 1f);
+        final float centerY = Math.max(y, hiddenY);
+        avatarListY = y;
+        avatarShownY = shownY;
+        avatarHiddenY = hiddenY;
+        final float size = dp(90);
+        final float scale = AndroidUtilities.lerp(dp(avatarGooey.getHiddenAvatarSizeDp()), size, shown) / size * avatarTouchView.getScaleX();
+        final float translationX = avatarGooey.getWidth() / 2f - size * scale / 2f;
+        if (centerY == avatarHideCenterY && scale == avatarHideScale && shown == avatarHideShown && alpha == avatarGooey.getAlpha() && translationX == avatarContainer.getTranslationX()) {
+            return;
+        }
+        avatarHideCenterY = centerY;
+        avatarHideScale = scale;
+        avatarHideShown = shown;
+        avatarGooey.setAlpha(alpha);
+        avatarContainer.setScaleX(scale);
+        avatarContainer.setScaleY(scale);
+        avatarContainer.setTranslationX(translationX);
+        avatarContainer.setTranslationY(centerY - size * scale / 2f);
+        cameraButton.setAlpha(alpha * MathUtils.clamp(AndroidUtilities.ilerp(shown, 0.75f, 1f), 0f, 1f));
+        cameraButton.setScaleX(scale);
+        cameraButton.setScaleY(scale);
+        cameraButton.setTranslationX(translationX + dp(60) * scale);
+        cameraButton.setTranslationY(centerY - size * scale / 2f + dp(60) * scale);
+        avatarGooey.setHideProgress(1f - shown);
+    }
+
+    private void snapAvatarHide() {
+        if (avatarGooey == null || searchItem != null && searchItem.isSearchFieldVisible2() || avatarHideShown <= 0 || avatarHideShown >= 1) {
+            return;
+        }
+        if (avatarHideShown >= 0.5f) {
+            listView.smoothScrollBy(0, (int) -(avatarShownY - avatarListY), CubicBezierInterpolator.EASE_OUT_QUINT);
+        } else {
+            listView.smoothScrollBy(0, (int) Math.ceil(avatarListY - avatarHiddenY), CubicBezierInterpolator.EASE_OUT_QUINT);
+        }
+    }
+
+    private float getListItemTop(View view) {
+        float top = 0;
+        while (view != null && view != listView && view.getParent() instanceof View) {
+            top += view.getY();
+            view = (View) view.getParent();
+        }
+        return top;
+    }
+
     private ArrayList<Integer> accountNumbers = new ArrayList<>();
+    // Keep the current settings actions; only the row component and its old icons change.
+    private UItem settingsRow(int id, int top, int bottom, int icon, CharSequence title) {
+        return settingsRow(id, top, bottom, icon, title, null, null);
+    }
+
+    private UItem settingsRow(int id, int top, int bottom, int icon, CharSequence title, CharSequence subtitle) {
+        return settingsRow(id, top, bottom, icon, title, subtitle, null);
+    }
+
+    private UItem settingsRow(int id, int top, int bottom, int icon, CharSequence title, CharSequence subtitle, CharSequence value) {
+        if (!classicSettingsRows) {
+            return SettingCell.Factory.of(id, top, bottom, icon, title, subtitle, value);
+        }
+        switch (id) {
+            case 2: icon = R.drawable.msg2_discussion; title = getString(R.string.ChatSettings); break;
+            case 3: icon = R.drawable.msg2_secret; title = getString(R.string.PrivacySettings); break;
+            case 5: icon = R.drawable.msg2_notifications; title = getString(R.string.NotificationsAndSounds); break;
+            case 6: icon = R.drawable.msg2_data; title = getString(R.string.DataSettings); break;
+            case 7: icon = R.drawable.msg2_folder; title = getString(R.string.Filters); break;
+            case 8: icon = R.drawable.msg2_devices; title = getString(R.string.Devices); break;
+            case 9: icon = R.drawable.msg2_battery; title = getString(R.string.PowerUsage); break;
+            case 10: icon = R.drawable.msg2_language; title = getString(R.string.Language); value = subtitle; break;
+            case 17: icon = R.drawable.msg2_ask_question; break;
+            case 18: icon = R.drawable.msg2_help; break;
+            case 19: icon = R.drawable.msg2_policy; break;
+        }
+        return ClassicSettingsRowFactory.of(id, icon, title, value);
+    }
+
+    public static class ClassicSettingsRowFactory extends UItem.UItemFactory<LegacySettingsTextCell> {
+        static { setup(new ClassicSettingsRowFactory()); }
+
+        @Override
+        public LegacySettingsTextCell createView(Context context, RecyclerListView listView, int currentAccount, int classGuid, Theme.ResourcesProvider resourcesProvider) {
+            LegacySettingsTextCell cell = new LegacySettingsTextCell(context, resourcesProvider);
+            cell.getTextView().setTypeface(AndroidUtilities.getVazirmatnTypeface());
+            cell.getValueTextView().setTypeface(AndroidUtilities.getVazirmatnTypeface());
+            return cell;
+        }
+
+        @Override
+        public void bindView(View view, UItem item, boolean divider, UniversalAdapter adapter, UniversalRecyclerView listView) {
+            LegacySettingsTextCell cell = (LegacySettingsTextCell) view;
+            if (item.iconResId == 0) {
+                if (TextUtils.isEmpty(item.textValue)) cell.setText(item.text, divider);
+                else cell.setTextAndValue(item.text, item.textValue, divider);
+            } else if (TextUtils.isEmpty(item.textValue)) {
+                cell.setTextAndIcon(item.text, item.iconResId, divider);
+            } else {
+                cell.setTextAndValueAndIcon(item.text, item.textValue, item.iconResId, divider);
+                if (item.id == 10) cell.setImageLeft(23);
+            }
+        }
+
+        public static UItem of(int id, int icon, CharSequence title, CharSequence value) {
+            UItem item = UItem.ofFactory(ClassicSettingsRowFactory.class);
+            item.id = id;
+            item.iconResId = icon;
+            item.text = title;
+            item.textValue = value;
+            return item;
+        }
+    }
+
     private void fillItems(ArrayList<UItem> items, UniversalAdapter adapter) {
         if (searchItem.isSearchFieldVisible2()) {
             items.add(UItem.asSpace(ActionBar.getCurrentActionBarHeight()));
@@ -697,50 +992,48 @@ public class SettingsActivity extends BaseFragment implements NotificationCenter
             items.add(UItem.asShadow(null));
         }
 
-        items.add(SettingCell.Factory.of(1, IconBackgroundColors.BLUE.top, IconBackgroundColors.BLUE.bottom, R.drawable.settings_account, getString(R.string.SettingsAccount), getString(R.string.SettingsAccountInfo)));
-        items.add(SettingCell.Factory.of(2, IconBackgroundColors.ORANGE.top, IconBackgroundColors.ORANGE.bottom, R.drawable.settings_chat, getString(R.string.SettingsChat), getString(R.string.SettingsChatInfo)));
-        items.add(SettingCell.Factory.of(3, IconBackgroundColors.GREEN.top, IconBackgroundColors.GREEN.bottom, R.drawable.settings_privacy, getString(R.string.SettingsPrivacySecurity), getString(R.string.SettingsPrivacySecurityInfo)));
-        items.add(SettingCell.Factory.of(5, IconBackgroundColors.RED.top, IconBackgroundColors.RED.bottom, R.drawable.settings_sounds, getString(R.string.SettingsNotifications), getString(R.string.SettingsNotificationsInfo)));
-        items.add(SettingCell.Factory.of(6, IconBackgroundColors.BLUE_DEEP.top, IconBackgroundColors.BLUE_DEEP.bottom, R.drawable.settings_data, getString(R.string.SettingsData), getString(R.string.SettingsDataInfo)));
-        items.add(SettingCell.Factory.of(7, IconBackgroundColors.BLUE_ALT.top, IconBackgroundColors.BLUE_ALT.bottom, R.drawable.settings_folders, getString(R.string.SettingsFolders), getString(R.string.SettingsFoldersInfo)));
-        items.add(SettingCell.Factory.of(8, IconBackgroundColors.CYAN.top, IconBackgroundColors.CYAN.bottom, R.drawable.settings_devices, getString(R.string.SettingsDevices), getString(R.string.SettingsDevicesInfo)));
-        items.add(SettingCell.Factory.of(9, IconBackgroundColors.ORANGE_DEEP.top, IconBackgroundColors.ORANGE_DEEP.bottom, R.drawable.settings_power, getString(R.string.SettingsPowerSaving), getString(R.string.SettingsPowerSavingInfo)));
-        items.add(SettingCell.Factory.of(10, IconBackgroundColors.PURPLE.top, IconBackgroundColors.PURPLE.bottom, R.drawable.settings_language, getString(R.string.SettingsLanguage), LocaleController.getCurrentLanguageName()));
+        final boolean walletAbove = getConnectionsManager().getCurrentTime() - 1791538462 < 4 * 7 * 24 * 60 * 60;
+        if (walletAbove && XGramConfig.showMoneyEntry(currentAccount)) {
+            items.add(settingsRow(25, 0, 0, R.drawable.xgram_wallet_settings, getString(R.string.XGramWalletLabel), null, null));
+            items.add(UItem.asShadow(null));
+        }
+
+        items.add(settingsRow(1, IconBackgroundColors.BLUE.top, IconBackgroundColors.BLUE.bottom, R.drawable.settings_account, getString(R.string.SettingsAccount), getString(R.string.SettingsAccountInfo)));
+        items.add(settingsRow(2, IconBackgroundColors.ORANGE.top, IconBackgroundColors.ORANGE.bottom, R.drawable.settings_chat, getString(R.string.SettingsChat), getString(R.string.SettingsChatInfo)));
+        items.add(settingsRow(3, IconBackgroundColors.GREEN.top, IconBackgroundColors.GREEN.bottom, R.drawable.settings_privacy, getString(R.string.SettingsPrivacySecurity), getString(R.string.SettingsPrivacySecurityInfo)));
+        items.add(settingsRow(5, IconBackgroundColors.RED.top, IconBackgroundColors.RED.bottom, R.drawable.settings_sounds, getString(R.string.SettingsNotifications), getString(R.string.SettingsNotificationsInfo)));
+        items.add(settingsRow(6, IconBackgroundColors.BLUE_DEEP.top, IconBackgroundColors.BLUE_DEEP.bottom, R.drawable.settings_data, getString(R.string.SettingsData), getString(R.string.SettingsDataInfo)));
+        items.add(settingsRow(7, IconBackgroundColors.BLUE_ALT.top, IconBackgroundColors.BLUE_ALT.bottom, R.drawable.settings_folders, getString(R.string.SettingsFolders), getString(R.string.SettingsFoldersInfo)));
+        items.add(settingsRow(8, IconBackgroundColors.CYAN.top, IconBackgroundColors.CYAN.bottom, R.drawable.settings_devices, getString(R.string.SettingsDevices), getString(R.string.SettingsDevicesInfo)));
+        items.add(settingsRow(9, IconBackgroundColors.ORANGE_DEEP.top, IconBackgroundColors.ORANGE_DEEP.bottom, R.drawable.settings_power, getString(R.string.SettingsPowerSaving), getString(R.string.SettingsPowerSavingInfo)));
+        items.add(settingsRow(10, IconBackgroundColors.PURPLE.top, IconBackgroundColors.PURPLE.bottom, R.drawable.settings_language, getString(R.string.SettingsLanguage), LocaleController.getCurrentLanguageName()));
 
         items.add(UItem.asShadow(null));
+        if (!walletAbove && XGramConfig.showMoneyEntry(currentAccount)) {
+            items.add(settingsRow(25, 0, 0, R.drawable.xgram_wallet_settings, getString(R.string.XGramWalletLabel), null, null));
+            items.add(UItem.asShadow(null));
+        }
 
         if (!getMessagesController().premiumFeaturesBlocked()) {
-            items.add(SettingCell.Factory.of(11, 0xFFB659FF, 0xFF617CFF, R.drawable.settings_premium, TEXT_PREMIUM));
+            items.add(settingsRow(11, 0xFFB659FF, 0xFF617CFF, R.drawable.settings_premium, TEXT_PREMIUM));
         }
         if (getMessagesController().starsPurchaseAvailable()) {
             StarsController c = StarsController.getInstance(currentAccount);
             long balance = c.getBalance().amount;
-            items.add(SettingCell.Factory.of(12, 0xFFEFA612, 0xFFE77512, R.drawable.settings_stars, TEXT_STARS, null, c.balanceAvailable() && balance > 0 ? StarsIntroActivity.formatStarsAmount(c.getBalance(), 0.85f, ' ') : ""));
+            items.add(settingsRow(12, 0xFFEFA612, 0xFFE77512, R.drawable.settings_stars, TEXT_STARS, null, c.balanceAvailable() && balance > 0 ? StarsIntroActivity.formatStarsAmount(c.getBalance(), 0.85f, ' ') : ""));
         }
         StarsController.getInstance(currentAccount, true).getBalance();
         if (ApplicationLoader.isBetaBuild() || ApplicationLoader.isStandaloneBuild() || ApplicationLoader.isHuaweiStoreBuild() || (StarsController.getInstance(currentAccount, true).balanceAvailable() && (StarsController.getInstance(currentAccount, true).hasTransactions() || StarsController.getInstance(currentAccount, true).getBalance().positive()))) {
-            StarsController c = StarsController.getTonInstance(currentAccount);
-            long balance = c.getBalance().amount;
-            items.add(SettingCell.Factory.of(13, 0xFF1BA4ED, 0xFF1488E1, R.drawable.settings_gram_24, getString(R.string.MyTON), null, c.balanceAvailable() && balance > 0 ? StarsIntroActivity.formatStarsAmount(c.getBalance(), 0.85f, ' ') : ""));
-        }
-
-        TLRPC.TL_attachMenuBots menuBots = MediaDataController.getInstance(UserConfig.selectedAccount).getAttachMenuBots();
-        if (menuBots != null && menuBots.bots != null && !menuBots.bots.isEmpty()) {
-            for (TLRPC.TL_attachMenuBot attachMenuBot : menuBots.bots) {
-                final long WALLET_BOT_ID = 1985737506L;
-                if (attachMenuBot.show_in_side_menu && attachMenuBot.bot_id == WALLET_BOT_ID) {
-                    UItem item = SettingCell.Factory.ofBot(attachMenuBot, 0xFF1BA4ED, 0xFF1488E1, R.drawable.settings_wallet);
-                    item.object = attachMenuBot;
-                    items.add(item);
-                }
-            }
+            final StarsController c = StarsController.getTonInstance(currentAccount);
+            final long balance = c.getBalance().amount;
+            items.add(settingsRow(13, 0xFF1BA4ED, 0xFF1488E1, R.drawable.filled_gram_earnings, getString(R.string.GramEarnings), null, c.balanceAvailable() && balance > 0 ? StarsIntroActivity.formatStarsAmount(c.getBalance(), 0.85f, ' ') : ""));
         }
 
         if (!getMessagesController().premiumFeaturesBlocked()) {
-            items.add(SettingCell.Factory.of(15, 0xFFF45255, 0xFFDF3955, R.drawable.settings_business, TEXT_BUSINESS));
+            items.add(settingsRow(15, 0xFFF45255, 0xFFDF3955, R.drawable.settings_business, TEXT_BUSINESS));
         }
         if (!getMessagesController().premiumPurchaseBlocked()) {
-            items.add(SettingCell.Factory.of(16, 0xFFF38B31, 0xFFE26314, R.drawable.settings_gift, getString(R.string.SendAGift)));
+            items.add(settingsRow(16, 0xFFF38B31, 0xFFE26314, R.drawable.settings_gift, getString(R.string.SendAGift)));
         }
         if (items.get(items.size() - 1).viewType != UniversalAdapter.VIEW_TYPE_SHADOW)
             items.add(UItem.asShadow(null));
@@ -748,7 +1041,7 @@ public class SettingsActivity extends BaseFragment implements NotificationCenter
 items.add(UItem.asHeader(getString(R.string.SettingsHelp)));
 
 if (SHOW_ASK_A_QUESTION) {
-    items.add(SettingCell.Factory.of(
+    items.add(settingsRow(
         17,
         IconBackgroundColors.ORANGE.top,
         IconBackgroundColors.ORANGE.bottom,
@@ -757,7 +1050,7 @@ if (SHOW_ASK_A_QUESTION) {
     ));
 }
 
-items.add(SettingCell.Factory.of(
+items.add(settingsRow(
     18,
     IconBackgroundColors.BLUE_LIGHT.top,
     IconBackgroundColors.BLUE_LIGHT.bottom,
@@ -766,7 +1059,7 @@ items.add(SettingCell.Factory.of(
 ));
 
 if (SHOW_TELEGRAM_FEATURES) {
-    items.add(SettingCell.Factory.of(
+    items.add(settingsRow(
         23,
         IconBackgroundColors.PURPLE.top,
         IconBackgroundColors.PURPLE.bottom,
@@ -775,7 +1068,7 @@ if (SHOW_TELEGRAM_FEATURES) {
     ));
 }
 
-items.add(SettingCell.Factory.of(
+items.add(settingsRow(
     19,
     IconBackgroundColors.GREEN.top,
     IconBackgroundColors.GREEN.bottom,
@@ -783,12 +1076,19 @@ items.add(SettingCell.Factory.of(
     getString(R.string.PrivacyPolicy)
 ));
 
+        if (SharedSettings.experimentalSettingsAllowed.get()) {
+            items.add(UItem.asShadow(null));
+            items.add(UItem.asHeader(getString(R.string.SettingsExperimental)));
+            items.add(settingsRow(24, 0xFFF45255, 0xFFDF3955, 0, getString(R.string.RoundVideoSettings)));
+            items.add(settingsRow(26, 0xFF55CA47, 0xFF27B434, 0, getString(R.string.AudioRecorderSettings)));
+        }
+
         if (BuildVars.LOGS_ENABLED || BuildVars.DEBUG_PRIVATE_VERSION) {
             items.add(UItem.asShadow(null));
             items.add(UItem.asHeader(getString(R.string.SettingsDebug)));
-            items.add(SettingCell.Factory.of(20, 0xFF55CA47, 0xFF27B434, 0, getString(R.string.DebugSendLogs)));
-            items.add(SettingCell.Factory.of(21, 0xFF55CA47, 0xFF27B434, 0, getString(R.string.DebugSendLastLogs)));
-            items.add(SettingCell.Factory.of(22, 0xFFF45255, 0xFFDF3955, 0, getString(R.string.DebugClearLogs)));
+            items.add(settingsRow(20, 0xFF55CA47, 0xFF27B434, 0, getString(R.string.DebugSendLogs)));
+            items.add(settingsRow(21, 0xFF55CA47, 0xFF27B434, 0, getString(R.string.DebugSendLastLogs)));
+            items.add(settingsRow(22, 0xFFF45255, 0xFFDF3955, 0, getString(R.string.DebugClearLogs)));
         }
 
         items.add(UItem.asCustomShadow(versionView));
@@ -887,6 +1187,9 @@ items.add(SettingCell.Factory.of(
             case 13:
                 presentSettingFragment(new TONIntroActivity());
                 break;
+            case 25:
+                XGramWalletUnavailable.show(getContext(), resourceProvider);
+                break;
             case 15:
                 presentSettingFragment(new PremiumPreviewFragment(PremiumPreviewFragment.FEATURES_BUSINESS, "settings"));
                 break;
@@ -921,6 +1224,14 @@ items.add(SettingCell.Factory.of(
     }
     break;
 }
+            case 24: {
+                presentFragment(new RoundVideoSettingsActivity());
+                break;
+            }
+            case 26: {
+                presentFragment(new AudioRecorderSettingsActivity());
+                break;
+            }
         }
     }
 
@@ -998,6 +1309,14 @@ items.add(SettingCell.Factory.of(
         final Insets systemInsets = AndroidUtilities.getDefaultWindowInsets(insets, false);
         navigationBarHeight = systemInsets.bottom;
         final int statusBarHeight = systemInsets.top;
+        if (!classicSettingsHeader && actionBarBackground != null) {
+            final ViewGroup.LayoutParams params = actionBarBackground.getLayoutParams();
+            final int height = statusBarHeight + ActionBar.getCurrentActionBarHeight();
+            if (params.height != height) {
+                params.height = height;
+                actionBarBackground.setLayoutParams(params);
+            }
+        }
         listView.setPadding(0, statusBarHeight + dp(12), 0, navigationBarHeight + additionNavigationBarHeight);
         return WindowInsetsCompat.CONSUMED;
     }
@@ -1027,7 +1346,7 @@ items.add(SettingCell.Factory.of(
             textView = new SimpleTextView(context);
             textView.setTextSize(15);
             textView.setTypeface(AndroidUtilities.bold());
-            textView.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteBlackText, resourcesProvider));
+            ThemeBind.textColor(textView, Theme.key_windowBackgroundWhiteBlackText, resourcesProvider);
 
             botDrawable = new AnimatedEmojiDrawable.SwapAnimatedEmojiDrawable(textView, dp(24), AnimatedEmojiDrawable.CACHE_TYPE_EMOJI_STATUS);
             emojiStatusDrawable = new AnimatedEmojiDrawable.SwapAnimatedEmojiDrawable(textView, dp(24), AnimatedEmojiDrawable.CACHE_TYPE_EMOJI_STATUS);
@@ -1050,13 +1369,13 @@ items.add(SettingCell.Factory.of(
             counterView.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 11);
             counterView.setTypeface(AndroidUtilities.bold());
             counterView.setGravity(Gravity.CENTER);
-            counterView.setTextColor(Theme.getColor(Theme.key_featuredStickers_buttonText, resourcesProvider));
-            counterView.setBackground(Theme.createRoundRectDrawable(dp(10), Theme.getColor(Theme.key_featuredStickers_addButton, resourcesProvider)));
+            ThemeBind.textColor(counterView, Theme.key_featuredStickers_buttonText, resourcesProvider);
+            ThemeBind.fillBackground(counterView, Theme.createRoundRectDrawable(dp(10), Theme.getColor(Theme.key_featuredStickers_addButton, resourcesProvider)), ThemeBind.of(Theme.key_featuredStickers_addButton), resourcesProvider);
 
             arrowView = new ImageView(context);
             arrowView.setImageResource(R.drawable.msg_arrowright);
             arrowView.setScaleType(ImageView.ScaleType.CENTER);
-            arrowView.setColorFilter(new PorterDuffColorFilter(Theme.getColor(Theme.key_windowBackgroundWhiteGrayIcon, resourcesProvider), PorterDuff.Mode.SRC_IN));
+            ThemeBind.colorFilter(arrowView, Theme.key_windowBackgroundWhiteGrayIcon, resourcesProvider, PorterDuff.Mode.SRC_IN);
 
             if (LocaleController.isRTL) {
                 textView.setGravity(Gravity.CENTER_VERTICAL | Gravity.RIGHT);
@@ -1077,12 +1396,36 @@ items.add(SettingCell.Factory.of(
             }
         }
 
+        private int lastArrowColor;
+
         @Override
         public void updateColors() {
             textView.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteBlackText, resourcesProvider));
-            counterView.setBackground(Theme.createRoundRectDrawable(dp(10), Theme.getColor(Theme.key_featuredStickers_addButton, resourcesProvider)));
-            arrowView.setColorFilter(new PorterDuffColorFilter(Theme.getColor(Theme.key_windowBackgroundWhiteGrayIcon, resourcesProvider), PorterDuff.Mode.SRC_IN));
+            Theme.setDrawableColor(counterView.getBackground(), Theme.getColor(Theme.key_featuredStickers_addButton, resourcesProvider));
+            counterView.invalidate();
+            final int arrowColor = Theme.getColor(Theme.key_windowBackgroundWhiteGrayIcon, resourcesProvider);
+            if (arrowColor != lastArrowColor || arrowView.getColorFilter() == null) {
+                lastArrowColor = arrowColor;
+                arrowView.setColorFilter(new PorterDuffColorFilter(arrowColor, PorterDuff.Mode.SRC_IN));
+            }
             emojiStatusDrawable.setColor(Theme.getColor(Theme.key_profile_verifiedBackground, resourcesProvider));
+            updateBotDrawableColor();
+        }
+
+        private void updateBotDrawableColor() {
+            try {
+                if (botDrawable != null) {
+                    botDrawable.setColor(Theme.getColor(Theme.key_profile_verifiedBackground, resourcesProvider));
+                    if (textView != null) textView.invalidate();
+                }
+            } catch (Exception e) {
+                FileLog.e(e);
+            }
+        }
+
+        @Override
+        public void addColorKeys(HashSet<Integer> colors) {
+            colors.add(Theme.key_profile_verifiedBackground);
         }
 
         public void set(int account) {
@@ -1161,6 +1504,7 @@ items.add(SettingCell.Factory.of(
 
     @Override
     public boolean onBackPressed(boolean invoked) {
+        if (closeSimpleMenuOverlayOnBack(invoked)) return false;
         if (actionBar.isSearchFieldVisible()) {
             if (invoked) actionBar.closeSearchField();
             return false;
@@ -1179,6 +1523,7 @@ items.add(SettingCell.Factory.of(
         private final TextView subtitleView;
         private final TextView valueView;
         private final boolean mini;
+        private boolean hasBackground = true;
 
         public SettingCell(Context context, Theme.ResourcesProvider resourcesProvider) {
             this(context, resourcesProvider, false);
@@ -1202,14 +1547,17 @@ items.add(SettingCell.Factory.of(
             textLayout.setOrientation(VERTICAL);
 
             titleView = new TextView(context);
+            titleView.setTypeface(AndroidUtilities.getVazirmatnTypeface());
             titleView.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 16);
             textLayout.addView(titleView, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT, 0, 0, 0, 0));
 
             subtitleView = new TextView(context);
+            subtitleView.setTypeface(AndroidUtilities.getVazirmatnTypeface());
             subtitleView.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 13);
             textLayout.addView(subtitleView, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT, 0, 4, 0, 0));
 
             valueView = new TextView(context);
+            valueView.setTypeface(AndroidUtilities.getVazirmatnTypeface());
             valueView.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 16);
             if (LocaleController.isRTL) {
                 addView(valueView, LayoutHelper.createLinear(LayoutHelper.WRAP_CONTENT, LayoutHelper.WRAP_CONTENT, Gravity.CENTER_VERTICAL, 20, 0, 0, 0));
@@ -1228,7 +1576,14 @@ items.add(SettingCell.Factory.of(
             titleView.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteBlackText, resourcesProvider));
             subtitleView.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteGrayText, resourcesProvider));
             valueView.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteBlueText, resourcesProvider));
-            iconBackground.setDrawBorder(resourcesProvider != null ? resourcesProvider.isDark() : Theme.isCurrentThemeDark());
+            iconBackground.setDrawBorder(hasBackground && (resourcesProvider != null ? resourcesProvider.isDark() : Theme.isCurrentThemeDark()));
+        }
+
+        @Override
+        public void addColorKeys(HashSet<Integer> colors) {
+            colors.add(Theme.key_windowBackgroundWhiteBlackText);
+            colors.add(Theme.key_windowBackgroundWhiteGrayText);
+            colors.add(Theme.key_windowBackgroundWhiteBlueText);
         }
 
         private boolean twoLines;
@@ -1239,6 +1594,7 @@ items.add(SettingCell.Factory.of(
             CharSequence subtitle,
             CharSequence value
         ) {
+            hasBackground = iconColorTop != 0 || iconColorBottom != 0;
             iconLayout.setVisibility(icon != 0 ? View.VISIBLE : View.GONE);
             titleView.setTranslationX(icon == 0 ? dp(2) : 0);
             subtitleView.setTranslationX(icon == 0 ? dp(2) : 0);
@@ -1249,6 +1605,7 @@ items.add(SettingCell.Factory.of(
             subtitleView.setVisibility((twoLines = !TextUtils.isEmpty(subtitle)) ? View.VISIBLE : View.GONE);
             subtitleView.setText(subtitle);
             setValue(value);
+            updateColors();
         }
 
         public void setValue(CharSequence value) {
@@ -1400,6 +1757,11 @@ items.add(SettingCell.Factory.of(
             textView.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteBlackText, resourcesProvider));
         }
 
+        @Override
+        public void addColorKeys(HashSet<Integer> colors) {
+            colors.add(Theme.key_windowBackgroundWhiteBlackText);
+        }
+
         public void set(
             CharSequence title,
             CharSequence text,
@@ -1502,6 +1864,7 @@ items.add(SettingCell.Factory.of(
                 (SharedConfig.frameMetricsEnabled ? "hide frame metrics" : "show frame metrics"),
                 BuildVars.DEBUG_PRIVATE_VERSION ? (SharedConfig.shadowsInSections ? "disable shadows in settings" : "enable shadows in settings") : null,
                 BuildVars.DEBUG_PRIVATE_VERSION ? (SharedConfig.debugViewMetrics ? "disable debug view metrics" : "enable debug view metrics") : null,
+                (SharedSettings.experimentalSettingsAllowed.get() ? "hide experimental settings" : "show experimental settings")
         };
 
         builder.setItems(items, (dialog, which) -> {
@@ -1534,7 +1897,7 @@ items.add(SettingCell.Factory.of(
                 getMessagesStorage().clearSentMedia();
                 SharedConfig.setNoSoundHintShowed(false);
                 SharedPreferences.Editor editor = MessagesController.getGlobalMainSettings().edit();
-                editor.remove("archivehint").remove("proximityhint").remove("archivehint_l").remove("searchpostsnew").remove("speedhint").remove("gifhint").remove("reminderhint").remove("soundHint").remove("themehint").remove("bganimationhint").remove("filterhint").remove("n_0").remove("storyprvhint").remove("storyhint").remove("storyhint2").remove("storydualhint").remove("storysvddualhint").remove("stories_camera").remove("dualcam").remove("dualmatrix").remove("dual_available").remove("archivehint").remove("askNotificationsAfter").remove("askNotificationsDuration").remove("viewoncehint").remove("voicepausehint").remove("taptostorysoundhint").remove("nothanos").remove("voiceoncehint").remove("savedhint").remove("savedsearchhint").remove("savedsearchtaghint").remove("newppsms").remove("monetizationadshint").remove("seekSpeedHintShowed").remove("unsupport_video/av01").remove("statusgiftpage").remove("multistorieshint").remove("trimvoicehint").remove("taptostoryhighlighthint").remove("proxycheckstatusip").remove("callmiconstart").remove("showchattagsinfo").remove("language_showed2").remove("aihintshown").remove("savedmsgschatshint").apply();
+                editor.remove("archivehint").remove("proximityhint").remove("archivehint_l").remove("searchpostsnew").remove("speedhint").remove("gifhint").remove("reminderhint").remove("soundHint").remove("themehint").remove("bganimationhint").remove("filterhint").remove("n_0").remove("storyprvhint").remove("storyhint").remove("storyhint2").remove("storydualhint").remove("storysvddualhint").remove("stories_camera").remove("dualcam").remove("dualmatrix").remove("dual_available").remove("archivehint").remove("askNotificationsAfter").remove("askNotificationsDuration").remove("viewoncehint").remove("voicepausehint").remove("taptostorysoundhint").remove("nothanos").remove("voiceoncehint").remove("savedhint").remove("savedsearchhint").remove("savedsearchtaghint").remove("newppsms").remove("monetizationadshint").remove("seekSpeedHintShowed").remove("unsupport_video/av01").remove("statusgiftpage").remove("multistorieshint").remove("trimvoicehint").remove("taptostoryhighlighthint").remove("proxycheckstatusip").remove("callmiconstart").remove("showchattagsinfo").remove("language_showed2").remove("aihintshown").remove("savedmsgschatshint").remove("walletcardstickerhint").apply();
                 HintsController.resetAll();
                 SharedPrefsHelper.cleanupAccount(currentAccount);
                 MessagesController.getEmojiSettings(currentAccount).edit().remove("featured_hidden").remove("emoji_featured_hidden").commit();
@@ -1811,6 +2174,9 @@ items.add(SettingCell.Factory.of(
             } else if (which == 41) {
                 final SharedPreferences prefs = ApplicationLoader.applicationContext.getSharedPreferences("mainconfig", Activity.MODE_PRIVATE);
                 prefs.edit().putBoolean("debugViewMetrics", SharedConfig.debugViewMetrics = !SharedConfig.debugViewMetrics).apply();
+            } else if (which == 42) {
+                SharedSettings.experimentalSettingsAllowed.toggle();
+                listView.adapter.update(true);
             }
         });
         builder.setNegativeButton(getString(R.string.Cancel), null);
@@ -2069,9 +2435,30 @@ items.add(SettingCell.Factory.of(
         }
     }
 
+    private boolean leftButtonIsBack = true;
+
     private void checkUi_menuItems() {
-        FragmentFloatingButton.setAnimatedVisibility(otherItem, 1f - animatorSearchPageVisible.getFloatValue());
-        FragmentFloatingButton.setAnimatedVisibility(actionBar.getBackButton(), lerp(hasMainTabs ? 0f : 1f, 1f, animatorSearchPageVisible.getFloatValue()));
+        final float searchVisible = animatorSearchPageVisible.getFloatValue();
+        FragmentFloatingButton.setAnimatedVisibility(otherItem, 1f - searchVisible);
+        if (!hasMainTabs) {
+            FragmentFloatingButton.setAnimatedVisibility(actionBar.getBackButton(), 1f);
+            return;
+        }
+        // the main tab has no back: the left button is the QR code, turning into back while the search is open
+        // (shrinks away and grows back with the other icon; stays visible, so the title does not move)
+        final ImageView button = actionBar.getBackButton();
+        if (button == null) return;
+        final boolean back = searchVisible > 0.5f;
+        if (back != leftButtonIsBack) {
+            leftButtonIsBack = back;
+            button.setImageResource(back ? R.drawable.ic_ab_back : R.drawable.outline_header_qr_24);
+            button.setContentDescription(getString(back ? R.string.AccDescrGoBack : R.string.QrCode));
+        }
+        final float f = Math.abs(searchVisible * 2f - 1f);
+        button.setVisibility(View.VISIBLE);
+        button.setAlpha(f);
+        button.setScaleX(lerp(0.4f, 1f, f));
+        button.setScaleY(lerp(0.4f, 1f, f));
     }
 
 
@@ -2096,7 +2483,9 @@ items.add(SettingCell.Factory.of(
             return;
         }
 
-        final int additionalList = dp(48);
+        // Capture below the header only while its single-row overflow menu is open or closing.
+        // This covers the full menu and animation overshoot without blurring the whole list.
+        final int additionalList = dp(actionBar.getOpenMenuOverlay() != null ? 200 : 48);
         final int mainTabBottom = fragmentView.getMeasuredHeight() - navigationBarHeight - dp(DialogsActivity.MAIN_TABS_MARGIN);
         final int mainTabTop = mainTabBottom - dp(DialogsActivity.MAIN_TABS_HEIGHT);
 

@@ -66,6 +66,8 @@ import org.telegram.ui.Components.LayoutHelper;
 import org.telegram.ui.LaunchActivity;
 import org.telegram.ui.Stories.StoryViewer;
 import org.telegram.ui.bots.BotWebViewAttachedSheet;
+import org.telegram.ui.iv.RichCommand;
+import org.telegram.utils.glass.GlassEngine;
 
 import java.util.ArrayList;
 
@@ -254,9 +256,11 @@ public abstract class BaseFragment {
         this.fragmentView = fragmentView;
     }
 
+    protected final GlassEngine glassEngine = new GlassEngine();
+
     public View performCreateView(Context context) {
         if (!BuildConfig.DEBUG_PRIVATE_VERSION) {
-            return createView(context);
+            return performCreateViewImpl(context);
         }
 
         final String className = getClass().getSimpleName();
@@ -264,10 +268,21 @@ public abstract class BaseFragment {
         final String sectionName = TextUtils.isEmpty(className) ? sectionNameBase : (sectionNameBase + className);
         Trace.beginSection(sectionName);
         try {
-            return createView(context);
+            return performCreateViewImpl(context);
         } finally {
             Trace.endSection();
         }
+    }
+
+    private View performCreateViewImpl(Context context) {
+        final View view = createView(context);
+        onViewCreated(view);
+        return view;
+    }
+
+    @CallSuper
+    protected void onViewCreated(View view) {
+        glassEngine.setRoot(view);
     }
 
     protected View createView(Context context) {
@@ -539,6 +554,7 @@ public abstract class BaseFragment {
 
     @CallSuper
     public void onPause() {
+        if (simpleMenuOverlay != null) simpleMenuOverlay.close(false);
         if (actionBar != null) {
             actionBar.onPause();
         }
@@ -584,7 +600,33 @@ public abstract class BaseFragment {
 
     }
 
+    private SimpleActionBarMenuOverlay simpleMenuOverlay;
+
+    @Nullable
+    public SimpleActionBarMenuOverlay getSimpleMenuOverlay() {
+        if (!(fragmentView instanceof FrameLayout)) return null;
+        ViewGroup root = (ViewGroup) fragmentView;
+        if (simpleMenuOverlay == null || simpleMenuOverlay.getParent() != root) {
+            if (simpleMenuOverlay != null) {
+                simpleMenuOverlay.close(false);
+                AndroidUtilities.removeFromParent(simpleMenuOverlay);
+            }
+            simpleMenuOverlay = new SimpleActionBarMenuOverlay(root.getContext());
+            root.addView(simpleMenuOverlay, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        }
+        return simpleMenuOverlay;
+    }
+
+    protected boolean closeSimpleMenuOverlayOnBack(boolean invoked) {
+        if (simpleMenuOverlay != null && simpleMenuOverlay.isOpened()) {
+            if (invoked) simpleMenuOverlay.close(true);
+            return true;
+        }
+        return false;
+    }
+
     public boolean onBackPressed(boolean invoked) {
+        if (closeSimpleMenuOverlayOnBack(invoked)) return false;
         if (hasShownSheet()) {
             if (invoked) closeSheet();
             return false;

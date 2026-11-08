@@ -113,7 +113,7 @@ public class BlurredBackgroundProviderImpl {
     public static BlurredBackgroundProvider scrimMenuBackground(Theme.ResourcesProvider resourcesProvider) {
         return new BlurredBackgroundProviderBuilder(resourcesProvider)
             .setBackgroundColor((r, isDark) ->
-                Theme.multAlpha(Theme.getColor(Theme.key_actionBarDefaultSubmenuBackground), isDark ? 0.85f : 0.825f))
+                Theme.multAlpha(Theme.getColor(Theme.key_actionBarDefaultSubmenuBackground, r), isDark ? 0.85f : 0.825f))
             .setStrokeColorTop(0x44FFFFFF, 0)
             .setStrokeColorBottom(0x22FFFFFF, 0)
             .setShadowColor(0x26000000, 0)
@@ -184,6 +184,34 @@ public class BlurredBackgroundProviderImpl {
                 //.setShadowLayer(dpf2(10 / 3f), 0, dpf2(2 / 3f))
                 .setStrokeWidth(dpf2(0.55f), dpf2(0.55f))
                 .build();
+    }
+
+    public static BlurredBackgroundProvider simpleActionBar(Theme.ResourcesProvider resourcesProvider) {
+        return new BlurredBackgroundProviderBuilder(resourcesProvider)
+            .setBackgroundColor((r, isDark) -> {
+                final float alpha = LiteMode.isEnabled(LiteMode.FLAG_LIQUID_GLASS) ? 0.85f : 0.80f;
+                final int colorBg = Theme.getColor(Theme.key_windowBackgroundGray, r);
+                final int colorTarget = Theme.getColor(Theme.key_windowBackgroundWhite, r);
+                return solveSrcColor(colorBg, colorTarget, alpha);
+            })
+            .setStrokeColorTop(0xFFFFFFFF, 0x20FFFFFF)
+            .setStrokeColorBottom(0xFFFFFFFF, 0x14FFFFFF)
+            .setShadowColor(0x16333333, 0)
+            .setShadowLayer(dpf2(24 / 3f), 0, dpf2(7f / 3f))
+            .setStrokeWidth(dpf2(0.55f), dpf2(0.55f))
+            .build();
+    }
+
+    /** A frosted sheet over the content, e.g. the list over the map: the content shows through its blur. */
+    public static BlurredBackgroundProvider frostedSheet(Theme.ResourcesProvider resourcesProvider) {
+        return new BlurredBackgroundProviderBuilder(resourcesProvider)
+            .setBackgroundColor((r, isDark) -> Theme.multAlpha(Theme.getColor(Theme.key_dialogBackground, r), isDark ? 0.82f : 0.78f))
+            .setStrokeColorTop(0xFFFFFFFF, 0x20FFFFFF)
+            .setStrokeColorBottom(0, 0)
+            .setShadowColor(0x16333333, 0)
+            .setShadowLayer(dpf2(24 / 3f), 0, -dpf2(2f / 3f))
+            .setStrokeWidth(dpf2(0.55f), 0)
+            .build();
     }
 
     public static BlurredBackgroundProvider topPanelChatActivityTags(Theme.ResourcesProvider resourcesProvider) {

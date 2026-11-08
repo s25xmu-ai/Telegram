@@ -53,6 +53,30 @@ public abstract class BlurredBackgroundDrawable extends Drawable {
         shadowLayerDy = dpf2(1 / 3f);
     }
 
+    // Capture the full path of an expanding glass menu during its animation.
+    private final Rect reservedBounds = new Rect();
+
+    public final void setReservedBounds(int left, int top, int right, int bottom) {
+        if (reservedBounds.left != left || reservedBounds.top != top || reservedBounds.right != right || reservedBounds.bottom != bottom) {
+            reservedBounds.set(left, top, right, bottom);
+            onReservedBoundsChanged();
+        }
+    }
+
+    public final void clearReservedBounds() {
+        if (!reservedBounds.isEmpty()) {
+            reservedBounds.setEmpty();
+            onReservedBoundsChanged();
+        }
+    }
+
+    protected void onReservedBoundsChanged() {}
+
+    public final boolean getReservedBounds(@NonNull Rect out) {
+        out.set(reservedBounds);
+        return !reservedBounds.isEmpty();
+    }
+
     protected float sourceOffsetX;
     protected float sourceOffsetY;
 
@@ -199,6 +223,23 @@ public abstract class BlurredBackgroundDrawable extends Drawable {
         return this;
     }
 
+    private int outsetX, outsetY;
+
+    public BlurredBackgroundDrawable setOutset(int dx, int dy) {
+        this.outsetX = dx;
+        this.outsetY = dy;
+
+        return this;
+    }
+
+    public int getOutsetX() {
+        return outsetX;
+    }
+
+    public int getOutsetY() {
+        return outsetY;
+    }
+
     @CallSuper
     public void updateColors() {
         if (colorProvider == null) return;
@@ -333,6 +374,14 @@ public abstract class BlurredBackgroundDrawable extends Drawable {
     @Override
     public void getOutline(@NonNull Outline outline) {
         BlurredBackgroundDrawable.getOutline(outline, boundProps.boundsWithPadding, boundProps.radii);
+    }
+
+    public boolean hasDisplayList() {
+        return false;
+    }
+
+    public void updateDisplayList() {
+
     }
 
     private static Path tmpPath = new Path();

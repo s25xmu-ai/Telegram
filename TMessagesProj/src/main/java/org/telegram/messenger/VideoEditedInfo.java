@@ -92,7 +92,7 @@ public class VideoEditedInfo {
 
     public boolean alreadyScheduledConverting;
 
-    public boolean canceled;
+    public volatile boolean canceled;
     public boolean videoConvertFirstWrite;
     public boolean needUpdateProgress = false;
     public boolean shouldLimitFps = true;

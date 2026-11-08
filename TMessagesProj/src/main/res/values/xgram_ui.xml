@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="XGramWalletLabel">Wallet</string>
+    <string name="XGramUISettings">Interface settings</string>
+    <string name="XGramHomeBottomBar">Show bottom bar on home</string>
+    <string name="XGramHomeBottomBarInfo">Show or hide the navigation bar on the chats screen.</string>
+    <string name="XGramClassicUI">Classic interface</string>
+    <string name="XGramIOSUI">iOS interface</string>
+    <string name="XGramIOSUIInfo">These options can be combined. Enabling an iOS style replaces the classic style for the same component. Reopen the chat to apply the message bar and header.</string>
+    <string name="XGramIOSChatHeader">iOS-inspired chat header (in progress)</string>
+    <string name="XGramClassicChatHeaderLayout">Classic chat header (in progress)</string>
+    <string name="XGramClassicDrawer">Classic menu</string>
+    <string name="XGramClassicDialogRows">Classic chat list row dimensions</string>
+    <string name="XGramClassicSettingsRows">Classic settings rows (in progress)</string>
+    <string name="XGramClassicSettingsHeader">Simple settings header</string>
+    <string name="XGramClassicProfileDetails">Classic profile detail spacing (in progress)</string>
+    <string name="XGramClassicMessageMenu">Classic message menu background</string>
+    <string name="XGramClassicMessageInput">Classic message input (in progress)</string>
+    <string name="XGramClassicUIInfo">These options can be combined. Reopen the chat for the message input and header, or the profile or settings screen for their respective options. Classic message options override the corresponding iOS style.</string>
+    <string name="XGramBrowserUnavailable">No browser is available to open this link.</string>
+    <string name="XGramBuyPremium">Buy Premium</string>
+    <string name="XGramWalletUnavailable">Temporarily unavailable.</string>
+</resources>

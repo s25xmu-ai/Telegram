@@ -826,11 +826,11 @@ public class Theme {
 
             int outBubble = currentColors.get(key_chat_outBubble);
             if (outBubble == 0) {
-                outBubble = getColor(key_chat_outBubble);
+                outBubble = getColorFromTable(currentColors, key_chat_outBubble, null);
             }
             int inBubble = currentColors.get(key_chat_inBubble);
             if (inBubble == 0) {
-                inBubble = getColor(key_chat_inBubble);
+                inBubble = getColorFromTable(currentColors, key_chat_inBubble, null);
             }
 
             int gradientAverageColor = outBubble;
@@ -860,24 +860,24 @@ public class Theme {
                 currentColors.put(key_chat_outTextSelectionCursor, textSelectionHandle(outBubble, accentColor));
             }
 
-            float accentHue = getHue(getColor(key_windowBackgroundWhiteBlueText));
+            float accentHue = getHue(getColorFromTable(currentColors, key_windowBackgroundWhiteBlueText, null));
             currentColors.put(key_chat_outBubbleLocationPlaceholder, locationPlaceholderColor(accentHue, outBubble, isDarkTheme));
             currentColors.put(key_chat_inBubbleLocationPlaceholder, locationPlaceholderColor(accentHue, inBubble, isDarkTheme));
 
             int inMsgLink = currentColors.get(key_chat_messageLinkIn);
             if (inMsgLink == 0) {
-                inMsgLink = getColor(key_chat_messageLinkIn);
+                inMsgLink = getColorFromTable(currentColors, key_chat_messageLinkIn, null);
             }
             int outMsgLink = currentColors.get(key_chat_messageLinkOut);
             if (outMsgLink == 0) {
-                outMsgLink = getColor(key_chat_messageLinkOut);
+                outMsgLink = getColorFromTable(currentColors, key_chat_messageLinkOut, null);
             }
             currentColors.put(key_chat_linkSelectBackground, linkSelectionBackground(inMsgLink, inBubble, isDarkTheme));
             currentColors.put(key_chat_outLinkSelectBackground, linkSelectionBackground(outMsgLink, outBubble, isDarkTheme));
 
             int submenuBackground = currentColors.get(key_actionBarDefaultSubmenuBackground);
             if (submenuBackground == 0) {
-                submenuBackground = getColor(key_actionBarDefaultSubmenuBackground);
+                submenuBackground = getColorFromTable(currentColors, key_actionBarDefaultSubmenuBackground, null);
             }
             currentColors.put(key_actionBarDefaultSubmenuSeparator, Color.argb(
                 Color.alpha(submenuBackground),
@@ -1648,7 +1648,7 @@ public class Theme {
             }
             if ("Dark Blue".equals(name) || "Night".equals(name)) {
                 isDark = DARK;
-            } else if ("Blue".equals(name) || "Arctic Blue".equals(name) || "Day".equals(name)) {
+            } else if ("Blue".equals(name) || "Arctic Blue".equals(name) || "Day".equals(name) || "Windows 11".equals(name)) {
                 isDark = LIGHT;
             }
             if (isDark == UNKNOWN) {
@@ -3421,6 +3421,10 @@ public class Theme {
     public static final int key_telegram_color = colorsCount++;
     public static final int key_telegram_color_text = colorsCount++;
 
+    public static final int key_wallet_comment = colorsCount++;
+    public static final int key_wallet_out_commentBorder = colorsCount++;
+    public static final int key_wallet_inputCurrency = colorsCount++;
+
     public static final String key_drawable_botInline = "drawableBotInline";
     public static final String key_drawable_botLink = "drawableBotLink";
     public static final String key_drawable_botWebView = "drawableBotWebView";
@@ -3711,7 +3715,9 @@ public class Theme {
         fallbackKeys.put(key_telegram_color, Theme.key_chat_messagePanelSend);
         fallbackKeys.put(key_telegram_color_text, Theme.key_windowBackgroundWhiteBlueText4);
 
-
+        fallbackKeys.put(key_wallet_comment, Theme.key_dialogBackgroundGray);
+        fallbackKeys.put(key_wallet_out_commentBorder, Theme.key_divider);
+        fallbackKeys.put(key_wallet_inputCurrency, Theme.key_color_green);
 
 
         // fallbackKeys.put(key_chat_msgIvButtonDefaultIn, );
@@ -4009,6 +4015,17 @@ public class Theme {
         sortAccents(themeInfo);
         themes.add(themeInfo);
         themesDict.put("Night", themeInfo);
+
+        // Optional Windows-inspired light palette. It is never applied automatically.
+        themeInfo = new ThemeInfo();
+        themeInfo.name = "Windows 11";
+        themeInfo.assetName = "xgram_windows11.attheme";
+        themeInfo.previewBackgroundColor = 0xffeef2f8;
+        themeInfo.previewInColor = 0xffffffff;
+        themeInfo.previewOutColor = 0xff0067c0;
+        themeInfo.sortIndex = 6;
+        themes.add(themeInfo);
+        themesDict.put("Windows 11", themeInfo);
 
         String themesString = themeConfig.getString("themes2", null);
 
@@ -5626,10 +5643,14 @@ public class Theme {
         applyTheme(themeInfo, save, true, nightTheme);
     }
 
+    /** Invalidates older background theme reads when another theme is applied. */
+    private static int applyThemeGeneration;
+
     private static void applyTheme(ThemeInfo themeInfo, boolean save, boolean removeWallpaperOverride, final boolean nightTheme) {
         if (themeInfo == null) {
             return;
         }
+        applyThemeGeneration++;
         ThemeEditorView editorView = ThemeEditorView.getInstance();
         if (editorView != null) {
             editorView.destroy();
@@ -5758,6 +5779,7 @@ public class Theme {
             }
             return;
         }
+        final int generation = ++applyThemeGeneration;
         ThemeEditorView editorView = ThemeEditorView.getInstance();
         if (editorView != null) {
             editorView.destroy();
@@ -5864,16 +5886,21 @@ public class Theme {
                         onDone.run();
                     }
                 };
+                // Parse off-thread, but apply theme state on the UI thread. Ignore an obsolete read.
+                final Utilities.Callback<SparseIntArray> apply = colors -> AndroidUtilities.runOnUIThread(() -> {
+                    if (generation != applyThemeGeneration) {
+                        if (onDone != null) {
+                            onDone.run();
+                        }
+                        return;
+                    }
+                    currentColorsNoAccent = colors;
+                    next.run();
+                });
                 if (themeInfo.assetName != null) {
-                    getThemeFileValuesInBackground(null, themeInfo.assetName, null, colors -> {
-                        currentColorsNoAccent = colors;
-                        next.run();
-                    });
+                    getThemeFileValuesInBackground(null, themeInfo.assetName, null, apply);
                 } else {
-                    getThemeFileValuesInBackground(new File(themeInfo.pathToFile), null, wallpaperLink, colors -> {
-                        currentColorsNoAccent = colors;
-                        next.run();
-                    });
+                    getThemeFileValuesInBackground(new File(themeInfo.pathToFile), null, wallpaperLink, apply);
                 }
                 return;
             } else {
@@ -6067,14 +6094,17 @@ public class Theme {
     }
 
     public static void refreshThemeColors(boolean bg, boolean messages) {
-        currentColors = currentColorsNoAccent.clone();
-        shouldDrawGradientIcons = true;
+        // Publish a complete color table, rather than exposing a table while it is being filled.
+        final SparseIntArray colors = currentColorsNoAccent.clone();
+        boolean gradientIcons = true;
         ThemeAccent accent = currentTheme.getAccent(false);
         if (accent != null) {
-            shouldDrawGradientIcons = accent.fillAccentColors(currentColorsNoAccent, currentColors);
+            gradientIcons = accent.fillAccentColors(currentColorsNoAccent, colors);
         }
-        applyCalculatedTableColors(currentColorsNoAccent, currentColors, currentTheme.isDark());
-        applyCalculatedArticleCodeColors(currentColorsNoAccent, currentColors, currentTheme.isDark());
+        applyCalculatedTableColors(currentColorsNoAccent, colors, currentTheme.isDark());
+        applyCalculatedArticleCodeColors(currentColorsNoAccent, colors, currentTheme.isDark());
+        shouldDrawGradientIcons = gradientIcons;
+        currentColors = colors;
         if (!messages) {
             boolean async = !(LaunchActivity.getLastFragment() instanceof ChatActivity);
             reloadWallpaper(async);
@@ -8996,6 +9026,11 @@ chat_msgTextPaintThreeEmoji.setTypeface(vazir);
                 return animatingColors.valueAt(index);
             }
         }
+        return getColorFromTable(currentColors, key, isDefault);
+    }
+
+    /** Read a specified table without animated colors, including while building a new theme. */
+    private static int getColorFromTable(SparseIntArray currentColors, int key, boolean[] isDefault) {
         if (serviceBitmapShader != null && (key_chat_serviceText == key || key_chat_serviceLink == key || key_chat_serviceIcon == key
                 || key_chat_stickerReplyLine == key || key_chat_stickerReplyNameText == key || key_chat_stickerReplyMessageText == key)) {
             return 0xffffffff;
@@ -10124,6 +10159,10 @@ chat_msgTextPaintThreeEmoji.setTypeface(vazir);
     public interface Colorable {
         public void updateColors();
         public default int[] getColorKeys() { return null; }
+        public default void addColorKeys(java.util.HashSet<Integer> colors) {
+            int[] keys = getColorKeys();
+            if (keys != null) for (int key : keys) colors.add(key);
+        }
     }
 
     private static final Paint PAINT_FILLING = new Paint(Paint.ANTI_ALIAS_FLAG);

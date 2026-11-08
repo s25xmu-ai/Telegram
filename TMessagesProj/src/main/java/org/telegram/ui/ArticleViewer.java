@@ -52,6 +52,7 @@ import android.text.Editable;
 import android.text.Layout;
 import android.text.Spannable;
 import android.text.SpannableStringBuilder;
+import android.text.SpannableString;
 import android.text.Spanned;
 import android.text.StaticLayout;
 import android.text.TextPaint;
@@ -120,7 +121,8 @@ import org.telegram.messenger.AnimationNotificationsLocker;
 import org.telegram.messenger.ApplicationLoader;
 import org.telegram.messenger.BotGuardHelper;
 import org.telegram.messenger.ChatObject;
-import org.telegram.messenger.CodeHighlighting;
+import org.telegram.utils.code.highlight.CodeHighlighting;
+import org.telegram.utils.code.highlight.PrismaTokenStyles;
 import org.telegram.messenger.DownloadController;
 import org.telegram.messenger.Emoji;
 import org.telegram.messenger.FileLoader;
@@ -181,6 +183,7 @@ import org.telegram.ui.Components.ContextProgressView;
 import org.telegram.ui.Components.CubicBezierInterpolator;
 import org.telegram.ui.Components.ItemOptions;
 import org.telegram.ui.Components.LayoutHelper;
+import org.telegram.ui.Components.MarkdownParser;
 import org.telegram.ui.Components.LinkPath;
 import org.telegram.ui.Components.LinkSpanDrawable;
 import org.telegram.ui.Components.MediaActionDrawable;
@@ -4824,7 +4827,7 @@ public class ArticleViewer extends IArticleViewer implements NotificationCenter.
                 }
                 if (parentActivity == null || parentActivity.isFinishing()) return;
                 if (file != null) {
-                    AndroidUtilities.openForView(file, null, "text/markdown", parentActivity, getResourcesProvider(), true);
+                    AndroidUtilities.openForView(file, null, MarkdownParser.isExtensionDiff(FileLoader.getFileExtension(file)) ? "text/x-diff" : "text/markdown", parentActivity, getResourcesProvider(), true);
                     return;
                 }
                 if (webPageUrl == null) return;
@@ -6390,6 +6393,7 @@ public class ArticleViewer extends IArticleViewer implements NotificationCenter.
         private TLRPC.WebPage currentPage;
         private TL_iv.pageBlockChannel channelBlock;
         private boolean isRtl;
+        private int diffScrollX;
         private final boolean padding;
 
         public WebpageAdapter(Context ctx, boolean withPadding) {
@@ -13918,6 +13922,9 @@ public class ArticleViewer extends IArticleViewer implements NotificationCenter.
                         parent.pressedLinkOwnerLayout = null;
                         parent.pressedLinkOwnerView = null;
                     }
+                    if (currentBlock != null && currentBlock.diff && !syncingScroll) {
+                        syncDiffScroll(l);
+                    }
                 }
             };
             scrollView.setPadding(0, dp(8), 0, dp(8));
@@ -13932,7 +13939,9 @@ public class ArticleViewer extends IArticleViewer implements NotificationCenter.
                     if (currentBlock != null) {
                         if (text == null) {
                             text = getText(parent, adapter, this, currentBlock.text, currentBlock.text, currentBlock, dp(5000));
-                            if (!TextUtils.isEmpty(currentBlock.language)) {
+                            if (currentBlock.diff) {
+                                text = highlightDiff(text, currentBlock.language);
+                            } else if (!TextUtils.isEmpty(currentBlock.language)) {
                                 text = CodeHighlighting.getHighlighted(text, currentBlock.language);
                             }
                         }
@@ -13941,6 +13950,18 @@ public class ArticleViewer extends IArticleViewer implements NotificationCenter.
                             height += textLayout.getHeight();
                             for (int a = 0, count = textLayout.getLineCount(); a < count; a++) {
                                 width = Math.max((int) Math.ceil(textLayout.getLineWidth(a)), width);
+                            }
+                            if (currentBlock.diff && textLayout.textLayout != null) {
+                                // all chunks are scrolled together, so they share the width of the longest line
+                                width = Math.max((int) Math.ceil(textLayout.textLayout.getPaint().measureText("m") * currentBlock.diffColumns), width);
+                            }
+                            chunkSpacing = 0;
+                            if (currentBlock.continuesNext && textLayout.textLayout != null && textLayout.getLineCount() > 1) {
+                                // the last line has no line spacing, add it back so lines of the next chunk don't come closer
+                                final StaticLayout layout = textLayout.textLayout;
+                                final int last = layout.getLineCount() - 1;
+                                chunkSpacing = Math.max(0, (layout.getLineBottom(0) - layout.getLineTop(0)) - (layout.getLineBottom(last) - layout.getLineTop(last)));
+                                height += chunkSpacing;
                             }
                         }
                     } else {
@@ -13984,10 +14005,72 @@ public class ArticleViewer extends IArticleViewer implements NotificationCenter.
             setWillNotDraw(false);
         }
 
+        private SpannableString highlightDiff(CharSequence source, String language) {
+            final SpannableString diffText = new SpannableString(source);
+            setDiffMarkerSpans(diffText);
+            CodeHighlighting.highlightMasked(diffText, MarkdownParser.maskDiff(diffText), language, () -> {
+                // highlighting replaces color spans of the whole text
+                setDiffMarkerSpans(diffText);
+                if (text == diffText) {
+                    textContainer.requestLayout();
+                    invalidate();
+                }
+            });
+            return diffText;
+        }
+
+        private static void setDiffMarkerSpans(SpannableString diffText) {
+            int lineStart = 0;
+            while (lineStart <= diffText.length()) {
+                int lineEnd = TextUtils.indexOf(diffText, '\n', lineStart);
+                if (lineEnd < 0) lineEnd = diffText.length();
+                switch (MarkdownParser.getDiffLineType(diffText, lineStart)) {
+                    case MarkdownParser.DIFF_LINE_META:
+                        if (lineEnd > lineStart) diffText.setSpan(new CodeHighlighting.ColorSpan(PrismaTokenStyles.COMMENT), lineStart, lineEnd, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+                        break;
+                    case MarkdownParser.DIFF_LINE_INSERTED:
+                        diffText.setSpan(new CodeHighlighting.ColorSpan(PrismaTokenStyles.INSERTED), lineStart, lineStart + 1, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+                        break;
+                    case MarkdownParser.DIFF_LINE_DELETED:
+                        diffText.setSpan(new CodeHighlighting.ColorSpan(PrismaTokenStyles.DELETED), lineStart, lineStart + 1, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+                        break;
+                }
+                lineStart = lineEnd + 1;
+            }
+        }
+
+        private boolean syncingScroll;
+        private int chunkSpacing;
+
+        private void syncDiffScroll(int scrollX) {
+            if (adapter != null) adapter.diffScrollX = scrollX;
+            if (!(getParent() instanceof ViewGroup)) return;
+            final ViewGroup list = (ViewGroup) getParent();
+            for (int i = 0; i < list.getChildCount(); ++i) {
+                final View child = list.getChildAt(i);
+                if (child != this && child instanceof BlockPreformattedCell) {
+                    final BlockPreformattedCell cell = (BlockPreformattedCell) child;
+                    if (cell.currentBlock != null && cell.currentBlock.diff) {
+                        cell.syncingScroll = true;
+                        cell.scrollView.scrollTo(scrollX, 0);
+                        cell.syncingScroll = false;
+                    }
+                }
+            }
+        }
+
         public void setBlock(TL_iv.pageBlockPreformatted block) {
             text = null;
             currentBlock = block;
-            scrollView.setScrollX(0);
+            syncingScroll = true;
+            scrollView.setScrollX(block.diff && adapter != null ? adapter.diffScrollX : 0);
+            syncingScroll = false;
+            // a scrollbar per chunk flashes when the page appears
+            scrollView.setHorizontalScrollBarEnabled(!block.diff);
+            scrollView.setPadding(0, block.continuesPrev ? 0 : dp(8), 0, block.continuesNext ? 0 : dp(8));
+            final MarginLayoutParams lp = (MarginLayoutParams) textContainer.getLayoutParams();
+            lp.topMargin = block.continuesPrev ? 0 : dp(12);
+            lp.bottomMargin = block.continuesNext ? 0 : dp(12);
             textContainer.requestLayout();
         }
 
@@ -14021,7 +14104,31 @@ public class ArticleViewer extends IArticleViewer implements NotificationCenter.
             if (currentBlock == null) {
                 return;
             }
-            canvas.drawRect(0, dp(8), getMeasuredWidth(), getMeasuredHeight() - dp(8), preformattedBackgroundPaint);
+            if (currentBlock.diff) {
+                drawDiffLines(canvas);
+                return;
+            }
+            canvas.drawRect(0, currentBlock.continuesPrev ? 0 : dp(8), getMeasuredWidth(), getMeasuredHeight() - (currentBlock.continuesNext ? 0 : dp(8)), preformattedBackgroundPaint);
+        }
+
+        private final Paint diffLinePaint = new Paint();
+
+        private void drawDiffLines(Canvas canvas) {
+            if (textLayout == null || textLayout.textLayout == null) return;
+            final StaticLayout layout = textLayout.textLayout;
+            final CharSequence layoutText = layout.getText();
+            final int top = scrollView.getTop() + textContainer.getTop();
+            for (int i = 0, count = layout.getLineCount(); i < count; ++i) {
+                final int type = MarkdownParser.getDiffLineType(layoutText, layout.getLineStart(i));
+                if (type == MarkdownParser.DIFF_LINE_INSERTED) {
+                    diffLinePaint.setColor(0x2634c759);
+                } else if (type == MarkdownParser.DIFF_LINE_DELETED) {
+                    diffLinePaint.setColor(0x26ff3b30);
+                } else {
+                    continue;
+                }
+                canvas.drawRect(0, top + layout.getLineTop(i), getMeasuredWidth(), top + layout.getLineBottom(i) + (i == count - 1 ? chunkSpacing : 0), diffLinePaint);
+            }
         }
 
         @Override

@@ -28,6 +28,7 @@ import org.telegram.tgnet.TLObject;
 import org.telegram.tgnet.TLRPC;
 import org.telegram.tgnet.tl.TL_stats;
 import org.telegram.ui.ActionBar.Theme;
+import org.telegram.ui.ActionBar.ThemeBind;
 import org.telegram.ui.Business.BusinessLinksActivity;
 import org.telegram.ui.Business.QuickRepliesActivity;
 import org.telegram.ui.Business.QuickRepliesController;
@@ -125,6 +126,7 @@ public class UniversalAdapter extends AdapterWithDiffUtils {
     private final int classGuid;
     private final boolean dialog;
     private boolean applyBackground = true;
+    private boolean compactTextCells;
     protected Utilities.Callback2<ArrayList<UItem>, UniversalAdapter> fillItems;
     private final Theme.ResourcesProvider resourcesProvider;
 
@@ -331,6 +333,10 @@ public class UniversalAdapter extends AdapterWithDiffUtils {
         updateReorderSections();
     }
 
+    public void setCompactTextCells(boolean compact) {
+        compactTextCells = compact;
+    }
+
     public boolean shouldApplyBackground(int viewType) {
         if (!applyBackground) return false;
         if (viewType >= UItem.factoryViewTypeStartsWith) {
@@ -421,6 +427,7 @@ public class UniversalAdapter extends AdapterWithDiffUtils {
                 break;
             case VIEW_TYPE_TEXT:
                 view = new TextCell(context, resourcesProvider);
+                ((TextCell) view).setCompactLayout(compactTextCells);
                 break;
             case VIEW_TYPE_CHECK:
             case VIEW_TYPE_CHECKRIPPLE:
@@ -434,10 +441,12 @@ public class UniversalAdapter extends AdapterWithDiffUtils {
                 view = cell;
                 break;
             case VIEW_TYPE_RADIO:
-                view = new DialogRadioCell(context);
+                DialogRadioCell radio = new DialogRadioCell(context, false, themedColors);
+                radio.setHorizontalPadding(21);
+                view = radio;
                 break;
             case VIEW_TYPE_RADIO_2:
-                view = new RadioButtonCell(context);
+                view = new RadioButtonCell(context, false, themedColors);
                 break;
             case VIEW_TYPE_TEXT_CHECK:
             case VIEW_TYPE_ICON_TEXT_CHECK:
@@ -577,7 +586,7 @@ public class UniversalAdapter extends AdapterWithDiffUtils {
                 break;
         }
         if (shouldApplyBackground(viewType)) {
-            view.setBackgroundColor(getThemedColor(key_background));
+            ThemeBind.backgroundColor(view, key_background, themedColors);
         }
         return new RecyclerListView.Holder(view);
     }
@@ -700,6 +709,7 @@ public class UniversalAdapter extends AdapterWithDiffUtils {
                 } else {
                     cell.setColors(Theme.key_windowBackgroundWhiteGrayIcon, Theme.key_windowBackgroundWhiteBlackText);
                 }
+                cell.setDrawLoading(item.locked, 45, true);
                 cell.setEnabled(item.enabled, true);
                 break;
             case VIEW_TYPE_CHECK:
@@ -712,7 +722,7 @@ public class UniversalAdapter extends AdapterWithDiffUtils {
                 checkCell.setTextAndCheck(item.text, item.checked, divider);
                 checkCell.itemId = item.id;
                 if (viewType == VIEW_TYPE_CHECKRIPPLE) {
-                    holder.itemView.setBackgroundColor(Theme.getColor(item.checked ? Theme.key_windowBackgroundChecked : Theme.key_windowBackgroundUnchecked));
+                    ThemeBind.backgroundColor(holder.itemView, item.checked ? Theme.key_windowBackgroundChecked : Theme.key_windowBackgroundUnchecked);
                 }
                 break;
             case VIEW_TYPE_RADIO: {
@@ -800,7 +810,9 @@ public class UniversalAdapter extends AdapterWithDiffUtils {
                     Drawable shadowDrawable = Theme.getThemedDrawableByKey(context, drawable, Theme.key_windowBackgroundGrayShadow, resourcesProvider);
                     if (dialog) {
                         cell3.setBackground(new LayerDrawable(new Drawable[]{
-                                new ColorDrawable(getThemedColor(Theme.key_dialogBackgroundGray)),
+                                getThemedColor(Theme.key_dialogBackgroundGray) == Theme.getColor(Theme.key_dialogBackgroundGray, resourcesProvider) ?
+                                    new ThemedColorDrawable(Theme.key_dialogBackgroundGray, resourcesProvider) :
+                                    new ColorDrawable(getThemedColor(Theme.key_dialogBackgroundGray)),
                                 shadowDrawable
                         }));
                     } else {
@@ -921,8 +933,10 @@ public class UniversalAdapter extends AdapterWithDiffUtils {
                 break;
             case VIEW_TYPE_SPACE:
                 if (item.transparent) {
+                    ThemeBind.clear(holder.itemView);
                     holder.itemView.setBackgroundColor(0x00000000);
                 } else if (item.iconResId != 0) {
+                    ThemeBind.clear(holder.itemView);
                     holder.itemView.setBackgroundColor(item.iconResId);
                 }
                 holder.itemView.setId(item.id);
@@ -938,7 +952,7 @@ public class UniversalAdapter extends AdapterWithDiffUtils {
                 TextRightIconCell textCell = (TextRightIconCell) holder.itemView;
                 textCell.setTextAndIcon(item.text, item.iconResId);
                 textCell.setDivider(divider);
-                textCell.setBackgroundColor(getThemedColor(Theme.key_dialogBackground));
+                ThemeBind.backgroundColor(textCell, Theme.key_dialogBackground, themedColors);
                 break;
             case VIEW_TYPE_GRAY_SECTION:
                 GraySectionCell sectionCell = (GraySectionCell) holder.itemView;
@@ -1088,13 +1102,38 @@ public class UniversalAdapter extends AdapterWithDiffUtils {
         updateColors(holder);
     }
 
+    /** ColorDrawable filled with a theme color, re-read on draw (follows theme changes) */
+    private static class ThemedColorDrawable extends ColorDrawable {
+        private final int colorKey;
+        private final Theme.ResourcesProvider resourcesProvider;
+
+        ThemedColorDrawable(int colorKey, Theme.ResourcesProvider resourcesProvider) {
+            super(Theme.getColor(colorKey, resourcesProvider));
+            this.colorKey = colorKey;
+            this.resourcesProvider = resourcesProvider;
+        }
+
+        @Override
+        public void draw(Canvas canvas) {
+            final int color = Theme.getColor(colorKey, resourcesProvider);
+            if (getColor() != color) {
+                setColor(color);
+            }
+            super.draw(canvas);
+        }
+    }
+
     private void updateColors(RecyclerView.ViewHolder holder) {
         if (holder.itemView instanceof Theme.Colorable) {
             ((Theme.Colorable) holder.itemView).updateColors();
-            if (shouldApplyBackground(holder.getItemViewType())) {
+            // re-apply the background only if the theme changed since this item view was last colored
+            final Object tag = holder.itemView.getTag(R.id.theme_generation);
+            final int generation = ThemeBind.generation();
+            if (shouldApplyBackground(holder.getItemViewType()) && (!(tag instanceof Integer) || (Integer) tag != generation)) {
                 final int key_background = dialog ? Theme.key_dialogBackground : Theme.key_windowBackgroundWhite;
                 holder.itemView.setBackgroundColor(getThemedColor(key_background));
             }
+            holder.itemView.setTag(R.id.theme_generation, generation);
         }
     }
 
@@ -1175,6 +1214,16 @@ public class UniversalAdapter extends AdapterWithDiffUtils {
 
     protected int getThemedColor(int key) {
         return Theme.getColor(key, resourcesProvider);
+    }
+
+
+    private final Theme.ResourcesProvider themedColors = new ThemedColors();
+
+    private class ThemedColors implements Theme.ResourcesProvider {
+        @Override
+        public int getColor(int key) {
+            return getThemedColor(key);
+        }
     }
 
 

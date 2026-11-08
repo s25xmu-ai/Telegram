@@ -1,0 +1,10 @@
+<resources xmlns:android="http://schemas.android.com/apk/res/android">
+    <style name="MyTextViewStyle" parent="android:Widget.Holo.Light.TextView">
+        <item name="android:hyphenationFrequency">none</item>
+        <item name="android:fontFamily">@font/vazirmatn_regular</item>
+    </style>
+    <style name="EditTextNoBackgroundStyle" parent="android:Widget.EditText">
+        <item name="android:background">@null</item>
+        <item name="android:fontFamily">@font/vazirmatn_regular</item>
+    </style>
+</resources>

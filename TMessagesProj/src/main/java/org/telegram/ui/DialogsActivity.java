@@ -97,6 +97,7 @@ import org.telegram.ui.recyclerview.LinearSmoothScrollerCustom;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.viewpager.widget.ViewPager;
 
+import org.telegram.messenger.XGramConfig;
 import org.telegram.messenger.AccountInstance;
 import org.telegram.messenger.AndroidUtilities;
 import org.telegram.messenger.AnimationNotificationsLocker;
@@ -155,6 +156,7 @@ import org.telegram.ui.ActionBar.INavigationLayout;
 import org.telegram.ui.ActionBar.MenuDrawable;
 import org.telegram.ui.ActionBar.SimpleTextView;
 import org.telegram.ui.ActionBar.Theme;
+import org.telegram.ui.ActionBar.ThemeBind;
 import org.telegram.ui.ActionBar.ThemeDescription;
 import org.telegram.ui.Adapters.DialogsAdapter;
 import org.telegram.ui.Adapters.DialogsSearchAdapter;
@@ -216,6 +218,7 @@ import org.telegram.ui.Stars.StarsController;
 import org.telegram.ui.Stars.StarsIntroActivity;
 import org.telegram.ui.Stories.StealthModeAlert;
 import org.telegram.ui.Stories.recorder.ButtonWithCounterView;
+import org.telegram.ui.Wallet.WalletActivity;
 import org.telegram.ui.bots.BotWebViewSheet;
 import org.telegram.ui.Components.Bulletin;
 import org.telegram.ui.Components.BulletinFactory;
@@ -518,6 +521,7 @@ private static final String OFFICIAL_SUPPORT_URL = "https://app.chat-t.me/suppor
     private boolean downloadsItemVisible;
     public ActionBarMenuItem searchItem;
     private ActionBarMenuItem optionsItem;
+    private org.telegram.ui.ActionBar.LegacyDrawerLayoutContainer ownedClassicDrawer;
     private ActionBarMenuItem speedItem;
     public static boolean switchingTheme;
     private ActionBarMenuItem doneItem;
@@ -692,6 +696,7 @@ private static final String OFFICIAL_SUPPORT_URL = "https://app.chat-t.me/suppor
     public boolean notify = true;
     public int scheduleDate;
     public int scheduleRepeatPeriod;
+    public boolean forceDocument;
 
     private int canReadCount;
     private int canPinCount;
@@ -916,11 +921,11 @@ private static final String OFFICIAL_SUPPORT_URL = "https://app.chat-t.me/suppor
                 }
                 if (slideFragmentProgress != 1f) {
                     if (slideFragmentLite) {
-                        canvas.translate((-1) * dp(slideAmplitudeDp) * (1f - slideFragmentProgress), 0);
+                        canvas.translate((isDrawerTransition ? 1 : -1) * dp(slideAmplitudeDp) * (1f - slideFragmentProgress), 0);
                     } else {
                         final float s = 1f - 0.05f * (1f - slideFragmentProgress);
-                        canvas.translate((-dp(4)) * (1f - slideFragmentProgress), 0);
-                        canvas.scale(s, s, 0, -getY() + scrollYOffset + getActionBarFullHeight());
+                        canvas.translate((isDrawerTransition ? dp(4) : -dp(4)) * (1f - slideFragmentProgress), 0);
+                        canvas.scale(s, s, isDrawerTransition ? getMeasuredWidth() : 0, -getY() + scrollYOffset + getActionBarFullHeight());
                     }
                 }
                 result = super.drawChild(canvas, child, drawingTime);
@@ -928,11 +933,11 @@ private static final String OFFICIAL_SUPPORT_URL = "https://app.chat-t.me/suppor
             } else if (child == actionBar && slideFragmentProgress != 1f) {
                 canvas.save();
                 if (slideFragmentLite) {
-                    canvas.translate((-1) * dp(slideAmplitudeDp) * (1f - slideFragmentProgress), 0);
+                    canvas.translate((isDrawerTransition ? 1 : -1) * dp(slideAmplitudeDp) * (1f - slideFragmentProgress), 0);
                 } else {
                     float s = 1f - 0.05f * (1f - slideFragmentProgress);
-                    canvas.translate((-dp(4)) * (1f - slideFragmentProgress), 0);
-                    canvas.scale(s, s, 0, (actionBar.getOccupyStatusBar() ? AndroidUtilities.statusBarHeight : 0) + ActionBar.getCurrentActionBarHeight() / 2f);
+                    canvas.translate((isDrawerTransition ? dp(4) : -dp(4)) * (1f - slideFragmentProgress), 0);
+                    canvas.scale(s, s, isDrawerTransition ? getMeasuredWidth() : 0, (actionBar.getOccupyStatusBar() ? AndroidUtilities.statusBarHeight : 0) + ActionBar.getCurrentActionBarHeight() / 2f);
                 }
                 result = super.drawChild(canvas, child, drawingTime);
                 canvas.restore();
@@ -1109,10 +1114,10 @@ private static final String OFFICIAL_SUPPORT_URL = "https://app.chat-t.me/suppor
                 canvas.translate(fragmentContextView.getX(), fragmentContextView.getY());
                 if (slideFragmentProgress != 1f) {
                     if (slideFragmentLite) {
-                        canvas.translate((-1) * dp(slideAmplitudeDp) * (1f - slideFragmentProgress), 0);
+                        canvas.translate((isDrawerTransition ? 1 : -1) * dp(slideAmplitudeDp) * (1f - slideFragmentProgress), 0);
                     } else {
                         final float s = 1f - 0.05f * (1f - slideFragmentProgress);
-                        canvas.translate((-dp(4)) * (1f - slideFragmentProgress), 0);
+                        canvas.translate((isDrawerTransition ? dp(4) : -dp(4)) * (1f - slideFragmentProgress), 0);
                         canvas.scale(s, 1f, 0, fragmentContextView.getY());
                     }
                 }
@@ -2841,7 +2846,6 @@ private static final String OFFICIAL_SUPPORT_URL = "https://app.chat-t.me/suppor
 
 
     private NotificationCenter.ObserversGroup observersGroup;
-    private NotificationCenter.ObserversGroup globalObserversGroup;
 
     @Override
     public boolean onFragmentCreate() {
@@ -2902,15 +2906,16 @@ private static final String OFFICIAL_SUPPORT_URL = "https://app.chat-t.me/suppor
         }
 
         observersGroup = getNotificationCenter().createObserversGroup(this);
-        globalObserversGroup = NotificationCenter.getGlobalInstance().createObserversGroup(this);
+        observersGroup.addGlobal(NotificationCenter.xgramInterfaceSettingsChanged);
+        observersGroup.addGlobal(NotificationCenter.didSetNewTheme);
 
         if (searchString == null) {
             currentConnectionState = getConnectionsManager().getConnectionState();
 
-            globalObserversGroup.add(NotificationCenter.emojiLoaded);
+            observersGroup.addGlobal(NotificationCenter.emojiLoaded);
             if (!onlySelect) {
-                globalObserversGroup.add(NotificationCenter.closeSearchByActiveAction);
-                globalObserversGroup.add(NotificationCenter.proxySettingsChanged);
+                observersGroup.addGlobal(NotificationCenter.closeSearchByActiveAction);
+                observersGroup.addGlobal(NotificationCenter.proxySettingsChanged);
                 observersGroup.add(NotificationCenter.filterSettingsUpdated);
                 observersGroup.add(NotificationCenter.dialogsUnreadCounterChanged);
             }
@@ -2941,7 +2946,7 @@ private static final String OFFICIAL_SUPPORT_URL = "https://app.chat-t.me/suppor
                 .add(NotificationCenter.userEmojiStatusUpdated)
                 .add(NotificationCenter.currentUserPremiumStatusChanged);
 
-            globalObserversGroup.add(NotificationCenter.didSetPasscode);
+            observersGroup.addGlobal(NotificationCenter.didSetPasscode);
         }
         observersGroup
             .add(NotificationCenter.messagesDeleted)
@@ -2993,8 +2998,8 @@ private static final String OFFICIAL_SUPPORT_URL = "https://app.chat-t.me/suppor
         }
 
         BirthdayController.getInstance(currentAccount).check();
-        additionNavigationBarHeight = hasMainTabs ? dp(MAIN_TABS_HEIGHT_WITH_MARGINS) : 0;
-        additionFloatingButtonOffset = hasMainTabs ? dp(DialogsActivity.MAIN_TABS_HEIGHT + DialogsActivity.MAIN_TABS_MARGIN) : 0;
+        additionNavigationBarHeight = hasMainTabs && XGramConfig.isHomeBottomBarVisible() ? dp(MAIN_TABS_HEIGHT_WITH_MARGINS) : 0;
+        additionFloatingButtonOffset = hasMainTabs && XGramConfig.isHomeBottomBarVisible() ? dp(DialogsActivity.MAIN_TABS_HEIGHT + DialogsActivity.MAIN_TABS_MARGIN) : 0;
 
         return true;
     }
@@ -3084,14 +3089,21 @@ private static final String OFFICIAL_SUPPORT_URL = "https://app.chat-t.me/suppor
 
     @Override
     public void onFragmentDestroy() {
+        Activity activity = getParentActivity();
+        if (activity instanceof LaunchActivity) {
+            LaunchActivity launch = (LaunchActivity) activity;
+            if (ownedClassicDrawer != null && launch.classicDrawerOverlay == ownedClassicDrawer) {
+                View drawer = ownedClassicDrawer;
+                setClassicDrawerProgress(0f);
+                if (drawer.getParent() instanceof ViewGroup) ((ViewGroup) drawer.getParent()).removeView(drawer);
+                launch.classicDrawerOverlay = null;
+                ownedClassicDrawer = null;
+            }
+        }
         super.onFragmentDestroy();
         if (observersGroup != null) {
             observersGroup.removeAllObservers();
             observersGroup = null;
-        }
-        if (globalObserversGroup != null) {
-            globalObserversGroup.removeAllObservers();
-            globalObserversGroup = null;
         }
 
         if (commentView != null) {
@@ -3457,15 +3469,15 @@ private static final String OFFICIAL_SUPPORT_URL = "https://app.chat-t.me/suppor
         fragmentSearchFieldWatcher.setDoNotCloseAfterFieldEmpty();
 
         if (initialDialogsType == DIALOGS_TYPE_DEFAULT) {
-            optionsItem = menu.addItem(4, R.drawable.ic_ab_other);
+            optionsItem = menu.addItem(4, useClassicDrawer() ? R.drawable.xgram_menu_classic : R.drawable.ic_ab_other);
             optionsItem.setContentDescription(LocaleController.getString(R.string.AccDescrMoreOptions));
             optionsItem.setOnClickListener(v -> {
                 getContactsController().loadGlobalPrivacySetting();
-                showItemOptions();
+                if (useClassicDrawer()) showClassicDrawer(); else showItemOptions();
             });
             optionsItem.setOnLongClickListener(v -> {
                 getContactsController().loadGlobalPrivacySetting();
-                showItemOptions();
+                if (useClassicDrawer()) showClassicDrawer(); else showItemOptions();
                 return true;
             });
         }
@@ -3531,9 +3543,7 @@ private static final String OFFICIAL_SUPPORT_URL = "https://app.chat-t.me/suppor
             } else {
     statusDrawable = new AnimatedEmojiDrawable.SwapAnimatedEmojiDrawable(null, dp(26));
     statusDrawable.center = true;
-    SpannableStringBuilder ssb = new SpannableStringBuilder("XGram");
-    ssb.setSpan(new ForegroundColorSpan(getThemedColor(Theme.key_telegram_color_dialogsLogo)), 0, ssb.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
-    actionBar.setTitle(ssb, statusDrawable);
+    actionBar.setTitle("XGram", statusDrawable);
     updateStatus(UserConfig.getInstance(currentAccount).getCurrentUser(), false);
             }
             if (folderId == 0) {
@@ -5148,6 +5158,7 @@ private static final String OFFICIAL_SUPPORT_URL = "https://app.chat-t.me/suppor
                 if (delegate == null || selectedDialogs.isEmpty()) {
                     return;
                 }
+                forceDocument = false;
                 ArrayList<MessagesStorage.TopicKey> topicKeys = new ArrayList<>();
                 for (int i = 0; i < selectedDialogs.size(); i++) {
                     topicKeys.add(MessagesStorage.TopicKey.of(selectedDialogs.get(i), 0));
@@ -5362,7 +5373,11 @@ private static final String OFFICIAL_SUPPORT_URL = "https://app.chat-t.me/suppor
 
         if (hasMainTabs) {
             actionBar.getTitlesContainer().setTranslationX(dp(4));
-            actionBar.setTitleColor(getThemedColor(Theme.key_telegram_color_dialogsLogo));
+            if (!onlySelect && folderId == 0 && communityId == 0) {
+                ThemeBind.actionBarTitleColor(actionBar, Theme.key_telegram_color_dialogsLogo, resourceProvider);
+            } else {
+                actionBar.setTitleColor(getThemedColor(Theme.key_telegram_color_dialogsLogo));
+            }
         }
 
         if (folderId != 0 || communityId != 0) {
@@ -5426,6 +5441,7 @@ private static final String OFFICIAL_SUPPORT_URL = "https://app.chat-t.me/suppor
             fragmentSearchField.editText.setSelection(searchString.length());
         } else if (initialSearchString != null) {
             showSearch(true, false, false, true);
+            fragmentSearchFieldWatcher.toggleSearch(true);
             fragmentSearchField.editText.setText(initialSearchString);
             fragmentSearchField.editText.setSelection(initialSearchString.length());
             initialSearchString = null;
@@ -5543,7 +5559,9 @@ private static final String OFFICIAL_SUPPORT_URL = "https://app.chat-t.me/suppor
                 contentView.requestLayout();
                 if (!hasFragment()) {
                     invalidateScrollY = true;
-                    fixScrollYAfterArchiveOpened = true;
+                    if (scrollYOffset != 0) {
+                        fixScrollYAfterArchiveOpened = true;
+                    }
                     if (fragmentView != null) {
                         fragmentView.invalidate();
                     }
@@ -7034,6 +7052,7 @@ private static final String OFFICIAL_SUPPORT_URL = "https://app.chat-t.me/suppor
     @Override
     public void onResume() {
         super.onResume();
+        updateXGramInterfaceSettings();
         if (dialogStoriesCell != null) {
             dialogStoriesCell.onResume();
         }
@@ -7467,6 +7486,9 @@ private static final String OFFICIAL_SUPPORT_URL = "https://app.chat-t.me/suppor
 
     public void search(String query, boolean animated) {
         showSearch(true, false, animated);
+        if (fragmentSearchFieldWatcher != null) {
+            fragmentSearchFieldWatcher.toggleSearch(true);
+        }
         if (fragmentSearchField != null) {
             fragmentSearchField.editText.setText(query);
             fragmentSearchField.editText.setSelection(query.length());
@@ -7494,6 +7516,9 @@ private static final String OFFICIAL_SUPPORT_URL = "https://app.chat-t.me/suppor
         }
         searchIsShowed = show;
         blur3_InvalidateBlur();
+        if (!show) {
+            updateFilterTabs(false, animated);
+        }
         if (show) {
             boolean onlyDialogsAdapter;
             if (searchFiltersWasShowed || forceNotOnlyDialogs) {
@@ -8646,7 +8671,7 @@ private static final String OFFICIAL_SUPPORT_URL = "https://app.chat-t.me/suppor
         }
 
         if (!isCommunityCell) {
-            ActionBarMenuSubItem markAsUnreadItem = new ActionBarMenuSubItem(getParentActivity(), true, false);
+            ActionBarMenuSubItem markAsUnreadItem = new ActionBarMenuSubItem(getParentActivity(), !hasFolders, false);
             if (cell.getHasUnread()) {
                 markAsUnreadItem.setTextAndIcon(LocaleController.getString(R.string.MarkAsRead), R.drawable.msg_markread);
             } else {
@@ -8724,7 +8749,7 @@ private static final String OFFICIAL_SUPPORT_URL = "https://app.chat-t.me/suppor
         }
 
         if (hasPinAction[0]) {
-            ActionBarMenuSubItem unpinItem = new ActionBarMenuSubItem(getParentActivity(), false, false);
+            ActionBarMenuSubItem unpinItem = new ActionBarMenuSubItem(getParentActivity(), !hasFolders && isCommunityCell, false);
             if (isDialogPinned(dialog)) {
                 unpinItem.setTextAndIcon(LocaleController.getString(R.string.UnpinMessage), R.drawable.msg_unpin);
             } else {
@@ -10525,7 +10550,16 @@ private static final String OFFICIAL_SUPPORT_URL = "https://app.chat-t.me/suppor
     @SuppressWarnings("unchecked")
     @Override
     public void didReceivedNotification(int id, int account, Object... args) {
-        if (id == NotificationCenter.dialogsNeedReload) {
+        if (id == NotificationCenter.didSetNewTheme) {
+            if (ownedClassicDrawer != null) {
+                ThemeBind.updateTree(ownedClassicDrawer, true);
+            }
+            if (actionBar != null && hasMainTabs && !onlySelect && folderId == 0 && communityId == 0) {
+                ThemeBind.update(actionBar);
+            }
+        } else if (id == NotificationCenter.xgramInterfaceSettingsChanged) {
+            updateXGramInterfaceSettings();
+        } else if (id == NotificationCenter.dialogsNeedReload) {
             if (viewPages == null || dialogsListFrozen) {
                 return;
             }
@@ -11360,6 +11394,7 @@ private static final String OFFICIAL_SUPPORT_URL = "https://app.chat-t.me/suppor
         }
         sharedMediaEntries = entries;
         sharedLink = null;
+        forceDocument = false;
         if (commentView != null) {
             attachShareTopView(initialCaption);
         } else {
@@ -11515,6 +11550,16 @@ private static final String OFFICIAL_SUPPORT_URL = "https://app.chat-t.me/suppor
             }
 
             @Override
+            public int getSelectedCount() {
+                return sharedMediaEntries != null ? sharedMediaEntries.size() : 0;
+            }
+
+            @Override
+            public boolean canSendAsFile() {
+                return canSendDocumentsToSelectedDialogs();
+            }
+
+            @Override
             public long getDialogId() {
                 return selectedDialogs.isEmpty() ? 0 : selectedDialogs.get(0);
             }
@@ -11571,10 +11616,11 @@ private static final String OFFICIAL_SUPPORT_URL = "https://app.chat-t.me/suppor
                 if (shareTopView != null) {
                     shareTopView.setSharedMedia(currentAccount, sharedMediaEntries);
                 }
-                final boolean useExternalOptions = !notify || scheduleDate != 0;
+                final boolean useExternalOptions = !notify || scheduleDate != 0 || forceDocument;
                 if (useExternalOptions && delegate != null && !selectedDialogs.isEmpty()) {
                     DialogsActivity.this.notify = notify;
                     DialogsActivity.this.scheduleDate = scheduleDate;
+                    DialogsActivity.this.forceDocument = forceDocument;
                     final ArrayList<MessagesStorage.TopicKey> topicKeys = new ArrayList<>();
                     for (int i = 0; i < selectedDialogs.size(); i++) {
                         topicKeys.add(MessagesStorage.TopicKey.of(selectedDialogs.get(i), 0));
@@ -11937,10 +11983,20 @@ private static final String OFFICIAL_SUPPORT_URL = "https://app.chat-t.me/suppor
         );
     }
 
+    private boolean canSendDocumentsToSelectedDialogs() {
+        for (int i = 0; i < selectedDialogs.size(); ++i) {
+            final TLRPC.Chat chat = getMessagesController().getChat(-selectedDialogs.get(i));
+            if (chat != null && !ChatObject.canSendDocument(chat)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
     private boolean onSendLongClick(View view) {
         if (getParentActivity() == null) return false;
 
-        boolean onlyMyself = false;
+        boolean onlyMyself = !selectedDialogs.isEmpty();
         boolean canSchedule = true;
         for (int i = 0; i < selectedDialogs.size(); ++i) {
             final long did = selectedDialogs.get(i);
@@ -11956,9 +12012,20 @@ private static final String OFFICIAL_SUPPORT_URL = "https://app.chat-t.me/suppor
         }
         final boolean onlyMyselfFinal = onlyMyself;
 
+        boolean canSendDocs = hasSharedMediaEntries() && canSendDocumentsToSelectedDialogs();
+        if (canSendDocs) {
+            for (MediaController.PhotoEntry entry : sharedMediaEntries) {
+                if (entry.hasVideoEditsLostAsDocument()) {
+                    canSendDocs = false;
+                    break;
+                }
+            }
+        }
+        final boolean multipleMedia = sharedMediaEntries != null && sharedMediaEntries.size() > 1;
+
         ItemOptions.makeOptions(this, view)
-            .add(R.drawable.input_notify_off, getString(R.string.SendWithoutSound), () -> {
-                this.notify = false;
+            .addIf(canSendDocs, R.drawable.msg_sendfile, LocaleController.getString(multipleMedia ? R.string.SendAsFiles : R.string.SendAsFile), () -> {
+                this.forceDocument = true;
                 if (delegate == null || selectedDialogs.isEmpty()) {
                     return;
                 }
@@ -11967,12 +12034,24 @@ private static final String OFFICIAL_SUPPORT_URL = "https://app.chat-t.me/suppor
                     topicKeys.add(MessagesStorage.TopicKey.of(selectedDialogs.get(i), 0));
                 delegate.didSelectDialogs(DialogsActivity.this, topicKeys, commentView.getFieldText(), false, notify, scheduleDate, scheduleRepeatPeriod, null);
             })
-            .addIf(canSchedule, R.drawable.msg_calendar2, LocaleController.getString(R.string.ScheduleMessage), () -> {
+            .add(R.drawable.input_notify_off, getString(R.string.SendWithoutSound), () -> {
+                this.notify = false;
+                this.forceDocument = false;
+                if (delegate == null || selectedDialogs.isEmpty()) {
+                    return;
+                }
+                final ArrayList<MessagesStorage.TopicKey> topicKeys = new ArrayList<>();
+                for (int i = 0; i < selectedDialogs.size(); i++)
+                    topicKeys.add(MessagesStorage.TopicKey.of(selectedDialogs.get(i), 0));
+                delegate.didSelectDialogs(DialogsActivity.this, topicKeys, commentView.getFieldText(), false, notify, scheduleDate, scheduleRepeatPeriod, null);
+            })
+            .addIf(canSchedule, R.drawable.msg_calendar2, LocaleController.getString(onlyMyselfFinal ? R.string.SetReminder : R.string.ScheduleMessage), () -> {
                 AlertsCreator.createScheduleDatePickerDialog(getParentActivity(), onlyMyselfFinal ? getUserConfig().getClientUserId() : -1, new AlertsCreator.ScheduleDatePickerDelegate() {
                     @Override
                     public void didSelectDate(boolean notify, int scheduleDate, int scheduleRepeatPeriod) {
                         DialogsActivity.this.scheduleDate = scheduleDate;
                         DialogsActivity.this.scheduleRepeatPeriod = scheduleRepeatPeriod;
+                        DialogsActivity.this.forceDocument = false;
                         if (delegate == null || selectedDialogs.isEmpty()) {
                             return;
                         }
@@ -12051,6 +12130,9 @@ private static final String OFFICIAL_SUPPORT_URL = "https://app.chat-t.me/suppor
                 actionBar.setPopupItemsColor(getThemedColor(Theme.key_actionBarDefaultSubmenuItemIcon), true, true);
                 actionBar.setPopupItemsSelectorColor(getThemedColor(Theme.key_dialogButtonSelector), true);
                 actionBar.updateColors();
+                if (hasMainTabs && !onlySelect && folderId == 0 && communityId == 0) {
+                    actionBar.setTitleColor(getThemedColor(Theme.key_telegram_color_dialogsLogo));
+                }
             }
             if (statusDrawable != null) {
                 updateStatus(UserConfig.getInstance(currentAccount).getCurrentUser(), false);
@@ -12545,7 +12627,21 @@ private static final String OFFICIAL_SUPPORT_URL = "https://app.chat-t.me/suppor
     final int slideAmplitudeDp = 40;
     boolean slideFragmentLite;
     boolean isSlideBackTransition;
+    boolean isDrawerTransition;
     ValueAnimator slideBackTransitionAnimator;
+
+    // Adapted from DialogsActivity.setProgressToDrawerOpened in Telegram 10.14.5.
+    private void setClassicDrawerProgress(float progress) {
+        if (SharedConfig.getDevicePerformanceClass() <= SharedConfig.PERFORMANCE_CLASS_LOW || isSlideBackTransition) return;
+        boolean transitioning = progress > 0;
+        if (searchIsShowed) { transitioning = false; progress = 0; }
+        if (transitioning != isDrawerTransition) {
+            isDrawerTransition = transitioning;
+            setFragmentIsSliding(transitioning);
+            if (fragmentView != null) fragmentView.requestLayout();
+        }
+        setSlideTransitionProgress(1f - progress);
+    }
 
     @Override
     public Animator getCustomSlideTransition(boolean topFragment, boolean backAnimation, float distanceToMove) {
@@ -12647,7 +12743,7 @@ private static final String OFFICIAL_SUPPORT_URL = "https://app.chat-t.me/suppor
         }
 
         if (slideFragmentLite) {
-            final float translationX = -dp(slideAmplitudeDp) * (1f - slideFragmentProgress);
+            final float translationX = (isDrawerTransition ? 1 : -1) * dp(slideAmplitudeDp) * (1f - slideFragmentProgress);
             if (dialogStoriesCell != null) {
                 dialogStoriesCell.setTranslationX(translationX);
             }
@@ -12660,13 +12756,13 @@ private static final String OFFICIAL_SUPPORT_URL = "https://app.chat-t.me/suppor
                 }
             }
         } else {
-            final float translationX = -dp(4) * (1f - slideFragmentProgress);
+            final float translationX = (isDrawerTransition ? dp(4) : -dp(4)) * (1f - slideFragmentProgress);
             final float s = 1f - 0.05f * (1f - slideFragmentProgress);
             if (dialogStoriesCell != null) {
                 dialogStoriesCell.setScaleX(s);
                 dialogStoriesCell.setScaleY(s);
                 dialogStoriesCell.setTranslationX(translationX);
-                dialogStoriesCell.setPivotX(0);
+                dialogStoriesCell.setPivotX(isDrawerTransition ? dialogStoriesCell.getMeasuredWidth() : 0);
                 dialogStoriesCell.setPivotY(0);
             }
             if (fragmentSearchField != null) {
@@ -12680,7 +12776,7 @@ private static final String OFFICIAL_SUPPORT_URL = "https://app.chat-t.me/suppor
                     rightSlidingDialogContainer.getFragmentView().setScaleY(s);
                     rightSlidingDialogContainer.getFragmentView().setTranslationX(translationX);
                 }
-                rightSlidingDialogContainer.getFragmentView().setPivotX(0);
+                rightSlidingDialogContainer.getFragmentView().setPivotX(isDrawerTransition ? rightSlidingDialogContainer.getMeasuredWidth() : 0);
                 rightSlidingDialogContainer.getFragmentView().setPivotY(0);
             }
         }
@@ -13641,6 +13737,331 @@ private static final String OFFICIAL_SUPPORT_URL = "https://app.chat-t.me/suppor
         }
     }
 
+    private boolean useClassicDrawer() {
+        return XGramConfig.isClassicDrawerEnabled() && folderId == 0 && communityId == 0 && !onlySelect;
+    }
+
+    private void updateXGramInterfaceSettings() {
+        additionNavigationBarHeight = hasMainTabs && XGramConfig.isHomeBottomBarVisible() ? dp(MAIN_TABS_HEIGHT_WITH_MARGINS) : 0;
+        additionFloatingButtonOffset = hasMainTabs && XGramConfig.isHomeBottomBarVisible() ? dp(MAIN_TABS_HEIGHT + MAIN_TABS_MARGIN) : 0;
+        if (optionsItem != null) optionsItem.setIcon(useClassicDrawer() ? R.drawable.xgram_menu_classic : R.drawable.ic_ab_other);
+        updateFloatingButtonOffset();
+        if (viewPages != null) {
+            for (ViewPage page : viewPages) {
+                if (page != null && page.listView != null) {
+                    for (int i = 0; i < page.listView.getChildCount(); i++) {
+                        page.listView.getChildAt(i).requestLayout();
+                    }
+                    page.listView.requestLayout();
+                }
+            }
+        }
+        if (fragmentView != null) {
+            checkInsets();
+            ViewCompat.requestApplyInsets(fragmentView);
+            fragmentView.requestLayout();
+            fragmentView.invalidate();
+        }
+    }
+
+    private void toggleXGramDayNight() {
+            if (switchingTheme) {
+                return;
+            }
+            switchingTheme = true;
+            SharedPreferences preferences = ApplicationLoader.applicationContext.getSharedPreferences("themeconfig", Activity.MODE_PRIVATE);
+            String dayThemeName = preferences.getString("lastDayTheme", "Blue");
+            if (Theme.getTheme(dayThemeName) == null || Theme.getTheme(dayThemeName).isDark()) {
+                dayThemeName = "Blue";
+            }
+            String nightThemeName = preferences.getString("lastDarkTheme", "Dark Blue");
+            if (Theme.getTheme(nightThemeName) == null || !Theme.getTheme(nightThemeName).isDark()) {
+                nightThemeName = "Dark Blue";
+            }
+            Theme.ThemeInfo themeInfo = Theme.getActiveTheme();
+            if (dayThemeName.equals(nightThemeName)) {
+                if (themeInfo.isDark() || dayThemeName.equals("Dark Blue") || dayThemeName.equals("Night")) {
+                    dayThemeName = "Blue";
+                } else {
+                    nightThemeName = "Dark Blue";
+                }
+            }
+
+            boolean toDark = !themeInfo.isDark();
+            themeInfo = Theme.getTheme(toDark ? nightThemeName : dayThemeName);
+            switchTheme(themeInfo, toDark);
+            Theme.turnOffAutoNight(BulletinFactory.of(this), () -> {
+                presentFragment(new ThemeActivity(ThemeActivity.THEME_TYPE_NIGHT));
+            });
+    }
+
+    public boolean canOpenClassicDrawerFromEdge() {
+        return useClassicDrawer() && getParentLayout() != null && !searching && !searchIsShowed
+                && !hasShownSheet() && filterOptions == null && actionBar != null && !actionBar.isActionModeShowed()
+                && (rightSlidingDialogContainer == null || !rightSlidingDialogContainer.hasFragment());
+    }
+
+    public void openClassicDrawerFromEdge() {
+        if (canOpenClassicDrawerFromEdge()) showClassicDrawer();
+    }
+
+    // Telegram 10.14.5's actual drawer, adapter, cells and account animations,
+    // hosted as an overlay because the current release owns the root layout.
+    private void showClassicDrawer() {
+        Activity activity = getParentActivity();
+        if (!(activity instanceof LaunchActivity) || activity.isFinishing() || getParentLayout() == null) return;
+        LaunchActivity launch = (LaunchActivity) activity;
+        INavigationLayout navigation = getParentLayout();
+        if (launch.classicDrawerOverlay != null) return;
+        final org.telegram.ui.ActionBar.LegacyDrawerLayoutContainer drawer = new org.telegram.ui.ActionBar.LegacyDrawerLayoutContainer(activity);
+        launch.classicDrawerOverlay = drawer;
+        ownedClassicDrawer = drawer;
+        drawer.setParentActionBarLayout(navigation);
+        drawer.setDrawerProgressListener(this::setClassicDrawerProgress);
+        drawer.setAllowOpenDrawer(true, false);
+        drawer.setOnClosed(() -> {
+            setClassicDrawerProgress(0f);
+            if (drawer.getParent() instanceof ViewGroup) ((ViewGroup) drawer.getParent()).removeView(drawer);
+            if (launch.classicDrawerOverlay == drawer) launch.classicDrawerOverlay = null;
+            if (ownedClassicDrawer == drawer) ownedClassicDrawer = null;
+        });
+        // The original draws its scrim over a content child; here that child is transparent.
+        View backdrop = new View(activity);
+        backdrop.setOnClickListener(v -> drawer.closeDrawer(false));
+        drawer.addView(backdrop, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.MATCH_PARENT));
+        final FrameLayout container = new FrameLayout(activity);
+        final org.telegram.ui.Components.SideMenultItemAnimator[] animator = new org.telegram.ui.Components.SideMenultItemAnimator[1];
+        RecyclerListView list = new RecyclerListView(activity) {
+            @Override
+            public boolean drawChild(Canvas canvas, View child, long drawingTime) {
+                int restore = -1;
+                if (animator[0] != null && animator[0].isRunning() && animator[0].isAnimatingChild(child)) {
+                    restore = canvas.save();
+                    canvas.clipRect(0, animator[0].getAnimationClipTop(), getMeasuredWidth(), getMeasuredHeight());
+                }
+                boolean result = super.drawChild(canvas, child, drawingTime);
+                if (restore >= 0) {
+                    canvas.restoreToCount(restore);
+                    invalidate();
+                    invalidateViews();
+                }
+                return result;
+            }
+        };
+        animator[0] = new org.telegram.ui.Components.SideMenultItemAnimator(list);
+        list.setItemAnimator(animator[0]);
+        ThemeBind.backgroundColor(list, Theme.key_chats_menuBackground);
+        ThemeBind.backgroundColor(container, Theme.key_chats_menuBackground);
+        ThemeBind.listSelectorColor(list, Theme.key_listSelector);
+        list.setLayoutManager(new LinearLayoutManager(activity, LinearLayoutManager.VERTICAL, false));
+        list.setAllowItemsInteractionDuringAnimation(false);
+        org.telegram.ui.Adapters.DrawerLayoutAdapter adapter = new org.telegram.ui.Adapters.DrawerLayoutAdapter(activity, animator[0], drawer);
+        list.setAdapter(adapter);
+        adapter.setOnPremiumDrawableClick(v -> {
+            drawer.closeDrawer(false);
+            AndroidUtilities.runOnUIThread(this::showSelectStatusDialog, 300);
+        });
+        container.addView(list, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.MATCH_PARENT));
+        drawer.setDrawerLayout(container, list);
+        FrameLayout.LayoutParams params = (FrameLayout.LayoutParams) container.getLayoutParams();
+        android.graphics.Point size = AndroidUtilities.getRealScreenSize();
+        params.width = AndroidUtilities.isTablet() ? dp(320) : Math.min(dp(320), Math.min(size.x, size.y) - dp(56));
+        params.height = LayoutHelper.MATCH_PARENT;
+        container.setLayoutParams(params);
+        list.setOnItemClickListener((view, position, x, y) -> {
+            if (adapter.click(view, position)) { drawer.closeDrawer(false); return; }
+            if (view instanceof org.telegram.ui.Cells.DrawerProfileCell) {
+                org.telegram.ui.Cells.DrawerProfileCell profile = (org.telegram.ui.Cells.DrawerProfileCell) view;
+                if (profile.isInAvatar(x, y)) {
+                    drawer.closeDrawer(false);
+                    Bundle args = new Bundle();
+                    args.putLong("user_id", getUserConfig().getClientUserId());
+                    args.putBoolean("my_profile", true);
+                    presentFragment(new ProfileActivity(args));
+                } else adapter.setAccountsShown(!adapter.isAccountsShown(), true);
+                return;
+            }
+            if (view instanceof org.telegram.ui.Cells.DrawerUserCell) {
+                drawer.closeDrawer(false);
+                launch.switchToAccount(((org.telegram.ui.Cells.DrawerUserCell) view).getAccountNumber(), true);
+                return;
+            }
+            if (view instanceof org.telegram.ui.Cells.DrawerAddCell) {
+                int free = 0; Integer available = null;
+                for (int a = UserConfig.MAX_ACCOUNT_COUNT - 1; a >= 0; a--) {
+                    if (!UserConfig.getInstance(a).isClientActivated()) { free++; if (available == null) available = a; }
+                }
+                if (!UserConfig.hasPremiumOnAccounts()) free -= UserConfig.MAX_ACCOUNT_COUNT - UserConfig.MAX_ACCOUNT_DEFAULT_COUNT;
+                drawer.closeDrawer(false);
+                if (free > 0 && available != null) presentFragment(new LoginActivity(available));
+                else if (!UserConfig.hasPremiumOnAccounts()) showDialog(new LimitReachedBottomSheet(this, getContext(), LimitReachedBottomSheet.TYPE_ACCOUNTS, currentAccount, null));
+                return;
+            }
+            TLRPC.TL_attachMenuBot bot = adapter.getAttachMenuBot(position);
+            if (bot != null) {
+                drawer.closeDrawer(false);
+                if (bot.inactive || bot.side_menu_disclaimer_needed) {
+                    WebAppDisclaimerAlert.show(getContext(), allowSendMessage -> {
+                        TLRPC.TL_messages_toggleBotInAttachMenu req = new TLRPC.TL_messages_toggleBotInAttachMenu();
+                        req.bot = MessagesController.getInstance(currentAccount).getInputUser(bot.bot_id);
+                        req.enabled = true; req.write_allowed = allowSendMessage;
+                        ConnectionsManager.getInstance(currentAccount).sendRequest(req, (response, error) -> AndroidUtilities.runOnUIThread(() -> {
+                            if (error != null) return;
+                            bot.inactive = bot.side_menu_disclaimer_needed = false;
+                            LaunchActivity.showAttachMenuBot(launch, currentAccount, bot, null, true);
+                            MediaDataController.getInstance(currentAccount).updateAttachMenuBotsInCache();
+                        }), ConnectionsManager.RequestFlagInvokeAfter | ConnectionsManager.RequestFlagFailOnServerErrors);
+                    }, null, null);
+                } else LaunchActivity.showAttachMenuBot(launch, currentAccount, bot, null, true);
+                return;
+            }
+            int id = adapter.getId(position);
+            if (id < 0) return;
+            drawer.closeDrawer(false);
+            if (id == 2) presentFragment(new GroupCreateActivity(new Bundle()));
+            else if (id == 6) { Bundle args = new Bundle(); args.putBoolean("needFinishFragment", false); presentFragment(new ContactsActivity(args)); }
+            else if (id == 7) presentFragment(new InviteContactsActivity());
+            else if (id == 8) presentFragment(new SettingsActivity());
+            else if (id == 10) presentFragment(new CallLogActivity());
+            else if (id == 11) { Bundle args = new Bundle(); args.putLong("user_id", getUserConfig().getClientUserId()); presentFragment(new ChatActivity(args)); }
+            else if (id == 15) AndroidUtilities.runOnUIThread(this::showSelectStatusDialog, 300);
+            else if (id == 16) { Bundle args = new Bundle(); args.putLong("user_id", getUserConfig().getClientUserId()); args.putBoolean("my_profile", true); presentFragment(new ProfileActivity(args)); }
+            else if (id == 40) { Bundle args = new Bundle(); args.putInt("step", 0); presentFragment(new ChannelCreateActivity(args)); }
+            else if (id == 41) { Bundle args = new Bundle(); args.putInt("folderId", 1); presentFragment(new DialogsActivity(args)); }
+            else if (id == 44) AndroidUtilities.runOnUIThread(() -> XGramWalletUnavailable.show(getContext(), resourceProvider), 300);
+            else if (id == 45) AndroidUtilities.runOnUIThread(this::showItemOptions, 300);
+        });
+        final ItemTouchHelper accountTouchHelper = new ItemTouchHelper(new ItemTouchHelper.SimpleCallback(ItemTouchHelper.UP | ItemTouchHelper.DOWN, 0) {
+
+            private RecyclerView.ViewHolder selectedViewHolder;
+
+            @Override
+            public boolean onMove(@NonNull RecyclerView recyclerView, @NonNull RecyclerView.ViewHolder viewHolder, @NonNull RecyclerView.ViewHolder target) {
+                if (viewHolder.getItemViewType() != target.getItemViewType()) {
+                    return false;
+                }
+                adapter.swapElements(viewHolder.getAdapterPosition(), target.getAdapterPosition());
+                return true;
+            }
+
+            @Override
+            public void onSwiped(@NonNull RecyclerView.ViewHolder viewHolder, int direction) {
+            }
+
+            @Override
+            public boolean isLongPressDragEnabled() {
+                return false;
+            }
+
+            @Override
+            public void onSelectedChanged(RecyclerView.ViewHolder viewHolder, int actionState) {
+                clearSelectedViewHolder();
+                if (actionState != ItemTouchHelper.ACTION_STATE_IDLE) {
+                    selectedViewHolder = viewHolder;
+                    final View view = viewHolder.itemView;
+                    list.cancelClickRunnables(false);
+                    view.setBackgroundColor(Theme.getColor(Theme.key_dialogBackground));
+                    if (Build.VERSION.SDK_INT >= 21) {
+                        ObjectAnimator.ofFloat(view, "elevation", AndroidUtilities.dp(1)).setDuration(150).start();
+                    }
+                }
+            }
+
+            @Override
+            public void clearView(RecyclerView recyclerView, RecyclerView.ViewHolder viewHolder) {
+                clearSelectedViewHolder();
+            }
+
+            private void clearSelectedViewHolder() {
+                if (selectedViewHolder != null) {
+                    final View view = selectedViewHolder.itemView;
+                    selectedViewHolder = null;
+                    view.setTranslationX(0f);
+                    view.setTranslationY(0f);
+                    if (Build.VERSION.SDK_INT >= 21) {
+                        final ObjectAnimator animator = ObjectAnimator.ofFloat(view, "elevation", 0f);
+                        animator.addListener(new AnimatorListenerAdapter() {
+                            @Override
+                            public void onAnimationEnd(Animator animation) {
+                                view.setBackground(null);
+                            }
+                        });
+                        animator.setDuration(150).start();
+                    }
+                }
+            }
+
+            @Override
+            public void onChildDraw(@NonNull Canvas c, @NonNull RecyclerView recyclerView, @NonNull RecyclerView.ViewHolder viewHolder, float dX, float dY, int actionState, boolean isCurrentlyActive) {
+                final View view = viewHolder.itemView;
+                if (adapter.isAccountsShown()) {
+                    RecyclerView.ViewHolder topViewHolder = recyclerView.findViewHolderForAdapterPosition(adapter.getFirstAccountPosition() - 1);
+                    RecyclerView.ViewHolder bottomViewHolder = recyclerView.findViewHolderForAdapterPosition(adapter.getLastAccountPosition() + 1);
+                    if (topViewHolder != null && topViewHolder.itemView != null && topViewHolder.itemView.getBottom() == view.getTop() && dY < 0f) {
+                        dY = 0f;
+                    } else if (bottomViewHolder != null && bottomViewHolder.itemView != null && bottomViewHolder.itemView.getTop() == view.getBottom() && dY > 0f) {
+                        dY = 0f;
+                    }
+                }
+                view.setTranslationX(dX);
+                view.setTranslationY(dY);
+            }
+        });
+        accountTouchHelper.attachToRecyclerView(list);
+        list.setOnItemLongClickListener((view, position) -> {
+            if (view instanceof org.telegram.ui.Cells.DrawerUserCell) {
+                final int accountNumber = ((org.telegram.ui.Cells.DrawerUserCell) view).getAccountNumber();
+                if (accountNumber == currentAccount || AndroidUtilities.isTablet()) {
+                    accountTouchHelper.startDrag(list.getChildViewHolder(view));
+                    return true;
+                } else {
+                    final BaseFragment fragment = new DialogsActivity(null) {
+                        @Override
+                        public void onTransitionAnimationEnd(boolean isOpen, boolean backward) {
+                            super.onTransitionAnimationEnd(isOpen, backward);
+                            if (!isOpen && backward) { // closed
+                                drawer.setDrawCurrentPreviewFragmentAbove(false);
+                                navigation.getView().invalidate();
+                            }
+                        }
+
+                        @Override
+                        public void onPreviewOpenAnimationEnd() {
+                            super.onPreviewOpenAnimationEnd();
+                            drawer.setAllowOpenDrawer(false, false);
+                            drawer.setDrawCurrentPreviewFragmentAbove(false);
+                            launch.switchToAccount(accountNumber, true);
+                            navigation.getView().invalidate();
+                        }
+                    };
+                    fragment.setCurrentAccount(accountNumber);
+                    if (navigation.presentFragmentAsPreview(fragment)) {
+                        drawer.setDrawCurrentPreviewFragmentAbove(true);
+                        return true;
+                    }
+                }
+            }
+            if (view instanceof org.telegram.ui.Cells.DrawerActionCell) {
+                int id = adapter.getId(position);
+                TLRPC.TL_attachMenuBot attachMenuBot = adapter.getAttachMenuBot(position);
+                if (attachMenuBot != null) {
+                    BotWebViewSheet.deleteBot(currentAccount, attachMenuBot.bot_id, null);
+                    return true;
+                }
+            }
+            return false;
+        });
+        launch.drawerLayoutContainer.addView(drawer, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.MATCH_PARENT));
+        drawer.getViewTreeObserver().addOnPreDrawListener(new android.view.ViewTreeObserver.OnPreDrawListener() {
+            @Override public boolean onPreDraw() {
+                if (container.getMeasuredWidth() <= 0) return true;
+                if (drawer.getViewTreeObserver().isAlive()) drawer.getViewTreeObserver().removeOnPreDrawListener(this);
+                if (drawer.getParent() != null) drawer.openDrawer(false);
+                return true;
+            }
+        });
+    }
+
     private void showItemOptions() {
         ItemOptions io = ItemOptions.makeOptions(this, optionsItem);
         io.setColors(getThemedColor(Theme.key_actionBarDefaultTitle), getThemedColor(Theme.key_actionBarDefaultTitle));
@@ -13701,38 +14122,7 @@ private static final String OFFICIAL_SUPPORT_URL = "https://app.chat-t.me/suppor
         }
         io.add(isCurrentThemeDark ? R.drawable.menu_day_mode_24 : R.drawable.menu_night_mode_24,
                 getString(isCurrentThemeDark ? R.string.SwitchThemeToDay : R.string.SwitchThemeToNight), () -> {
-            if (switchingTheme) {
-                return;
-            }
-            switchingTheme = true;
-            SharedPreferences preferences = ApplicationLoader.applicationContext.getSharedPreferences("themeconfig", Activity.MODE_PRIVATE);
-            String dayThemeName = preferences.getString("lastDayTheme", "Blue");
-            if (Theme.getTheme(dayThemeName) == null || Theme.getTheme(dayThemeName).isDark()) {
-                dayThemeName = "Blue";
-            }
-            String nightThemeName = preferences.getString("lastDarkTheme", "Dark Blue");
-            if (Theme.getTheme(nightThemeName) == null || !Theme.getTheme(nightThemeName).isDark()) {
-                nightThemeName = "Dark Blue";
-            }
-            Theme.ThemeInfo themeInfo = Theme.getActiveTheme();
-            if (dayThemeName.equals(nightThemeName)) {
-                if (themeInfo.isDark() || dayThemeName.equals("Dark Blue") || dayThemeName.equals("Night")) {
-                    dayThemeName = "Blue";
-                } else {
-                    nightThemeName = "Dark Blue";
-                }
-            }
-
-            boolean toDark;
-            if (toDark = dayThemeName.equals(themeInfo.getKey())) {
-                themeInfo = Theme.getTheme(nightThemeName);
-            } else {
-                themeInfo = Theme.getTheme(dayThemeName);
-            }
-            switchTheme(themeInfo, toDark);
-            Theme.turnOffAutoNight(BulletinFactory.of(this), () -> {
-                presentFragment(new ThemeActivity(ThemeActivity.THEME_TYPE_NIGHT));
-            });
+            toggleXGramDayNight();
         });
         io.addGap();
         io.add(R.drawable.outline_groups_24, getString(R.string.NewGroup), () -> {
@@ -13765,7 +14155,7 @@ if (ENABLE_NEW_CHANNEL) {
     });
 }
 
-if (ENABLE_CONTACTS) {
+if (ENABLE_CONTACTS || !XGramConfig.isHomeBottomBarVisible()) {
     io.add(R.drawable.msg_contacts, "مخاطبین", () -> {
         Bundle args = new Bundle();
         args.putBoolean("destroyAfterSelect", true);
@@ -13780,55 +14170,49 @@ if (ENABLE_CONTACTS) {
         if (ApplicationLoader.applicationLoaderInstance != null) {
             ApplicationLoader.applicationLoaderInstance.addItemOptions(io);
         }
-        TLRPC.TL_attachMenuBots menuBots = MediaDataController.getInstance(UserConfig.selectedAccount).getAttachMenuBots();
-        if (launchActivity != null && menuBots != null && menuBots.bots != null && !menuBots.bots.isEmpty()) {
-            for (TLRPC.TL_attachMenuBot attachMenuBot : menuBots.bots) {
-                if (attachMenuBot.show_in_side_menu) {
-                    io.addBot(attachMenuBot, () -> {
-                        if (attachMenuBot.inactive || attachMenuBot.side_menu_disclaimer_needed) {
-                            WebAppDisclaimerAlert.show(getContext(), (allowSendMessage) -> {
-                                TLRPC.TL_messages_toggleBotInAttachMenu botRequest = new TLRPC.TL_messages_toggleBotInAttachMenu();
-                                botRequest.bot = MessagesController.getInstance(currentAccount).getInputUser(attachMenuBot.bot_id);
-                                botRequest.enabled = true;
-                                botRequest.write_allowed = true;
-                                ConnectionsManager.getInstance(currentAccount).sendRequest(botRequest, (response2, error2) -> AndroidUtilities.runOnUIThread(() -> {
-                                    attachMenuBot.inactive = attachMenuBot.side_menu_disclaimer_needed = false;
-                                    LaunchActivity.showAttachMenuBot(launchActivity, currentAccount, attachMenuBot, null, true);
-                                    MediaDataController.getInstance(currentAccount).updateAttachMenuBotsInCache();
-                                }), ConnectionsManager.RequestFlagInvokeAfter | ConnectionsManager.RequestFlagFailOnServerErrors);
-                            }, null, null);
-                        } else {
-                            LaunchActivity.showAttachMenuBot(launchActivity, currentAccount, attachMenuBot, null, true);
-                        }
-                    }, () -> BotWebViewSheet.deleteBot(currentAccount, attachMenuBot.bot_id, null));
+        if (XGramConfig.showMoneyEntry(currentAccount)) {
+            io.add(R.drawable.xgram_wallet_icon, LocaleController.getString(R.string.XGramWalletLabel), () -> {
+                XGramWalletUnavailable.show(getContext(), resourceProvider);
+            });
+        } else {
+            TLRPC.TL_attachMenuBots menuBots = MediaDataController.getInstance(UserConfig.selectedAccount).getAttachMenuBots();
+            if (launchActivity != null && menuBots != null && menuBots.bots != null && !menuBots.bots.isEmpty()) {
+                for (TLRPC.TL_attachMenuBot attachMenuBot : menuBots.bots) {
+                    if (attachMenuBot.show_in_side_menu) {
+                        io.addBot(attachMenuBot, () -> {
+                            if (attachMenuBot.inactive || attachMenuBot.side_menu_disclaimer_needed) {
+                                WebAppDisclaimerAlert.show(getContext(), (allowSendMessage) -> {
+                                    TLRPC.TL_messages_toggleBotInAttachMenu botRequest = new TLRPC.TL_messages_toggleBotInAttachMenu();
+                                    botRequest.bot = MessagesController.getInstance(currentAccount).getInputUser(attachMenuBot.bot_id);
+                                    botRequest.enabled = true;
+                                    botRequest.write_allowed = true;
+                                    ConnectionsManager.getInstance(currentAccount).sendRequest(botRequest, (response2, error2) -> AndroidUtilities.runOnUIThread(() -> {
+                                        attachMenuBot.inactive = attachMenuBot.side_menu_disclaimer_needed = false;
+                                        LaunchActivity.showAttachMenuBot(launchActivity, currentAccount, attachMenuBot, null, true);
+                                        MediaDataController.getInstance(currentAccount).updateAttachMenuBotsInCache();
+                                    }), ConnectionsManager.RequestFlagInvokeAfter | ConnectionsManager.RequestFlagFailOnServerErrors);
+                                }, null, null);
+                            } else {
+                                LaunchActivity.showAttachMenuBot(launchActivity, currentAccount, attachMenuBot, null, true);
+                            }
+                        }, () -> BotWebViewSheet.deleteBot(currentAccount, attachMenuBot.bot_id, null));
+                    }
                 }
             }
         }
-        if (getUserConfig().showCallsTab) {
+        if (!XGramConfig.isHomeBottomBarVisible()) {
+            io.add(R.drawable.msg_calls, getString(R.string.MainTabsCalls), () -> presentFragment(new CallLogActivity()));
+            io.add(R.drawable.msg_openprofile, getString(R.string.MainTabsProfile), () -> {
+                Bundle args = new Bundle();
+                args.putLong("user_id", getUserConfig().getClientUserId());
+                args.putBoolean("my_profile", true);
+                presentFragment(new ProfileActivity(args));
+            });
+        }
+        if (getUserConfig().showCallsTab || !XGramConfig.isHomeBottomBarVisible()) {
             io.add(R.drawable.msg_settings_old, getString(R.string.Settings), () -> {
                 presentFragment(new SettingsActivity());
             });
-        }
-
-        if (proxyMenuSubItem != null) {
-            proxyMenuSubItem.subtextView.setTextColor(getThemedColor(Theme.key_groupcreate_sectionText));
-            proxyMenuSubItem.setOnClickListener(v -> {
-                io.dismiss();
-                presentFragment(new ProxyListActivity());
-            });
-
-            final SharedPreferences preferences = ApplicationLoader.applicationContext
-                    .getSharedPreferences("mainconfig", Activity.MODE_PRIVATE);
-
-            final String proxyAddress = preferences.getString("proxy_ip", "");
-            final boolean proxyEnabled = preferences.getBoolean("proxy_enabled", false);
-            final boolean proxyVisible = proxyEnabled && !TextUtils.isEmpty(proxyAddress)
-                    || getMessagesController().blockedCountry && !SharedConfig.proxyList.isEmpty();
-
-            if (proxyVisible) {
-                io.addGap();
-                io.add(proxyMenuSubItem);
-            }
         }
 
         io.show();

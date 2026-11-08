@@ -845,11 +845,13 @@ public class ChatAttachAlertRichLayout extends ChatAttachAlert.AttachAlertLayout
         long monoForumPeerId = 0;
         MessageObject replyToMsg = null;
         MessageObject replyToTopMsg = null;
+        ChatActivity.ReplyQuote replyQuote = null;
         SendMessageChatArguments sendMessageChatArguments = null;
         if (parentAlert.baseFragment instanceof ChatActivity) {
             ChatActivity ca = (ChatActivity) parentAlert.baseFragment;
             replyToMsg = ca.getReplyMessage();
             replyToTopMsg = ca.getThreadMessage();
+            replyQuote = ca.getReplyingQuote();
             monoForumPeerId = ca.getSendMonoForumPeerId();
             sendMessageChatArguments = ca.getMessageChatSendParams();
         }
@@ -863,6 +865,7 @@ public class ChatAttachAlertRichLayout extends ChatAttachAlert.AttachAlertLayout
             parentAlert.getDialogId(),
             replyToMsg,
             replyToTopMsg,
+            replyQuote,
             notify,
             scheduleDate,
             scheduleRepeatPeriod,
@@ -871,6 +874,12 @@ public class ChatAttachAlertRichLayout extends ChatAttachAlert.AttachAlertLayout
             monoForumPeerId,
             0
         );
+        if (parentAlert.baseFragment instanceof ChatActivity) {
+            final ChatActivityEnterView enterView = ((ChatActivity) parentAlert.baseFragment).getChatActivityEnterView();
+            if (enterView != null) {
+                enterView.onRichEditorSent(notify, scheduleDate, scheduleRepeatPeriod);
+            }
+        }
         parentAlert.dismiss(true);
         return true;
     }
