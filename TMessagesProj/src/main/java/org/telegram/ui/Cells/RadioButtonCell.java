@@ -20,10 +20,11 @@ import android.widget.TextView;
 import org.telegram.messenger.AndroidUtilities;
 import org.telegram.messenger.LocaleController;
 import org.telegram.ui.ActionBar.Theme;
+import org.telegram.ui.ActionBar.ThemeBind;
 import org.telegram.ui.Components.LayoutHelper;
 import org.telegram.ui.Components.RadioButton;
 
-public class RadioButtonCell extends FrameLayout {
+public class RadioButtonCell extends FrameLayout implements Theme.Colorable {
 
     private TextView textView;
     public TextView valueTextView;
@@ -35,23 +36,28 @@ public class RadioButtonCell extends FrameLayout {
     }
 
     public RadioButtonCell(Context context, boolean dialog) {
+        this(context, dialog, null);
+    }
+
+    public RadioButtonCell(Context context, boolean dialog, Theme.ResourcesProvider resourcesProvider) {
         super(context);
 
         radioButton = new RadioButton(context);
         radioButton.setSize(AndroidUtilities.dp(20));
         if (dialog) {
-            radioButton.setColor(Theme.getColor(Theme.key_dialogRadioBackground), Theme.getColor(Theme.key_dialogRadioBackgroundChecked));
+            ThemeBind.radioColors(radioButton, Theme.key_dialogRadioBackground, Theme.key_dialogRadioBackgroundChecked, resourcesProvider);
         } else {
-            radioButton.setColor(Theme.getColor(Theme.key_radioBackground), Theme.getColor(Theme.key_radioBackgroundChecked));
+            ThemeBind.radioColors(radioButton, Theme.key_radioBackground, Theme.key_radioBackgroundChecked, resourcesProvider);
         }
         addView(radioButton, LayoutHelper.createFrame(22, 22, (LocaleController.isRTL ? Gravity.RIGHT : Gravity.LEFT) | Gravity.TOP, (LocaleController.isRTL ? 0 : 20), 10, (LocaleController.isRTL ? 20 : 0), 0));
 
         textView = new TextView(context);
         if (dialog) {
-            textView.setTextColor(Theme.getColor(Theme.key_dialogTextBlack));
+            ThemeBind.textColor(textView, Theme.key_dialogTextBlack, resourcesProvider);
         } else {
-            textView.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteBlackText));
+            ThemeBind.textColor(textView, Theme.key_windowBackgroundWhiteBlackText, resourcesProvider);
         }
+        textView.setTypeface(AndroidUtilities.getVazirmatnTypeface());
         textView.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 16);
         textView.setLines(1);
         textView.setMaxLines(1);
@@ -61,10 +67,11 @@ public class RadioButtonCell extends FrameLayout {
 
         valueTextView = new TextView(context);
         if (dialog) {
-            valueTextView.setTextColor(Theme.getColor(Theme.key_dialogTextGray2));
+            ThemeBind.textColor(valueTextView, Theme.key_dialogTextGray2, resourcesProvider);
         } else {
-            valueTextView.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteGrayText2));
+            ThemeBind.textColor(valueTextView, Theme.key_windowBackgroundWhiteGrayText2, resourcesProvider);
         }
+        valueTextView.setTypeface(AndroidUtilities.getVazirmatnTypeface());
         valueTextView.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 13);
         valueTextView.setGravity(LocaleController.isRTL ? Gravity.RIGHT : Gravity.LEFT);
         valueTextView.setLines(0);
@@ -72,6 +79,14 @@ public class RadioButtonCell extends FrameLayout {
         valueTextView.setSingleLine(false);
         valueTextView.setPadding(0, 0, 0, AndroidUtilities.dp(12));
         addView(valueTextView, LayoutHelper.createFrame(LayoutHelper.WRAP_CONTENT, LayoutHelper.WRAP_CONTENT, (LocaleController.isRTL ? Gravity.RIGHT : Gravity.LEFT) | Gravity.TOP, (LocaleController.isRTL ? 17 : 61), 35, (LocaleController.isRTL ? 61 : 17), 0));
+    }
+
+    @Override
+    public void updateColors() {
+        ThemeBind.update(textView);
+        ThemeBind.update(valueTextView);
+        ThemeBind.update(radioButton);
+        invalidate();
     }
 
     @Override

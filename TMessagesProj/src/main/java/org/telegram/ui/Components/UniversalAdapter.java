@@ -441,10 +441,12 @@ public class UniversalAdapter extends AdapterWithDiffUtils {
                 view = cell;
                 break;
             case VIEW_TYPE_RADIO:
-                view = new DialogRadioCell(context);
+                DialogRadioCell radio = new DialogRadioCell(context, false, themedColors);
+                radio.setHorizontalPadding(21);
+                view = radio;
                 break;
             case VIEW_TYPE_RADIO_2:
-                view = new RadioButtonCell(context);
+                view = new RadioButtonCell(context, false, themedColors);
                 break;
             case VIEW_TYPE_TEXT_CHECK:
             case VIEW_TYPE_ICON_TEXT_CHECK:
