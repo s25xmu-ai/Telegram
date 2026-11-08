@@ -3089,6 +3089,30 @@ public class ChatActivityEnterView extends FrameLayout implements
             }
 
             @Override
+            public boolean dispatchHoverEvent(MotionEvent event) {
+                // Leave explore-by-touch available to the attach button outside the visible send controls.
+                if (event.getAction() != MotionEvent.ACTION_HOVER_EXIT && !isOverShownButton(event.getX(), event.getY())) {
+                    return false;
+                }
+                return super.dispatchHoverEvent(event);
+            }
+
+            private boolean isOverShownButton(float x, float y) {
+                for (int i = 0; i < getChildCount(); ++i) {
+                    final View child = getChildAt(i);
+                    if (child.getVisibility() != VISIBLE || child.getAlpha() <= 0f) {
+                        continue;
+                    }
+                    final float right = child.getX() + child.getWidth();
+                    final float left = child == sendButton ? right - sendButton.width() : child.getX();
+                    if (x >= left && x < right && y >= child.getY() && y < child.getY() + child.getHeight()) {
+                        return true;
+                    }
+                }
+                return false;
+            }
+
+            @Override
             public boolean onTouchEvent(MotionEvent event) {
                 if (!isSendButtonEnabled()) {
                     return false;

@@ -171,6 +171,7 @@ import org.telegram.ui.Components.ButtonBounce;
 import org.telegram.ui.Components.CheckBoxBase;
 import org.telegram.ui.Components.ClipRoundedDrawable;
 import org.telegram.ui.Components.ColoredImageSpan;
+import org.telegram.ui.Components.CombinedDrawable;
 import org.telegram.ui.Components.CubicBezierInterpolator;
 import org.telegram.ui.Components.EmptyStubSpan;
 import org.telegram.ui.Components.FloatSeekBarAccessibilityDelegate;
@@ -1147,6 +1148,7 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
     public int checkBoxTranslation;
 
     private AvatarSpan forwardAvatar;
+    private ColoredImageSpan forwardVerifiedSpan;
     private ForwardBackground forwardBg;
     private LoadingDrawable forwardLoading;
     public boolean linkPreviewAbove;
@@ -17317,6 +17319,26 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
         return MediaActionDrawable.ICON_NONE;
     }
 
+    private boolean isForwardVerified() {
+        return currentForwardChannel != null ? currentForwardChannel.verified : currentForwardUser != null && currentForwardUser.verified;
+    }
+
+    private ColoredImageSpan getForwardVerifiedSpan() {
+        if (forwardVerifiedSpan == null) {
+            Drawable background = getContext().getResources().getDrawable(R.drawable.verified_area).mutate();
+            Drawable check = getContext().getResources().getDrawable(R.drawable.verified_check).mutate();
+            CombinedDrawable drawable = new CombinedDrawable(background, check);
+            drawable.setFullsize(true);
+            forwardVerifiedSpan = new ColoredImageSpan(drawable);
+            forwardVerifiedSpan.recolorDrawable = false;
+        }
+        CombinedDrawable drawable = (CombinedDrawable) forwardVerifiedSpan.drawable;
+        drawable.getBackground().setColorFilter(new PorterDuffColorFilter(getThemedColor(Theme.key_chats_verifiedBackground), PorterDuff.Mode.MULTIPLY));
+        drawable.getIcon().setColorFilter(new PorterDuffColorFilter(getThemedColor(Theme.key_chats_verifiedCheck), PorterDuff.Mode.MULTIPLY));
+        forwardVerifiedSpan.setSize((int) (Theme.chat_forwardNamePaint.getTextSize() * 0.95f));
+        return forwardVerifiedSpan;
+    }
+
     public int getMaxNameWidth() {
         if (documentAttachType == DOCUMENT_ATTACH_TYPE_STICKER || documentAttachType == DOCUMENT_ATTACH_TYPE_WALLPAPER || currentMessageObject.type == MessageObject.TYPE_ROUND_VIDEO) {
             int maxWidth;
@@ -19152,19 +19174,28 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
                     if (hasPsaHint) {
                         forwardedNameWidth -= dp(36);
                     }
-                    CharSequence name = TextUtils.ellipsize((includeAvatar ? "A " : "") + currentForwardNameString.replace('\n', ' '), Theme.chat_replyNamePaint, forwardedNameWidth - viaWidth - dp(includeAvatar ? 17.33f : 0), TextUtils.TruncateAt.END);
+                    final boolean verified = isForwardVerified();
+                    final int verifiedWidth = verified ? (int) (Theme.chat_forwardNamePaint.getTextSize() * 0.95f) + dp(4) : 0;
+                    CharSequence name = TextUtils.ellipsize((includeAvatar ? "A " : "") + currentForwardNameString.replace('\n', ' '), Theme.chat_replyNamePaint, forwardedNameWidth - viaWidth - verifiedWidth - dp(includeAvatar ? 17.33f : 0), TextUtils.TruncateAt.END);
                     String fromString = AndroidUtilities.removeDiacritics(name.toString());
+                    final int verifiedIndex = fromString.length() + 1;
+                    if (verified) {
+                        fromString += " V";
+                    }
 
                     SpannableStringBuilder stringBuilder;
                     if (viaString != null) {
                         stringBuilder = new SpannableStringBuilder(String.format("%s %s %s", fromString, getString("ViaBot", R.string.ViaBot), viaUsername));
-                        viaNameWidth = (int) Math.ceil(Theme.chat_forwardNamePaint.measureText(fromString));
+                        viaNameWidth = (int) Math.ceil(Theme.chat_forwardNamePaint.measureText(fromString, 0, verified ? verifiedIndex - 1 : fromString.length())) + verifiedWidth;
                         stringBuilder.setSpan(new TypefaceSpan(AndroidUtilities.bold()), stringBuilder.length() - viaUsername.length() - 1, stringBuilder.length(), Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
                     } else {
                         stringBuilder = new SpannableStringBuilder(fromString);
                     }
                     if (includeAvatar && stringBuilder.length() > 1) {
                         stringBuilder.setSpan(forwardAvatar, 0, 1, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+                    }
+                    if (verified) {
+                        stringBuilder.setSpan(getForwardVerifiedSpan(), verifiedIndex, verifiedIndex + 1, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
                     }
                     forwardNameCenterX = (int) Math.ceil(Theme.chat_forwardNamePaint.measureText(name, 0, name.length())) / 2;
                     if (currentForwardName == null || messageObject.messageOwner.fwd_from.from_id != null) {

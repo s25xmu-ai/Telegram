@@ -2843,7 +2843,9 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
                     presentFragment(new PeerColorActivity(0).startOnProfile().setOnApplied(ProfileActivity.this));
                 } else if (id == copy_link_profile) {
                     TLRPC.User user = getMessagesController().getUser(userId);
-                    AndroidUtilities.addToClipboard(getMessagesController().linkPrefix + "/" + UserObject.getPublicUsername(user));
+                    if (AndroidUtilities.addToClipboard(getMessagesController().linkPrefix + "/" + UserObject.getPublicUsername(user))) {
+                        BulletinFactory.of(ProfileActivity.this).createCopyLinkBulletin().show();
+                    }
                 } else if (id == set_username) {
                     presentFragment(new ChangeUsernameActivity());
                 } else if (id == logout) {
@@ -16389,22 +16391,29 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
 
         String copyButton = getString(R.string.Copy);
         String textToCopy = null;
+        String copiedText = getString(R.string.TextCopied);
         if (position == channelInfoRow || position == userInfoRow || position == bioRow) {
             textToCopy = userFull.about;
+            if (position == bioRow) copiedText = getString(R.string.BioCopied);
         } else if (position == bizHoursRow) {
             textToCopy = OpeningHoursActivity.toString(currentAccount, user, userFull.business_work_hours);
             copyButton = getString(R.string.ProfileHoursCopy);
+            copiedText = getString(R.string.BusinessHoursCopied);
         } else if (position == bizLocationRow) {
             textToCopy = userFull.business_location.address;
             copyButton = getString(R.string.ProfileLocationCopy);
+            copiedText = getString(R.string.BusinessLocationCopied);
         } else if (position == usernameRow) {
             textToCopy = UserObject.getPublicUsername(user);
             if (textToCopy != null) textToCopy = "@" + textToCopy;
             copyButton = getString(R.string.ProfileCopyUsername);
+            copiedText = getString(R.string.UsernameCopied);
         } else if (position == phoneRow) {
             textToCopy = user.phone;
+            copiedText = getString(R.string.PhoneCopied);
         } else if (position == birthdayRow) {
             textToCopy = UserInfoActivity.birthdayString(userInfo.birthday);
+            copiedText = getString(R.string.BirthdayCopied);
         }
 
         final ItemOptions itemOptions = ItemOptions.makeOptions(this, cell);
@@ -16425,8 +16434,11 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
 
         if (textToCopy != null) {
             final String text = textToCopy;
+            final String copied = copiedText;
             itemOptions.add(R.drawable.msg_copy, copyButton, () -> {
-                AndroidUtilities.addToClipboard(text);
+                if (AndroidUtilities.addToClipboard(text)) {
+                    BulletinFactory.of(ProfileActivity.this).createCopyBulletin(copied).show();
+                }
             });
         }
 
