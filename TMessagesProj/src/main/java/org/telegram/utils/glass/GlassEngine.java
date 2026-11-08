@@ -102,6 +102,18 @@ public class GlassEngine {
         }
 
         recyclerListView.addEdgeEffectListener((direction, isVisible) -> scrollEdgesGenerationId++);
+        // New or removed rows can change the captured background without scrolling.
+        recyclerListView.addOnChildAttachStateChangeListener(new RecyclerView.OnChildAttachStateChangeListener() {
+            @Override
+            public void onChildViewAttachedToWindow(@NonNull View view) {
+                otherGenerationId++;
+            }
+
+            @Override
+            public void onChildViewDetachedFromWindow(@NonNull View view) {
+                otherGenerationId++;
+            }
+        });
         recyclerListView.addOnScrollListener(new RecyclerView.OnScrollListener() {
             @Override
             public void onScrollStateChanged(@NonNull RecyclerView recyclerView, int newState) {
