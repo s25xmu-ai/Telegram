@@ -2489,6 +2489,17 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
                 super.onLayout(changed, left, top, right, bottom);
                 updateStoriesViewBounds(false);
             }
+
+            @Override
+            public boolean getMenuItemGlassRect(ActionBarMenuItem item, RectF out) {
+                // Profile buttons move during photo and media transitions: anchor to the actual item.
+                if (!ViewPositionWatcher.computeRectInParent(item, this, out)) {
+                    return super.getMenuItemGlassRect(item, out);
+                }
+                final float cx = out.centerX(), cy = out.centerY(), half = dp(23);
+                out.set(cx - half, cy - half, cx + half, cy + half);
+                return false;
+            }
         };
         actionBar.setForceSkipTouches(true);
         actionBar.setBackgroundColor(Color.TRANSPARENT);
@@ -4103,6 +4114,11 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
         otherItem.addView(ttlIconView, LayoutHelper.createFrame(12, 12, Gravity.CENTER_VERTICAL | Gravity.LEFT, 8, 2, 0, 0));
         otherItem.setContentDescription(LocaleController.getString(R.string.AccDescrMoreOptions));
         otherItem.setBlurredBackgroundFactory(scrimBlur3Factory, BlurredBackgroundProviderImpl.messageMenuBackground(resourceProvider));
+        // Use the existing screenshot blur until the new profile glass engine is ported.
+        // The classic profile-details toggle only changes row spacing, not this menu.
+        actionBar.setMenuGlass(scrimBlur3Factory, BlurredBackgroundProviderImpl.messageMenuBackground(resourceProvider));
+        actionBar.setMenuRise(dp(8));
+        otherItem.setSubMenuOverlayProvider(this::getSimpleMenuOverlay);
 
         int scrollTo;
         int scrollToPosition = 0;
@@ -12032,6 +12048,7 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
 
     @Override
     public void clearViews() {
+        if (actionBar != null) actionBar.closeMenuOverlay(false);
         peerColor = null;
         super.clearViews();
     }
