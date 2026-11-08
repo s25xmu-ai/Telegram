@@ -650,6 +650,97 @@ public class ActionBarLayout extends FrameLayout implements INavigationLayout, F
     private ArrayList<ArrayList<ThemeDescription>> themeAnimatorDescriptions = new ArrayList<>();
     private ArrayList<ThemeDescription> presentingFragmentDescriptions;
     private ArrayList<ThemeDescription.ThemeDescriptionDelegate> themeAnimatorDelegate = new ArrayList<>();
+
+    // All theme keys whose color changes in the running theme animation (not only keys some ThemeDescription mentions):
+    // their interpolated value is published as the animated color on every frame, so ThemeBind bindings and
+    // Theme.Colorable hooks animate smoothly without ThemeDescriptions.
+    private int[] themeKeysStart;          // colors of every key before the theme is applied
+    private int[] animatedThemeKeys, animatedThemeKeysStart, animatedThemeKeysEnd;
+    private int animatedThemeKeysCount;
+    private Theme.ResourcesProvider animatedThemeKeysProvider;
+
+    private static int themeKeyColor(int key, Theme.ResourcesProvider resourcesProvider, boolean ignoreAnimation) {
+        if (resourcesProvider != null) {
+            return resourcesProvider.getColor(key);
+        }
+        return Theme.getColor(key, null, ignoreAnimation);
+    }
+
+    private void snapshotThemeKeysStart(Theme.ResourcesProvider resourcesProvider) {
+        try {
+            final int n = Theme.colorsCount;
+            themeKeysStart = new int[n];
+            for (int key = 0; key < n; ++key) {
+                themeKeysStart[key] = themeKeyColor(key, resourcesProvider, false);
+            }
+        } catch (Exception e) {
+            FileLog.e(e);
+            themeKeysStart = null;
+        }
+    }
+
+    private void snapshotThemeKeysEnd(Theme.ResourcesProvider resourcesProvider) {
+        animatedThemeKeysCount = 0;
+        animatedThemeKeysProvider = resourcesProvider;
+        if (themeKeysStart == null) {
+            return;
+        }
+        try {
+            final int n = Math.min(Theme.colorsCount, themeKeysStart.length);
+            if (animatedThemeKeys == null || animatedThemeKeys.length < n) {
+                animatedThemeKeys = new int[n];
+                animatedThemeKeysStart = new int[n];
+                animatedThemeKeysEnd = new int[n];
+            }
+            for (int key = 0; key < n; ++key) {
+                final int end = themeKeyColor(key, resourcesProvider, true);
+                if (end != themeKeysStart[key] && isInterpolatableThemeKey(key, themeKeysStart[key], end)) {
+                    animatedThemeKeys[animatedThemeKeysCount] = key;
+                    animatedThemeKeysStart[animatedThemeKeysCount] = themeKeysStart[key];
+                    animatedThemeKeysEnd[animatedThemeKeysCount] = end;
+                    animatedThemeKeysCount++;
+                }
+            }
+        } catch (Exception e) {
+            FileLog.e(e);
+            animatedThemeKeysCount = 0;
+        } finally {
+            themeKeysStart = null;
+        }
+    }
+
+    /**
+     * Keys that are not plain colors switch at once instead of being blended: numbers and flags (wallpaper rotation and file
+     * offset, the animated-gradient flag), and gradient colors where 0 means "no such gradient stop" (blending a color with 0
+     * gives dark half-transparent stops, e.g. bubbles flashing black).
+     */
+    private static boolean isInterpolatableThemeKey(int key, int start, int end) {
+        if (key == Theme.key_wallpaperFileOffset || key == Theme.key_chat_outBubbleGradientAnimated || key == Theme.key_chat_wallpaper_gradient_rotation) {
+            return false;
+        }
+        if (key == Theme.key_chat_outBubbleGradient1 || key == Theme.key_chat_outBubbleGradient2 || key == Theme.key_chat_outBubbleGradient3
+                || key == Theme.key_chat_wallpaper || key == Theme.key_chat_wallpaper_gradient_to1 || key == Theme.key_chat_wallpaper_gradient_to2 || key == Theme.key_chat_wallpaper_gradient_to3) {
+            return start != 0 && end != 0;
+        }
+        return true;
+    }
+
+    private void applyAnimatedThemeKeys(float value) {
+        for (int i = 0; i < animatedThemeKeysCount; ++i) {
+            final int color = ColorUtils.blendARGB(animatedThemeKeysStart[i], animatedThemeKeysEnd[i], value);
+            if (animatedThemeKeysProvider != null) {
+                animatedThemeKeysProvider.setAnimatedColor(animatedThemeKeys[i], color);
+            } else {
+                Theme.setAnimatedColor(animatedThemeKeys[i], color);
+            }
+        }
+    }
+
+    private void clearAnimatedThemeKeys() {
+        animatedThemeKeysCount = 0;
+        animatedThemeKeysProvider = null;
+        themeKeysStart = null;
+    }
     private AnimatorSet themeAnimatorSet;
     AnimationNotificationsLocker notificationsLocker = new AnimationNotificationsLocker();
     private float themeAnimationValue;
@@ -2867,6 +2958,7 @@ public class ActionBarLayout extends FrameLayout implements INavigationLayout, F
     @Keep
     public void setThemeAnimationValue(float value) {
         themeAnimationValue = value;
+        applyAnimatedThemeKeys(value);
         for (int j = 0, N = themeAnimatorDescriptions.size(); j < N; j++) {
             ArrayList<ThemeDescription> descriptions = themeAnimatorDescriptions.get(j);
             int[] startColors = animateStartColors.get(j);
@@ -2913,7 +3005,8 @@ public class ActionBarLayout extends FrameLayout implements INavigationLayout, F
         if (delegate != null) {
             delegate.onThemeProgress(value);
         }
-        globallyUpdateColors(this);
+        // Update bound views in windows and sheets as well as this navigation layout.
+        ThemeBind.updateAllForFrame(value, this);
     }
 
     @Keep
@@ -3002,8 +3095,12 @@ public class ActionBarLayout extends FrameLayout implements INavigationLayout, F
                     }
                     if (i == 0) {
                         if (settings.afterStartDescriptionsAddedRunnable != null) {
+                            if (settings.resourcesProvider != null) {
+                                snapshotThemeKeysStart(settings.resourcesProvider);
+                            }
                             settings.afterStartDescriptionsAddedRunnable.run();
                         }
+                        snapshotThemeKeysEnd(settings.resourcesProvider);
                     }
                     addEndDescriptions(descriptions);
                     if (fragment.visibleDialog instanceof BottomSheet) {
@@ -3028,6 +3125,7 @@ public class ActionBarLayout extends FrameLayout implements INavigationLayout, F
                     animateStartColors.clear();
                     animateEndColors.clear();
                     themeAnimatorDelegate.clear();
+                    clearAnimatedThemeKeys();
                     presentingFragmentDescriptions = null;
                     animationProgressListener = null;
                     if (settings.afterAnimationRunnable != null) {
@@ -3058,6 +3156,7 @@ public class ActionBarLayout extends FrameLayout implements INavigationLayout, F
                             animateStartColors.clear();
                             animateEndColors.clear();
                             themeAnimatorDelegate.clear();
+                            clearAnimatedThemeKeys();
                             Theme.setAnimatingColor(false);
                             presentingFragmentDescriptions = null;
                             animationProgressListener = null;
@@ -3075,6 +3174,7 @@ public class ActionBarLayout extends FrameLayout implements INavigationLayout, F
                             animateStartColors.clear();
                             animateEndColors.clear();
                             themeAnimatorDelegate.clear();
+                            clearAnimatedThemeKeys();
                             Theme.setAnimatingColor(false);
                             presentingFragmentDescriptions = null;
                             animationProgressListener = null;
@@ -3094,6 +3194,9 @@ public class ActionBarLayout extends FrameLayout implements INavigationLayout, F
             }
         };
         if (fragmentCount >= 1 && settings.applyTheme && settings.applyTrulyTheme) {
+            if (settings.resourcesProvider == null) {
+                snapshotThemeKeysStart(null);
+            }
             if (settings.accentId != -1 && settings.theme != null) {
                 settings.theme.setCurrentAccentId(settings.accentId);
                 Theme.saveThemeAccents(settings.theme, true, false, true, false);
@@ -3106,20 +3209,6 @@ public class ActionBarLayout extends FrameLayout implements INavigationLayout, F
             }
         } else {
             next.run();
-        }
-    }
-
-    // updates only Theme.Colorable views
-    private void globallyUpdateColors(ViewGroup parent) {
-        if (parent == null) return;
-        for (int i = 0; i < parent.getChildCount(); ++i) {
-            final View child = parent.getChildAt(i);
-            if (child instanceof Theme.Colorable) {
-                ((Theme.Colorable) child).updateColors();
-            }
-            if (child instanceof ViewGroup) {
-                globallyUpdateColors((ViewGroup) child);
-            }
         }
     }
 
