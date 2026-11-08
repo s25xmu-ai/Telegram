@@ -32,12 +32,14 @@ import androidx.annotation.Nullable;
 
 import org.telegram.messenger.AndroidUtilities;
 import org.telegram.messenger.ImageReceiver;
+import org.telegram.messenger.FileLog;
 import org.telegram.messenger.LocaleController;
 import org.telegram.messenger.UserConfig;
 import org.telegram.tgnet.ConnectionsManager;
 import org.telegram.tgnet.TLRPC;
 import org.telegram.ui.ActionBar.SimpleTextView;
 import org.telegram.ui.ActionBar.Theme;
+import org.telegram.ui.ActionBar.ThemeBind;
 import org.telegram.ui.Components.AnimatedEmojiDrawable;
 import org.telegram.ui.Components.AnimatedTextView;
 import org.telegram.ui.Components.LayoutHelper;
@@ -49,7 +51,7 @@ import org.telegram.ui.PeerColorActivity;
 import org.telegram.ui.SettingsActivity;
 import org.telegram.ui.Stories.recorder.HintView2;
 
-public class TextCell extends FrameLayout {
+public class TextCell extends FrameLayout implements Theme.Colorable {
 
     public final SimpleTextView textView;
     private final SimpleTextView subtitleView;
@@ -96,21 +98,21 @@ public class TextCell extends FrameLayout {
         leftPadding = left;
 
         textView = new SimpleTextView(context);
-        textView.setTextColor(Theme.getColor(dialog ? Theme.key_dialogTextBlack : Theme.key_windowBackgroundWhiteBlackText, resourcesProvider));
+        ThemeBind.textColor(textView, dialog ? Theme.key_dialogTextBlack : Theme.key_windowBackgroundWhiteBlackText, resourcesProvider);
         textView.setTextSize(16);
         textView.setGravity(LocaleController.isRTL ? Gravity.RIGHT : Gravity.LEFT);
         textView.setImportantForAccessibility(IMPORTANT_FOR_ACCESSIBILITY_NO);
         addView(textView, LayoutHelper.createFrame(LayoutHelper.WRAP_CONTENT, LayoutHelper.MATCH_PARENT));
 
         subtitleView = new SimpleTextView(context);
-        subtitleView.setTextColor(Theme.getColor(dialog ? Theme.key_dialogTextGray : Theme.key_windowBackgroundWhiteGrayText, resourcesProvider));
+        ThemeBind.textColor(subtitleView, dialog ? Theme.key_dialogTextGray : Theme.key_windowBackgroundWhiteGrayText, resourcesProvider);
         subtitleView.setTextSize(13);
         subtitleView.setGravity(LocaleController.isRTL ? Gravity.RIGHT : Gravity.LEFT);
         subtitleView.setImportantForAccessibility(IMPORTANT_FOR_ACCESSIBILITY_NO);
         addView(subtitleView, LayoutHelper.createFrame(LayoutHelper.WRAP_CONTENT, LayoutHelper.MATCH_PARENT));
 
         valueTextView = new AnimatedTextView(context, false, true, true);
-        valueTextView.setTextColor(Theme.getColor(dialog ? Theme.key_dialogTextBlue2 : Theme.key_windowBackgroundWhiteValueText, resourcesProvider));
+        ThemeBind.textColor(valueTextView, dialog ? Theme.key_dialogTextBlue2 : Theme.key_windowBackgroundWhiteValueText, resourcesProvider);
         valueTextView.setPadding(0, dp(18), 0, dp(18));
         valueTextView.setTextSize(dp(16));
         valueTextView.setGravity(LocaleController.isRTL ? Gravity.LEFT : Gravity.RIGHT);
@@ -120,7 +122,7 @@ public class TextCell extends FrameLayout {
 
         valueSpoilersTextView = new SimpleTextView(context);
         valueSpoilersTextView.setEllipsizeByGradient(18, false);
-        valueSpoilersTextView.setTextColor(Theme.getColor(dialog ? Theme.key_dialogTextBlue2 : Theme.key_windowBackgroundWhiteValueText, resourcesProvider));
+        ThemeBind.textColor(valueSpoilersTextView, dialog ? Theme.key_dialogTextBlue2 : Theme.key_windowBackgroundWhiteValueText, resourcesProvider);
         valueSpoilersTextView.setGravity(LocaleController.isRTL ? Gravity.LEFT : Gravity.RIGHT);
         valueSpoilersTextView.setTextSize(16);
         valueSpoilersTextView.setImportantForAccessibility(IMPORTANT_FOR_ACCESSIBILITY_NO);
@@ -129,7 +131,7 @@ public class TextCell extends FrameLayout {
 
         imageView = new RLottieImageView(context);
         imageView.setScaleType(ImageView.ScaleType.CENTER);
-        imageView.setColorFilter(new PorterDuffColorFilter(Theme.getColor(dialog ? Theme.key_dialogIcon : Theme.key_windowBackgroundWhiteGrayIcon, resourcesProvider), PorterDuff.Mode.SRC_IN));
+        ThemeBind.colorFilter(imageView, dialog ? Theme.key_dialogIcon : Theme.key_windowBackgroundWhiteGrayIcon, resourcesProvider, PorterDuff.Mode.SRC_IN);
         addView(imageView);
 
         valueImageView = new ImageView(context);
@@ -296,27 +298,39 @@ public class TextCell extends FrameLayout {
     }
 
     public void setTextColor(int color) {
+        textKeyColors = false;
         textView.setTextColor(color);
     }
+
+    // set by setColors: theme switches re-apply the tagged keys (through processColor) until a raw color replaces them
+    private boolean textKeyColors, iconKeyColors;
 
     protected int processColor(int color) {
         return color;
     }
 
-    public void updateColors() {
+    private int lastIconKeyColor;
+    private android.graphics.ColorFilter lastIconKeyFilter;
+
+    private void applyColorKeys() {
         int textKey = textView.getTag() instanceof Integer ? (int) textView.getTag() : Theme.key_windowBackgroundWhiteBlackText;
         int textColor = Theme.getColor(textKey, resourcesProvider);
         if (textKey != Theme.key_dialogTextBlack && textKey != Theme.key_windowBackgroundWhiteBlackText) {
             textColor = processColor(textColor);
         }
-        textView.setTextColor(textColor);
-        if (imageView.getTag() instanceof Integer) {
+        if (textKeyColors) {
+            textView.setTextColor(textColor);
+        }
+        if (iconKeyColors && imageView.getTag() instanceof Integer) {
             int colorKey = (int) imageView.getTag();
             int color = Theme.getColor(colorKey, resourcesProvider);
             if (colorKey != Theme.key_dialogIcon && colorKey != Theme.key_windowBackgroundWhiteGrayIcon) {
                 color = processColor(color);
             }
-            imageView.setColorFilter(new PorterDuffColorFilter(color, PorterDuff.Mode.SRC_IN));
+            if (color != lastIconKeyColor || imageView.getColorFilter() != lastIconKeyFilter) {
+                lastIconKeyColor = color;
+                imageView.setColorFilter(lastIconKeyFilter = new PorterDuffColorFilter(color, PorterDuff.Mode.SRC_IN));
+            }
         }
         subtitleView.setTextColor(processColor(Theme.getColor(Theme.key_windowBackgroundWhiteGrayText, resourcesProvider)));
         valueTextView.setTextColor(processColor(Theme.getColor(Theme.key_windowBackgroundWhiteValueText, resourcesProvider)));
@@ -326,11 +340,39 @@ public class TextCell extends FrameLayout {
     public void setColors(int icon, int text) {
         textView.setTextColor(Theme.getColor(text, resourcesProvider));
         textView.setTag(text);
+        textKeyColors = true;
         if (icon >= 0) {
             imageView.setColorFilter(new PorterDuffColorFilter(Theme.getColor(icon, resourcesProvider), PorterDuff.Mode.SRC_IN));
             imageView.setTag(icon);
+            iconKeyColors = true;
         }
-        updateColors();
+        applyColorKeys();
+    }
+
+    /** theme switches (Theme.Colorable): only colors that came from setColors keys follow the theme */
+    @Override
+    public void updateColors() {
+        if (!textKeyColors && !iconKeyColors) {
+            // explicit callers (peer color previews) rely on processColor overrides for the subtitle / value colors
+            try {
+                final int subtitle = Theme.getColor(Theme.key_windowBackgroundWhiteGrayText, resourcesProvider);
+                final int value = Theme.getColor(Theme.key_windowBackgroundWhiteValueText, resourcesProvider);
+                final int processedSubtitle = processColor(subtitle), processedValue = processColor(value);
+                if (processedSubtitle != subtitle || processedValue != value) {
+                    subtitleView.setTextColor(processedSubtitle);
+                    valueTextView.setTextColor(processedValue);
+                    valueSpoilersTextView.setTextColor(processedValue);
+                }
+            } catch (Exception e) {
+                FileLog.e(e);
+            }
+            return;
+        }
+        try {
+            applyColorKeys();
+        } catch (Exception e) {
+            FileLog.e(e);
+        }
     }
 
     private CharSequence valueText;
@@ -628,6 +670,7 @@ public class TextCell extends FrameLayout {
         imageView.setPadding(dp(2), dp(2), dp(2), dp(2));
         imageView.setTranslationX(dp(LocaleController.isRTL ? 0 : -3));
         imageView.setImageResource(resId);
+        iconKeyColors = false;
         imageView.setColorFilter(new PorterDuffColorFilter(Color.WHITE, PorterDuff.Mode.SRC_IN));
 
         final boolean border = resourcesProvider != null ? resourcesProvider.isDark() : Theme.isCurrentThemeDark();
