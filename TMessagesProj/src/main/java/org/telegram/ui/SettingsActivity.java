@@ -31,6 +31,7 @@ import android.graphics.Paint;
 import android.graphics.PixelFormat;
 import android.graphics.PorterDuff;
 import android.graphics.PorterDuffColorFilter;
+import android.graphics.PorterDuffXfermode;
 import android.graphics.Rect;
 import android.graphics.RectF;
 import android.graphics.Shader;
@@ -45,6 +46,7 @@ import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.MotionEvent;
 import android.view.View;
+import android.view.ViewGroup;
 import android.webkit.CookieManager;
 import android.webkit.WebStorage;
 import android.webkit.WebView;
@@ -94,6 +96,7 @@ import org.telegram.utils.settings.SharedSettings;
 import org.telegram.messenger.UserConfig;
 import org.telegram.messenger.UserObject;
 import org.telegram.messenger.browser.Browser;
+import org.telegram.messenger.utils.GradientProtectionDrawable;
 import org.telegram.tgnet.ConnectionsManager;
 import org.telegram.tgnet.TLRPC;
 import org.telegram.ui.ActionBar.ActionBar;
@@ -428,18 +431,59 @@ public class SettingsActivity extends BaseFragment implements NotificationCenter
 
         actionBarBackground = new View(context) {
             private final Paint blurScrimPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+            private final Paint fadeMaskPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+            private final Paint fadeOverlayPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+            private final Paint fadeFallbackPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+            private int lastHeight = -1, lastColor;
+            {
+                fadeMaskPaint.setXfermode(new PorterDuffXfermode(PorterDuff.Mode.DST_IN));
+            }
+
+            private LinearGradient gradient(int height, int length, int color) {
+                int[] colors = new int[8];
+                GradientProtectionDrawable.fillColors(GradientProtectionDrawable.DEFAULT_INTERPOLATOR, color, colors);
+                return new LinearGradient(0, Math.max(0, height - length), 0, height, colors, null, Shader.TileMode.CLAMP);
+            }
+
             @Override
             protected void onDraw(@NonNull Canvas canvas) {
-                int top = actionBar.getHeight();
-                AndroidUtilities.rectTmp2.set(0, 0, getMeasuredWidth(), top);
-                blurScrimPaint.setColor(Theme.getColor(Theme.key_actionBarDefault, resourceProvider));
-                contentView.drawBlurRect(canvas, 0, AndroidUtilities.rectTmp2, blurScrimPaint, true);
-                if (getParentLayout() != null) {
-                    getParentLayout().drawHeaderShadow(canvas, top);
+                final int top = Math.min(actionBar.getHeight(), getHeight());
+                if (top <= 0) return;
+                final int width = getMeasuredWidth();
+                AndroidUtilities.rectTmp2.set(0, 0, width, top);
+                if (classicSettingsHeader) {
+                    blurScrimPaint.setColor(Theme.getColor(Theme.key_actionBarDefault, resourceProvider));
+                    contentView.drawBlurRect(canvas, 0, AndroidUtilities.rectTmp2, blurScrimPaint, true);
+                    if (getParentLayout() != null) getParentLayout().drawHeaderShadow(canvas, top);
+                    return;
+                }
+
+                // Match the v13 header's 32dp blur mask, 56dp tint, and 48dp static fallback.
+                final int color = getThemedColor(Theme.key_windowBackgroundWhite);
+                if (lastHeight != top || lastColor != color) {
+                    lastHeight = top;
+                    lastColor = color;
+                    fadeMaskPaint.setShader(gradient(top, dp(32), Color.WHITE));
+                    fadeOverlayPaint.setShader(gradient(top, dp(56), Theme.multAlpha(color, 160f / 255f)));
+                    fadeFallbackPaint.setShader(gradient(top, dp(48), Theme.multAlpha(color, 210f / 255f)));
+                }
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && SharedConfig.chatBlurEnabled()
+                        && iBlur3SourceGlassFrosted != null && canvas.isHardwareAccelerated()) {
+                    final int layer = canvas.saveLayer(0, 0, width, top, null);
+                    iBlur3SourceGlassFrosted.draw(canvas, 0, 0, width, top);
+                    canvas.drawRect(0, 0, width, top, fadeMaskPaint);
+                    canvas.restoreToCount(layer);
+                    canvas.drawRect(0, 0, width, top, fadeOverlayPaint);
+                } else {
+                    // A single gradient avoids an extra blur layer on older or low-power devices.
+                    canvas.drawRect(0, 0, width, top, fadeFallbackPaint);
                 }
             }
         };
-        contentView.addView(actionBarBackground, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, 200, Gravity.TOP));
+        contentView.addView(actionBarBackground, new FrameLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT,
+            classicSettingsHeader ? dp(200) : AndroidUtilities.statusBarHeight + ActionBar.getCurrentActionBarHeight(),
+            Gravity.TOP));
         contentView.addView(actionBar, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT, Gravity.FILL_HORIZONTAL | Gravity.TOP));
 
         // The v13 settings header has separate glass buttons, but no glass behind its title.
@@ -1265,6 +1309,14 @@ items.add(settingsRow(
         final Insets systemInsets = AndroidUtilities.getDefaultWindowInsets(insets, false);
         navigationBarHeight = systemInsets.bottom;
         final int statusBarHeight = systemInsets.top;
+        if (!classicSettingsHeader && actionBarBackground != null) {
+            final ViewGroup.LayoutParams params = actionBarBackground.getLayoutParams();
+            final int height = statusBarHeight + ActionBar.getCurrentActionBarHeight();
+            if (params.height != height) {
+                params.height = height;
+                actionBarBackground.setLayoutParams(params);
+            }
+        }
         listView.setPadding(0, statusBarHeight + dp(12), 0, navigationBarHeight + additionNavigationBarHeight);
         return WindowInsetsCompat.CONSUMED;
     }
