@@ -133,10 +133,14 @@ import org.telegram.ui.Components.TextHelper;
 import org.telegram.ui.Components.UItem;
 import org.telegram.ui.Components.UniversalAdapter;
 import org.telegram.ui.Components.UniversalRecyclerView;
+import org.telegram.ui.Components.blur3.BlurredBackgroundDrawableViewFactory;
 import org.telegram.ui.Components.blur3.DownscaleScrollableNoiseSuppressor;
 import org.telegram.ui.Components.blur3.ViewGroupPartRenderer;
 import org.telegram.ui.Components.blur3.capture.IBlur3Capture;
 import org.telegram.ui.Components.blur3.source.BlurredBackgroundSourceRenderNode;
+import org.telegram.ui.Components.blur3.source.BlurredBackgroundSourceColor;
+import org.telegram.ui.Components.blur3.drawable.color.impl.BlurredBackgroundProviderImpl;
+import org.telegram.ui.Components.chat.ViewPositionWatcher;
 import org.telegram.ui.Components.voip.VoIPHelper;
 import org.telegram.ui.Stars.StarsController;
 import org.telegram.ui.Stars.StarsIntroActivity;
@@ -245,16 +249,19 @@ public class SettingsActivity extends BaseFragment implements NotificationCenter
     @Override
     public void clearViews() {
         if (ignoreClearViews) return;
+        if (actionBar != null) actionBar.closeMenuOverlay(false);
         super.clearViews();
     }
 
     private boolean classicSettingsRows;
     private boolean classicSettingsHeader;
+    private BlurredBackgroundSourceColor settingsGlassFallback;
 
     @Override
     public View createView(Context context) {
         classicSettingsRows = XGramConfig.isClassicSettingsRows();
         classicSettingsHeader = XGramConfig.isClassicSettingsHeader();
+        settingsGlassFallback = null;
         avatarTouchView = null;
         avatarGooey = null;
         avatarContainer = null;
@@ -434,6 +441,29 @@ public class SettingsActivity extends BaseFragment implements NotificationCenter
         };
         contentView.addView(actionBarBackground, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, 200, Gravity.TOP));
         contentView.addView(actionBar, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT, Gravity.FILL_HORIZONTAL | Gravity.TOP));
+
+        // The v13 settings header has separate glass buttons, but no glass behind its title.
+        // Keep the legacy header independent of the newer settings rows.
+        if (!classicSettingsHeader) {
+            final ViewPositionWatcher watcher = new ViewPositionWatcher(contentView);
+            final BlurredBackgroundDrawableViewFactory buttonsFactory;
+            final BlurredBackgroundDrawableViewFactory menuFactory;
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                buttonsFactory = new BlurredBackgroundDrawableViewFactory(watcher, contentView, iBlur3SourceGlass);
+                menuFactory = new BlurredBackgroundDrawableViewFactory(watcher, contentView, iBlur3SourceGlassFrosted);
+            } else {
+                settingsGlassFallback = new BlurredBackgroundSourceColor();
+                buttonsFactory = new BlurredBackgroundDrawableViewFactory(watcher, contentView, settingsGlassFallback);
+                menuFactory = buttonsFactory;
+            }
+            buttonsFactory.setLiquidGlassEffectAllowed(LiteMode.isEnabled(LiteMode.FLAG_LIQUID_GLASS));
+            menuFactory.setLiquidGlassEffectAllowed(LiteMode.isEnabled(LiteMode.FLAG_LIQUID_GLASS));
+            actionBar.setupGlass(buttonsFactory, BlurredBackgroundProviderImpl.simpleActionBar(resourceProvider));
+            actionBar.setDrawGlassTitle(false);
+            actionBar.setMenuGlass(menuFactory, BlurredBackgroundProviderImpl.simpleActionBar(resourceProvider));
+            actionBar.setMenuRise(dp(8));
+            otherItem.setSubMenuOverlayProvider(this::getSimpleMenuOverlay);
+        }
 
         imageUpdater = new ImageUpdater(true, ImageUpdater.FOR_TYPE_USER, true);
         imageUpdater.setOpenWithFrontfaceCamera(true);
@@ -631,6 +661,9 @@ public class SettingsActivity extends BaseFragment implements NotificationCenter
 
 
     public void updateColors() {
+        if (settingsGlassFallback != null) {
+            settingsGlassFallback.setColor(getThemedColor(Theme.key_windowBackgroundWhite));
+        }
         actionBar.setTitleColor(getThemedColor(Theme.key_windowBackgroundWhiteBlackText));
         actionBar.setItemsColor(getThemedColor(Theme.key_windowBackgroundWhiteBlackText), false);
         contentView.setBackgroundColor(getThemedColor(Theme.key_windowBackgroundGray));
@@ -1419,6 +1452,7 @@ items.add(settingsRow(
 
     @Override
     public boolean onBackPressed(boolean invoked) {
+        if (closeSimpleMenuOverlayOnBack(invoked)) return false;
         if (actionBar.isSearchFieldVisible()) {
             if (invoked) actionBar.closeSearchField();
             return false;
@@ -2397,7 +2431,9 @@ items.add(settingsRow(
             return;
         }
 
-        final int additionalList = dp(48);
+        // Capture below the header only while its single-row overflow menu is open or closing.
+        // This covers the full menu and animation overshoot without blurring the whole list.
+        final int additionalList = dp(actionBar.getOpenMenuOverlay() != null ? 200 : 48);
         final int mainTabBottom = fragmentView.getMeasuredHeight() - navigationBarHeight - dp(DialogsActivity.MAIN_TABS_MARGIN);
         final int mainTabTop = mainTabBottom - dp(DialogsActivity.MAIN_TABS_HEIGHT);
 
