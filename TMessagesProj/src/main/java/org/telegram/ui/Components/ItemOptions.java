@@ -65,6 +65,7 @@ import org.telegram.ui.ActionBar.ActionBarPopupWindow;
 import org.telegram.ui.ActionBar.BaseFragment;
 import org.telegram.ui.ActionBar.INavigationLayout;
 import org.telegram.ui.ActionBar.Theme;
+import org.telegram.ui.ActionBar.ThemeBind;
 import org.telegram.ui.Cells.SharedPhotoVideoCell2;
 import org.telegram.ui.Cells.TextCell;
 import org.telegram.ui.Cells.UserCell;
@@ -664,7 +665,9 @@ public class ItemOptions {
         if (checked) {
             final float strokeWidth = 2;
             View checkView = new View(context);
-            checkView.setBackground(Theme.createOutlineCircleDrawable(dp(34), Theme.getColor(Theme.key_featuredStickers_addButton, resourcesProvider), dp(strokeWidth)));
+            final Drawable checkDrawable = Theme.createOutlineCircleDrawable(dp(34), Theme.getColor(Theme.key_featuredStickers_addButton, resourcesProvider), dp(strokeWidth));
+            checkView.setBackground(checkDrawable);
+            ThemeBind.drawableColorFilter(checkView, checkDrawable, Theme.key_featuredStickers_addButton, resourcesProvider, PorterDuff.Mode.SRC_IN);
             subItem.addView(checkView, LayoutHelper.createFrame(34 + strokeWidth, 34 + strokeWidth, Gravity.CENTER_VERTICAL | (LocaleController.isRTL ? Gravity.RIGHT : Gravity.LEFT), -5 - strokeWidth / 2.0f, 0, -5, 0));
         }
 
@@ -724,7 +727,9 @@ public class ItemOptions {
         if (checked) {
             final float strokeWidth = 2;
             View checkView = new View(context);
-            checkView.setBackground(Theme.createOutlineCircleDrawable(dp(34), Theme.getColor(Theme.key_featuredStickers_addButton, resourcesProvider), dp(strokeWidth)));
+            final Drawable checkDrawable = Theme.createOutlineCircleDrawable(dp(34), Theme.getColor(Theme.key_featuredStickers_addButton, resourcesProvider), dp(strokeWidth));
+            checkView.setBackground(checkDrawable);
+            ThemeBind.drawableColorFilter(checkView, checkDrawable, Theme.key_featuredStickers_addButton, resourcesProvider, PorterDuff.Mode.SRC_IN);
             subItem.addView(checkView, LayoutHelper.createFrame(34 + strokeWidth, 34 + strokeWidth, Gravity.CENTER_VERTICAL | (LocaleController.isRTL ? Gravity.RIGHT : Gravity.LEFT), -5 - strokeWidth / 2.0f, 0, -5, 0));
         }
 
@@ -939,7 +944,7 @@ public class ItemOptions {
 
     public ItemOptions addProfile(TLObject obj, CharSequence subtitle, Runnable onClickListener) {
         final FrameLayout userButton = new FrameLayout(context);
-        userButton.setBackground(Theme.createRadSelectorDrawable(Theme.getColor(Theme.key_listSelector, resourcesProvider), 0, 12));
+        ThemeBind.selectorBackground(userButton, Theme.createRadSelectorDrawable(Theme.getColor(Theme.key_listSelector, resourcesProvider), 0, 12), null, ThemeBind.of(Theme.key_listSelector), resourcesProvider);
 
         final BackupImageView imageView = new BackupImageView(context);
         imageView.setRoundRadius(dp(17));
@@ -949,7 +954,7 @@ public class ItemOptions {
         userButton.addView(imageView, LayoutHelper.createFrame(34, 34, Gravity.LEFT | Gravity.CENTER_VERTICAL, 13, 0, 0, 0));
 
         final TextView titleText = new TextView(context);
-        titleText.setTextColor(Theme.getColor(Theme.key_dialogTextBlack, resourcesProvider));
+        ThemeBind.textColor(titleText, Theme.key_dialogTextBlack, resourcesProvider);
         titleText.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 16);
         titleText.setEllipsize(TextUtils.TruncateAt.END);
         titleText.setSingleLine(true);
@@ -962,7 +967,7 @@ public class ItemOptions {
         userButton.addView(titleText, LayoutHelper.createFrame(LayoutHelper.WRAP_CONTENT, LayoutHelper.WRAP_CONTENT, Gravity.FILL_HORIZONTAL | Gravity.TOP, 59, 6, 16, 0));
 
         final TextView subtitleText = new TextView(context);
-        subtitleText.setTextColor(Theme.getColor(Theme.key_dialogTextGray2, resourcesProvider));
+        ThemeBind.textColor(subtitleText, Theme.key_dialogTextGray2, resourcesProvider);
         subtitleText.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 13);
         subtitleText.setText(AndroidUtilities.replaceArrows(subtitle, false, dp(1), dp(.66f)));
         userButton.addView(subtitleText, LayoutHelper.createFrame(LayoutHelper.WRAP_CONTENT, LayoutHelper.WRAP_CONTENT, Gravity.FILL_HORIZONTAL | Gravity.TOP, 59, 27, 16, 0));
@@ -980,7 +985,7 @@ public class ItemOptions {
 
     public ItemOptions addProfileCustom(TLObject obj, CharSequence text, Runnable onClickListener) {
         final FrameLayout userButton = new FrameLayout(context);
-        userButton.setBackground(Theme.createRadSelectorDrawable(Theme.getColor(Theme.key_listSelector, resourcesProvider), 0, 12));
+        ThemeBind.selectorBackground(userButton, Theme.createRadSelectorDrawable(Theme.getColor(Theme.key_listSelector, resourcesProvider), 0, 12), null, ThemeBind.of(Theme.key_listSelector), resourcesProvider);
 
         final BackupImageView imageView = new BackupImageView(context);
         imageView.setRoundRadius(dp(17));
@@ -990,7 +995,7 @@ public class ItemOptions {
         userButton.addView(imageView, LayoutHelper.createFrame(34, 34, Gravity.LEFT | Gravity.TOP, 13, 11, 0, 11));
 
         final TextView titleText = new TextView(context);
-        titleText.setTextColor(Theme.getColor(Theme.key_dialogTextBlack, resourcesProvider));
+        ThemeBind.textColor(titleText, Theme.key_dialogTextBlack, resourcesProvider);
         titleText.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 14);
         titleText.setText(text);
         titleText.setMaxWidth(dp(150));
@@ -1023,7 +1028,7 @@ public class ItemOptions {
             }
         };
         textView.setTextSize(TypedValue.COMPLEX_UNIT_DIP, textSizeDp);
-        textView.setTextColor(Theme.getColor(Theme.key_dialogTextBlack, resourcesProvider));
+        ThemeBind.textColor(textView, Theme.key_dialogTextBlack, resourcesProvider);
         textView.setPadding(dp(13), dp(8), dp(13), dp(8));
         textView.setText(Emoji.replaceEmoji(text, textView.getPaint().getFontMetricsInt(), false));
         textView.setTag(R.id.fit_width_tag, 1);
@@ -1280,16 +1285,16 @@ public class ItemOptions {
                 if (first instanceof ActionBarMenuSubItem) {
                     ((ActionBarMenuSubItem) first).updateSelectorBackground(true, first == last, 12);
                 } else if (first instanceof MessagePreviewView.ToggleButton || first instanceof FrameLayout) {
-                    first.setBackground(Theme.createRadSelectorDrawable(Theme.getColor(Theme.key_dialogButtonSelector, resourcesProvider), 12, first == last ? 12 : 0));
+                    ThemeBind.selectorBackground(first, Theme.createRadSelectorDrawable(Theme.getColor(Theme.key_dialogButtonSelector, resourcesProvider), 12, first == last ? 12 : 0), null, ThemeBind.of(Theme.key_dialogButtonSelector), resourcesProvider);
                 } else if (first != null && first.getBackground() instanceof RippleDrawable) {
-                    first.setBackground(Theme.createRadSelectorDrawable(Theme.getColor(Theme.key_dialogButtonSelector, resourcesProvider), 12, first == last ? 12 : 0));
+                    ThemeBind.selectorBackground(first, Theme.createRadSelectorDrawable(Theme.getColor(Theme.key_dialogButtonSelector, resourcesProvider), 12, first == last ? 12 : 0), null, ThemeBind.of(Theme.key_dialogButtonSelector), resourcesProvider);
                 }
                 if (last instanceof ActionBarMenuSubItem) {
                     ((ActionBarMenuSubItem) last).updateSelectorBackground(last == first, true, 12);
                 } else if (last instanceof MessagePreviewView.ToggleButton || last instanceof FrameLayout) {
-                    last.setBackground(Theme.createRadSelectorDrawable(Theme.getColor(Theme.key_dialogButtonSelector, resourcesProvider), first == last ? 12 : 0, 12));
+                    ThemeBind.selectorBackground(last, Theme.createRadSelectorDrawable(Theme.getColor(Theme.key_dialogButtonSelector, resourcesProvider), first == last ? 12 : 0, 12), null, ThemeBind.of(Theme.key_dialogButtonSelector), resourcesProvider);
                 } else if (last != null && last.getBackground() instanceof RippleDrawable) {
-                    last.setBackground(Theme.createRadSelectorDrawable(Theme.getColor(Theme.key_dialogButtonSelector, resourcesProvider), first == last ? 12 : 0, 12));
+                    ThemeBind.selectorBackground(last, Theme.createRadSelectorDrawable(Theme.getColor(Theme.key_dialogButtonSelector, resourcesProvider), first == last ? 12 : 0, 12), null, ThemeBind.of(Theme.key_dialogButtonSelector), resourcesProvider);
                 }
             }
         }

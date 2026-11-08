@@ -89,6 +89,28 @@ public class ProfileGooeyView extends FrameLayout {
         return notchInfo != null;
     }
 
+    /** Size of the avatar at the camera cutout, in dp. */
+    public float getHiddenAvatarSizeDp() {
+        if (notchInfo != null && notchInfo.isLikelyCircle) {
+            return 0.5f * notchInfo.bounds.width() / AndroidUtilities.density;
+        }
+        return 24f;
+    }
+
+    public float getHiddenAvatarCenterY(float fallback) {
+        if (notchInfo != null && notchInfo.isLikelyCircle) {
+            return notchInfo.bounds.centerY();
+        }
+        return fallback;
+    }
+
+    public void setHideProgress(float progress) {
+        setPullProgress(progress);
+        setBlurIntensity(Math.min((MathUtils.clamp(progress, 0.2f, 0.7f) - 0.2f) / 0.5f, 0.75f));
+        setGooeyEnabled(progress > 0 && progress < 1);
+        setVisibility(progress >= 1.0f ? View.GONE : View.VISIBLE);
+    }
+
     public void setIntensity(float intensity) {
         this.intensity = intensity;
         impl.setIntensity(intensity);

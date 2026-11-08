@@ -22,6 +22,7 @@ public final class XGramConfig {
     private static final String KEY_CLASSIC_DRAWER = "classic_drawer_v2";
     private static final String KEY_CLASSIC_PROFILE_DETAILS = "classic_profile_details";
     private static final String KEY_CLASSIC_SETTINGS_ROWS = "classic_settings_rows";
+    private static final String KEY_CLASSIC_SETTINGS_HEADER = "classic_settings_header";
     private static final String KEY_CLASSIC_DIALOG_ROWS = "classic_dialog_rows";
     private static final String KEY_CLASSIC_MESSAGE_MENU = "classic_message_menu";
     private static final String KEY_CLASSIC_INPUT = "classic_message_input";
@@ -62,6 +63,10 @@ public final class XGramConfig {
     /** Use the Telegram 10 settings row component, independently of profile spacing. */
     public static boolean isClassicSettingsRows() { return prefs().getBoolean(KEY_CLASSIC_SETTINGS_ROWS, false); }
     public static void setClassicSettingsRows(boolean value) { prefs().edit().putBoolean(KEY_CLASSIC_SETTINGS_ROWS, value).apply(); }
+
+    /** Keep the simple settings avatar header independently of classic rows. */
+    public static boolean isClassicSettingsHeader() { return prefs().getBoolean(KEY_CLASSIC_SETTINGS_HEADER, false); }
+    public static void setClassicSettingsHeader(boolean value) { prefs().edit().putBoolean(KEY_CLASSIC_SETTINGS_HEADER, value).apply(); }
 
     public static boolean isClassicDialogRows() { return prefs().getBoolean(KEY_CLASSIC_DIALOG_ROWS, false); }
     public static void setClassicDialogRows(boolean value) {

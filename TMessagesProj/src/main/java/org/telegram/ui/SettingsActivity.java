@@ -59,6 +59,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.collection.LongSparseArray;
 import androidx.core.graphics.Insets;
+import androidx.core.math.MathUtils;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 import androidx.recyclerview.widget.RecyclerView;
@@ -123,6 +124,7 @@ import org.telegram.ui.Components.LinkSpanDrawable;
 import org.telegram.ui.Components.Paint.PersistColorPalette;
 import org.telegram.ui.Components.Premium.boosts.UserSelectorBottomSheet;
 import org.telegram.ui.Components.RadialProgressView;
+import org.telegram.ui.Components.ProfileGooeyView;
 import org.telegram.ui.Components.RecyclerListView;
 import org.telegram.ui.Components.ScaleStateListAnimator;
 import org.telegram.ui.Components.ShareAlert;
@@ -190,6 +192,8 @@ public class SettingsActivity extends BaseFragment implements NotificationCenter
     private ImageLocation uploadingImageLocation;
 
     private FrameLayout topView;
+    private FrameLayout avatarTouchView;
+    private ProfileGooeyView avatarGooey;
     private FrameLayout avatarContainer;
     private AvatarDrawable avatarDrawable;
     private BackupImageView avatarView;
@@ -245,10 +249,17 @@ public class SettingsActivity extends BaseFragment implements NotificationCenter
     }
 
     private boolean classicSettingsRows;
+    private boolean classicSettingsHeader;
 
     @Override
     public View createView(Context context) {
         classicSettingsRows = XGramConfig.isClassicSettingsRows();
+        classicSettingsHeader = XGramConfig.isClassicSettingsHeader();
+        avatarTouchView = null;
+        avatarGooey = null;
+        avatarContainer = null;
+        cameraButton = null;
+        avatarHideShown = -1;
         contentView = new SizeNotifierFrameLayout(context) {
             @Override
             protected void dispatchDraw(Canvas canvas) {
@@ -279,6 +290,7 @@ public class SettingsActivity extends BaseFragment implements NotificationCenter
                     }
                     iBlur3Invalidated = false;
                 }
+                updateAvatarHide();
                 super.dispatchDraw(canvas);
                 if (!hasMainTabs) {
                     AndroidUtilities.drawNavigationBarProtection(canvas, this, getThemedColor(Theme.key_windowBackgroundWhite), navigationBarHeight);
@@ -385,6 +397,7 @@ public class SettingsActivity extends BaseFragment implements NotificationCenter
             @Override
             public void onScrolled(@NonNull RecyclerView recyclerView, int dx, int dy) {
                 updateActionBarVisible();
+                updateAvatarHide();
                 if (listView.scrollingByUser) {
                     AndroidUtilities.hideKeyboard(fragmentView);
                 }
@@ -392,6 +405,13 @@ public class SettingsActivity extends BaseFragment implements NotificationCenter
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && scrollableViewNoiseSuppressor != null) {
                     scrollableViewNoiseSuppressor.onScrolled(dx, dy);
                     blur3_InvalidateBlur();
+                }
+            }
+
+            @Override
+            public void onScrollStateChanged(@NonNull RecyclerView recyclerView, int newState) {
+                if (newState == RecyclerView.SCROLL_STATE_IDLE) {
+                    snapAvatarHide();
                 }
             }
         });
@@ -422,9 +442,15 @@ public class SettingsActivity extends BaseFragment implements NotificationCenter
 
         topView = new FrameLayout(context);
 
-        avatarContainer = new FrameLayout(context);
-        topView.addView(avatarContainer, LayoutHelper.createFrame(120, 120, Gravity.CENTER_HORIZONTAL | Gravity.TOP, 0, 23 - 12, 0, 0));
-        avatarContainer.setOnClickListener(v -> {
+        avatarTouchView = new FrameLayout(context) {
+            @Override
+            public void setScaleX(float scaleX) {
+                super.setScaleX(scaleX);
+                updateAvatarHide();
+            }
+        };
+        topView.addView(avatarTouchView, LayoutHelper.createFrame(120, 120, Gravity.CENTER_HORIZONTAL | Gravity.TOP, 0, 23 - 12, 0, 0));
+        avatarTouchView.setOnClickListener(v -> {
             TLRPC.User user = MessagesController.getInstance(currentAccount).getUser(UserConfig.getInstance(currentAccount).getClientUserId());
             if (user == null) {
                 user = UserConfig.getInstance(currentAccount).getCurrentUser();
@@ -438,12 +464,31 @@ public class SettingsActivity extends BaseFragment implements NotificationCenter
 
             }, 0);
         });
-        ScaleStateListAnimator.apply(avatarContainer);
+        ScaleStateListAnimator.apply(avatarTouchView);
+        if (classicSettingsHeader) {
+            avatarGooey = null;
+            avatarContainer = avatarTouchView;
+        } else {
+            topView.addOnLayoutChangeListener((v, l, t, r, b, ol, ot, or, ob) -> updateAvatarHide());
+            avatarGooey = new ProfileGooeyView(context) {
+                @Override
+                public boolean dispatchTouchEvent(MotionEvent ev) {
+                    return false;
+                }
+            };
+            avatarContainer = new FrameLayout(context);
+            avatarContainer.setPivotX(0);
+            avatarContainer.setPivotY(0);
+            avatarGooey.addView(avatarContainer, LayoutHelper.createFrame(90, 90, Gravity.TOP | Gravity.LEFT));
+            contentView.addView(avatarGooey, contentView.indexOfChild(listView) + 1, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.MATCH_PARENT));
+        }
 
         avatarDrawable = new AvatarDrawable();
         avatarView = new BackupImageView(context);
         avatarView.setRoundRadius(dp(90));
-        avatarContainer.addView(avatarView, LayoutHelper.createFrame(90, 90, Gravity.CENTER_HORIZONTAL | Gravity.TOP, 0, 15, 0, 0));
+        avatarContainer.addView(avatarView, classicSettingsHeader
+            ? LayoutHelper.createFrame(90, 90, Gravity.CENTER_HORIZONTAL | Gravity.TOP, 0, 15, 0, 0)
+            : LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.MATCH_PARENT));
 
         avatarProgressView = new RadialProgressView(context) {
             private Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
@@ -464,7 +509,9 @@ public class SettingsActivity extends BaseFragment implements NotificationCenter
         avatarProgressView.setSize(AndroidUtilities.dp(26));
         avatarProgressView.setProgressColor(0xffffffff);
         avatarProgressView.setNoProgress(false);
-        avatarContainer.addView(avatarProgressView, LayoutHelper.createFrame(90, 90, Gravity.CENTER_HORIZONTAL | Gravity.TOP, 0, 15, 0, 0));
+        avatarContainer.addView(avatarProgressView, classicSettingsHeader
+            ? LayoutHelper.createFrame(90, 90, Gravity.CENTER_HORIZONTAL | Gravity.TOP, 0, 15, 0, 0)
+            : LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.MATCH_PARENT));
         showAvatarProgress(false, false);
 
         cameraButton = new FrameLayout(context);
@@ -477,8 +524,14 @@ public class SettingsActivity extends BaseFragment implements NotificationCenter
         cameraImageView.setImageResource(R.drawable.filled_premium_camera);
         cameraBackground.addView(cameraImageView, LayoutHelper.createFrame(22, 22, Gravity.CENTER));
         cameraButton.addView(cameraBackground, LayoutHelper.createFrame(30, 30));
-        avatarContainer.addView(cameraButton, LayoutHelper.createFrame(34, 34, Gravity.CENTER_HORIZONTAL | Gravity.TOP, 32, 75, 0, 0));
-        ScaleStateListAnimator.apply(cameraButton);
+        if (classicSettingsHeader) {
+            avatarContainer.addView(cameraButton, LayoutHelper.createFrame(34, 34, Gravity.CENTER_HORIZONTAL | Gravity.TOP, 32, 75, 0, 0));
+            ScaleStateListAnimator.apply(cameraButton);
+        } else {
+            cameraButton.setPivotX(0);
+            cameraButton.setPivotY(0);
+            contentView.addView(cameraButton, contentView.indexOfChild(avatarGooey) + 1, LayoutHelper.createFrame(34, 34, Gravity.LEFT | Gravity.TOP));
+        }
 
         titleView = new TextView(context);
         titleView.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 22);
@@ -648,6 +701,79 @@ public class SettingsActivity extends BaseFragment implements NotificationCenter
         if (listView.adapter != null) {
             listView.adapter.notifyDataSetChanged();
         }
+    }
+
+    // The modern header follows its position in the list and hides into the camera cutout.
+    private float avatarHideCenterY, avatarHideScale, avatarHideShown = -1;
+    private float avatarListY, avatarShownY, avatarHiddenY;
+
+    private void updateAvatarHide() {
+        if (avatarGooey == null || avatarContainer == null || avatarTouchView == null || cameraButton == null || fragmentView == null) {
+            return;
+        }
+        float y = avatarTouchView.getHeight() / 2f;
+        float alpha = 1f;
+        View view = avatarTouchView;
+        while (view != null && view != fragmentView && view.getParent() instanceof View) {
+            y += view.getY();
+            alpha *= view.getAlpha();
+            view = (View) view.getParent();
+        }
+        if (view != fragmentView || !avatarTouchView.isAttachedToWindow() || avatarTouchView.getHeight() == 0) {
+            if (avatarHideShown != 0) {
+                avatarHideShown = 0;
+                avatarGooey.setHideProgress(1f);
+                cameraButton.setAlpha(0f);
+            }
+            return;
+        }
+        final float shownY = y - getListItemTop(topView) + listView.getPaddingTop();
+        final float hiddenY = avatarGooey.getHiddenAvatarCenterY(-dp(16));
+        final float shown = MathUtils.clamp((y - hiddenY) / Math.max(1, shownY - hiddenY), 0f, 1f);
+        final float centerY = Math.max(y, hiddenY);
+        avatarListY = y;
+        avatarShownY = shownY;
+        avatarHiddenY = hiddenY;
+        final float size = dp(90);
+        final float scale = AndroidUtilities.lerp(dp(avatarGooey.getHiddenAvatarSizeDp()), size, shown) / size * avatarTouchView.getScaleX();
+        final float translationX = avatarGooey.getWidth() / 2f - size * scale / 2f;
+        if (centerY == avatarHideCenterY && scale == avatarHideScale && shown == avatarHideShown && alpha == avatarGooey.getAlpha() && translationX == avatarContainer.getTranslationX()) {
+            return;
+        }
+        avatarHideCenterY = centerY;
+        avatarHideScale = scale;
+        avatarHideShown = shown;
+        avatarGooey.setAlpha(alpha);
+        avatarContainer.setScaleX(scale);
+        avatarContainer.setScaleY(scale);
+        avatarContainer.setTranslationX(translationX);
+        avatarContainer.setTranslationY(centerY - size * scale / 2f);
+        cameraButton.setAlpha(alpha * MathUtils.clamp(AndroidUtilities.ilerp(shown, 0.75f, 1f), 0f, 1f));
+        cameraButton.setScaleX(scale);
+        cameraButton.setScaleY(scale);
+        cameraButton.setTranslationX(translationX + dp(60) * scale);
+        cameraButton.setTranslationY(centerY - size * scale / 2f + dp(60) * scale);
+        avatarGooey.setHideProgress(1f - shown);
+    }
+
+    private void snapAvatarHide() {
+        if (avatarGooey == null || searchItem != null && searchItem.isSearchFieldVisible2() || avatarHideShown <= 0 || avatarHideShown >= 1) {
+            return;
+        }
+        if (avatarHideShown >= 0.5f) {
+            listView.smoothScrollBy(0, (int) -(avatarShownY - avatarListY), CubicBezierInterpolator.EASE_OUT_QUINT);
+        } else {
+            listView.smoothScrollBy(0, (int) Math.ceil(avatarListY - avatarHiddenY), CubicBezierInterpolator.EASE_OUT_QUINT);
+        }
+    }
+
+    private float getListItemTop(View view) {
+        float top = 0;
+        while (view != null && view != listView && view.getParent() instanceof View) {
+            top += view.getY();
+            view = (View) view.getParent();
+        }
+        return top;
     }
 
     private ArrayList<Integer> accountNumbers = new ArrayList<>();

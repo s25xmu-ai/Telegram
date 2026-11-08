@@ -12,6 +12,7 @@
     <string name="XGramClassicDrawer">Classic menu</string>
     <string name="XGramClassicDialogRows">Classic chat list row dimensions</string>
     <string name="XGramClassicSettingsRows">Classic settings rows (in progress)</string>
+    <string name="XGramClassicSettingsHeader">Simple settings header</string>
     <string name="XGramClassicProfileDetails">Classic profile detail spacing (in progress)</string>
     <string name="XGramClassicMessageMenu">Classic message menu background</string>
     <string name="XGramClassicMessageInput">Classic message input (in progress)</string>

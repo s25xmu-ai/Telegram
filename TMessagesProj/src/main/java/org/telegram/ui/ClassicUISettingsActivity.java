@@ -43,8 +43,10 @@ public class ClassicUISettingsActivity extends BaseFragment {
         header.setOnClickListener(v -> { boolean value = !XGramConfig.isClassicChatHeaderLayout(); XGramConfig.setClassicChatHeaderLayout(value); header.setChecked(value); });
         TextCheckCell profile = addToggle(context, list, R.string.XGramClassicProfileDetails, XGramConfig.isClassicProfileDetails(), true);
         profile.setOnClickListener(v -> { boolean value = !XGramConfig.isClassicProfileDetails(); XGramConfig.setClassicProfileDetails(value); profile.setChecked(value); });
-        TextCheckCell settingsRows = addToggle(context, list, R.string.XGramClassicSettingsRows, XGramConfig.isClassicSettingsRows(), false);
+        TextCheckCell settingsRows = addToggle(context, list, R.string.XGramClassicSettingsRows, XGramConfig.isClassicSettingsRows(), true);
         settingsRows.setOnClickListener(v -> { boolean value = !XGramConfig.isClassicSettingsRows(); XGramConfig.setClassicSettingsRows(value); settingsRows.setChecked(value); });
+        TextCheckCell settingsHeader = addToggle(context, list, R.string.XGramClassicSettingsHeader, XGramConfig.isClassicSettingsHeader(), false);
+        settingsHeader.setOnClickListener(v -> { boolean value = !XGramConfig.isClassicSettingsHeader(); XGramConfig.setClassicSettingsHeader(value); settingsHeader.setChecked(value); });
         TextView info = new TextView(context);
         info.setTextSize(14);
         info.setTypeface(AndroidUtilities.getVazirmatnTypeface());
